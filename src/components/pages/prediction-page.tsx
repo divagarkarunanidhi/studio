@@ -2,15 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { bulkPredictDefects } from '@/ai/flows/defect-prediction-flow';
-import { summarizePredictions } from '@/ai/flows/prediction-summary-flow';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Zap, Loader, Sparkles } from 'lucide-react';
+import { Zap, Loader } from 'lucide-react';
 import type { Defect, BulkPredictDefectOutput } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '../ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 interface PredictionPageProps {
   defects: Defect[];
@@ -18,7 +16,6 @@ interface PredictionPageProps {
 
 export function PredictionPage({ defects }: PredictionPageProps) {
   const [predictions, setPredictions] = useState<BulkPredictDefectOutput>([]);
-  const [summary, setSummary] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -31,7 +28,6 @@ export function PredictionPage({ defects }: PredictionPageProps) {
       
       setIsLoading(true);
       setPredictions([]);
-      setSummary('');
 
       try {
         const defectDataForApi = defects.map(d => ({
@@ -40,11 +36,6 @@ export function PredictionPage({ defects }: PredictionPageProps) {
         }));
         const results = await bulkPredictDefects(defectDataForApi);
         setPredictions(results);
-
-        if (results.length > 0) {
-            const summaryResult = await summarizePredictions({ predictions: results });
-            setSummary(summaryResult.summary);
-        }
 
       } catch (error) {
         console.error('AI processing failed:', error);
@@ -67,7 +58,7 @@ export function PredictionPage({ defects }: PredictionPageProps) {
       <CardHeader>
         <CardTitle>AI-Powered Defect Analysis</CardTitle>
         <CardDescription>
-          The AI has analyzed all uploaded defects to predict their attributes and generate an insightful summary.
+          The AI has analyzed all uploaded defects to predict their attributes and generate an insightful summary for each.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -79,23 +70,15 @@ export function PredictionPage({ defects }: PredictionPageProps) {
         )}
         {!isLoading && predictions.length > 0 && (
           <div className="space-y-6">
-            {summary && (
-              <Alert>
-                <Sparkles className="h-4 w-4" />
-                <AlertTitle>AI Summary</AlertTitle>
-                <AlertDescription>
-                  {summary}
-                </AlertDescription>
-              </Alert>
-            )}
             <div className="w-full overflow-hidden rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-1/3">Summary</TableHead>
-                    <TableHead>Predicted Severity</TableHead>
-                    <TableHead>Predicted Priority</TableHead>
-                    <TableHead>Suggested Domain</TableHead>
+                    <TableHead className="w-1/4">Summary</TableHead>
+                    <TableHead className="w-1/3">Prediction Summary</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Domain</TableHead>
                     <TableHead className="text-right">Confidence</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -103,6 +86,7 @@ export function PredictionPage({ defects }: PredictionPageProps) {
                   {predictions.map((p, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium max-w-xs truncate">{p.summary}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-sm truncate">{p.prediction_summary}</TableCell>
                       <TableCell><Badge variant="destructive">{p.predicted_severity}</Badge></TableCell>
                       <TableCell><Badge variant="secondary">{p.predicted_priority}</Badge></TableCell>
                       <TableCell><Badge variant="outline">{p.suggested_domain}</Badge></TableCell>

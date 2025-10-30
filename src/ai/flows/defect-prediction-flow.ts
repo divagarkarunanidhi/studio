@@ -24,7 +24,7 @@ const prompt = ai.definePrompt({
   name: 'predictDefectPrompt',
   input: {schema: PredictDefectInputSchema},
   output: {schema: PredictDefectOutputSchema},
-  prompt: `You are an expert at software defect analysis. Based on the provided defect summary and description, predict the priority, severity, and suggest a relevant domain. Provide a confidence score for your prediction.
+  prompt: `You are an expert at software defect analysis. Based on the provided defect summary and description, predict the priority, severity, and suggest a relevant domain. Provide a confidence score for your prediction, and a brief, one-sentence summary of your analysis.
 
 Summary: {{{summary}}}
 Description: {{{description}}}

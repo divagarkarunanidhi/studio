@@ -19,6 +19,7 @@ export const PredictDefectInputSchema = z.object({
 export type PredictDefectInput = z.infer<typeof PredictDefectInputSchema>;
 
 export const PredictDefectOutputSchema = z.object({
+  prediction_summary: z.string().describe('A brief, one-sentence summary of the prediction and analysis.'),
   predicted_priority: z.string().describe('The predicted priority of the defect (e.g., Low, Medium, High, Critical).'),
   predicted_severity: z.string().describe('The predicted severity of the defect (e.g., Low, Medium, High, Critical).'),
   suggested_domain: z.string().describe('The suggested domain for the defect (e.g., UI, API, Database, Authentication).'),
