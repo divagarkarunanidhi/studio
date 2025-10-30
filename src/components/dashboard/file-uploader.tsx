@@ -1,0 +1,125 @@
+"use client";
+
+import React, { useState, useCallback } from 'react';
+import { UploadCloud } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import type { Defect } from '@/lib/types';
+
+interface FileUploaderProps {
+  onDataUploaded: (data: Defect[]) => void;
+}
+
+export function FileUploader({ onDataUploaded }: FileUploaderProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const { toast } = useToast();
+
+  const handleFile = useCallback((file: File) => {
+    if (file && file.type === 'text/csv') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const text = event.target?.result as string;
+          const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+          if (rows.length < 2) {
+            throw new Error('CSV file must have a header and at least one data row.');
+          }
+          const headers = rows[0].split(',').map(h => h.trim());
+          const data = rows.slice(1).map((row, rowIndex) => {
+            const values = row.split(',').map(v => v.trim());
+            if (values.length !== headers.length) {
+                console.warn(`Row ${rowIndex + 2} has incorrect number of columns. Skipping.`);
+                return null;
+            }
+            return headers.reduce((obj, header, index) => {
+              const key = header.toLowerCase().replace(/\s+/g, '_');
+              obj[key] = values[index];
+              return obj;
+            }, {} as any);
+          }).filter(Boolean);
+          
+          onDataUploaded(data as Defect[]);
+          toast({
+            title: 'Success!',
+            description: `${data.length} records loaded from ${file.name}.`,
+          });
+        } catch (error) {
+          toast({
+            variant: 'destructive',
+            title: 'Error parsing file',
+            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+          });
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid file type',
+        description: 'Please upload a valid .csv file.',
+      });
+    }
+  }, [onDataUploaded, toast]);
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    handleFile(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFile(file);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-lg">
+      <label
+        htmlFor="file-upload"
+        className={`relative flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 text-center cursor-pointer transition-colors ${
+          isDragging ? 'border-primary bg-primary/10' : 'bg-card hover:border-primary/50'
+        }`}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+        <p className="mt-4 font-semibold text-foreground">
+          Click to upload or drag and drop
+        </p>
+        <p className="text-sm text-muted-foreground">
+          CSV file with defect data
+        </p>
+        <input
+          id="file-upload"
+          name="file-upload"
+          type="file"
+          className="sr-only"
+          accept=".csv"
+          onChange={handleFileChange}
+        />
+      </label>
+    </div>
+  );
+}
