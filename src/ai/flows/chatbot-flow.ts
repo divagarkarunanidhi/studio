@@ -4,24 +4,10 @@
  * @fileoverview A chatbot flow that responds to user queries about defect data.
  *
  * - chat - A function that handles the chat interaction.
- * - ChatInput - The input type for the chat function.
- * - ChatOutput - The return type for the chat function.
  */
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {Defect} from '@/lib/types';
-
-const ChatInputSchema = z.object({
-  history: z.array(z.any()).describe('The chat history.'),
-  message: z.string().describe('The user message.'),
-  defects: z.array(z.any()).describe('A list of defect objects.'),
-});
-export type ChatInput = z.infer<typeof ChatInputSchema>;
-
-const ChatOutputSchema = z.object({
-  message: z.string().describe('The chatbot response.'),
-});
-export type ChatOutput = z.infer<typeof ChatOutputSchema>;
+import { ChatInputSchema, ChatOutputSchema, type ChatInput, type ChatOutput } from '@/lib/types';
 
 export async function chat(input: ChatInput): Promise<ChatOutput> {
   return chatbotFlow(input);

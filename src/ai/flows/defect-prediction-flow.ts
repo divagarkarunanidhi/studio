@@ -3,34 +3,12 @@
  * @fileOverview A defect prediction AI agent.
  *
  * - predictDefect - A function that handles the defect prediction process.
- * - PredictDefectInput - The input type for the predictDefect function.
- * - PredictDefectOutput - The return type for the predictDefect function.
+ * - bulkPredictDefects - A function that handles bulk defect prediction.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-
-const PredictDefectInputSchema = z.object({
-  summary: z.string().describe('A short summary of the defect.'),
-  description: z.string().describe('A detailed description of the defect.'),
-});
-export type PredictDefectInput = z.infer<typeof PredictDefectInputSchema>;
-
-const PredictDefectOutputSchema = z.object({
-  predicted_priority: z.string().describe('The predicted priority of the defect (e.g., Low, Medium, High, Critical).'),
-  predicted_severity: z.string().describe('The predicted severity of the defect (e.g., Low, Medium, High, Critical).'),
-  suggested_domain: z.string().describe('The suggested domain for the defect (e.g., UI, API, Database, Authentication).'),
-  confidence_score: z.number().describe('A confidence score for the prediction, from 0 to 1.'),
-});
-export type PredictDefectOutput = z.infer<typeof PredictDefectOutputSchema>;
-
-const BulkPredictDefectInputSchema = z.array(PredictDefectInputSchema);
-export type BulkPredictDefectInput = z.infer<typeof BulkPredictDefectInputSchema>;
-
-const BulkPredictDefectOutputSchema = z.array(PredictDefectOutputSchema.extend({
-  summary: z.string(),
-}));
-export type BulkPredictDefectOutput = z.infer<typeof BulkPredictDefectOutputSchema>;
+import { PredictDefectInputSchema, PredictDefectOutputSchema, BulkPredictDefectInputSchema, BulkPredictDefectOutputSchema, type PredictDefectInput, type PredictDefectOutput, type BulkPredictDefectInput, type BulkPredictDefectOutput } from '@/lib/types';
 
 
 export async function predictDefect(input: PredictDefectInput): Promise<PredictDefectOutput> {

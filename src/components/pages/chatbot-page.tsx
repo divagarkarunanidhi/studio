@@ -66,7 +66,7 @@ export function ChatbotPage({ defects }: ChatbotPageProps) {
             title: "Error",
             description: "Failed to get a response from the AI. Please try again."
         });
-        setMessages(prev => prev.slice(0, -1)); // Remove the user message on error
+        // Do not remove user message on error, so they can retry
     } finally {
       setIsLoading(false);
     }

@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { bulkPredictDefects, type BulkPredictDefectOutput } from '@/ai/flows/defect-prediction-flow';
+import { bulkPredictDefects } from '@/ai/flows/defect-prediction-flow';
+import { summarizePredictions } from '@/ai/flows/prediction-summary-flow';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Zap, Loader } from 'lucide-react';
-import type { Defect } from '@/lib/types';
+import { Zap, Loader, Sparkles } from 'lucide-react';
+import type { Defect, BulkPredictDefectOutput } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '../ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 interface PredictionPageProps {
   defects: Defect[];
@@ -16,6 +18,7 @@ interface PredictionPageProps {
 
 export function PredictionPage({ defects }: PredictionPageProps) {
   const [predictions, setPredictions] = useState<BulkPredictDefectOutput>([]);
+  const [summary, setSummary] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -28,6 +31,7 @@ export function PredictionPage({ defects }: PredictionPageProps) {
       
       setIsLoading(true);
       setPredictions([]);
+      setSummary('');
 
       try {
         const defectDataForApi = defects.map(d => ({
@@ -36,12 +40,18 @@ export function PredictionPage({ defects }: PredictionPageProps) {
         }));
         const results = await bulkPredictDefects(defectDataForApi);
         setPredictions(results);
+
+        if (results.length > 0) {
+            const summaryResult = await summarizePredictions({ predictions: results });
+            setSummary(summaryResult.summary);
+        }
+
       } catch (error) {
-        console.error('Bulk prediction failed:', error);
+        console.error('AI processing failed:', error);
         toast({
           variant: 'destructive',
           title: 'Prediction Failed',
-          description: 'The AI model could not make predictions. Please try again.',
+          description: 'The AI model could not process the defects. Please try again.',
         });
       } finally {
         setIsLoading(false);
@@ -55,9 +65,9 @@ export function PredictionPage({ defects }: PredictionPageProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>AI-Powered Defect Predictions</CardTitle>
+        <CardTitle>AI-Powered Defect Analysis</CardTitle>
         <CardDescription>
-          The AI has analyzed all uploaded defects to predict their severity, priority, and domain.
+          The AI has analyzed all uploaded defects to predict their attributes and generate an insightful summary.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -68,34 +78,45 @@ export function PredictionPage({ defects }: PredictionPageProps) {
           </div>
         )}
         {!isLoading && predictions.length > 0 && (
-          <div className="w-full overflow-hidden rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-1/3">Summary</TableHead>
-                  <TableHead>Predicted Severity</TableHead>
-                  <TableHead>Predicted Priority</TableHead>
-                  <TableHead>Suggested Domain</TableHead>
-                  <TableHead className="text-right">Confidence</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {predictions.map((p, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium max-w-xs truncate">{p.summary}</TableCell>
-                    <TableCell><Badge variant="destructive">{p.predicted_severity}</Badge></TableCell>
-                    <TableCell><Badge variant="secondary">{p.predicted_priority}</Badge></TableCell>
-                    <TableCell><Badge variant="outline">{p.suggested_domain}</Badge></TableCell>
-                    <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                           <Progress value={p.confidence_score * 100} className="w-20"/>
-                           <span>{(p.confidence_score * 100).toFixed(0)}%</span>
-                        </div>
-                    </TableCell>
+          <div className="space-y-6">
+            {summary && (
+              <Alert>
+                <Sparkles className="h-4 w-4" />
+                <AlertTitle>AI Summary</AlertTitle>
+                <AlertDescription>
+                  {summary}
+                </AlertDescription>
+              </Alert>
+            )}
+            <div className="w-full overflow-hidden rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-1/3">Summary</TableHead>
+                    <TableHead>Predicted Severity</TableHead>
+                    <TableHead>Predicted Priority</TableHead>
+                    <TableHead>Suggested Domain</TableHead>
+                    <TableHead className="text-right">Confidence</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {predictions.map((p, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium max-w-xs truncate">{p.summary}</TableCell>
+                      <TableCell><Badge variant="destructive">{p.predicted_severity}</Badge></TableCell>
+                      <TableCell><Badge variant="secondary">{p.predicted_priority}</Badge></TableCell>
+                      <TableCell><Badge variant="outline">{p.suggested_domain}</Badge></TableCell>
+                      <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                             <Progress value={p.confidence_score * 100} className="w-20"/>
+                             <span>{(p.confidence_score * 100).toFixed(0)}%</span>
+                          </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
         {!isLoading && predictions.length === 0 && defects.length > 0 && (
