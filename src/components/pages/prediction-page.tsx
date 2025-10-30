@@ -32,7 +32,7 @@ export function PredictionPage({ defects }: PredictionPageProps) {
       try {
         const defectDataForApi = defects.map(d => ({
             summary: d.summary,
-            description: d.description || ''
+            description: d.description || d.summary
         }));
         const results = await bulkPredictDefects(defectDataForApi);
         setPredictions(results);
@@ -86,7 +86,7 @@ export function PredictionPage({ defects }: PredictionPageProps) {
                   {predictions.map((p, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium max-w-xs truncate">{p.summary}</TableCell>
-                      <TableCell className="text-muted-foreground">{p.prediction_summary}</TableCell>
+                      <TableCell className="text-muted-foreground whitespace-normal">{p.prediction_summary}</TableCell>
                       <TableCell><Badge variant="destructive">{p.predicted_severity}</Badge></TableCell>
                       <TableCell><Badge variant="secondary">{p.predicted_priority}</Badge></TableCell>
                       <TableCell><Badge variant="outline">{p.suggested_domain}</Badge></TableCell>
