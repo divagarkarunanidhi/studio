@@ -6,9 +6,10 @@ import { differenceInDays, parseISO, format } from 'date-fns';
 
 interface DefectsTableProps {
   defects: Defect[];
+  showAll?: boolean;
 }
 
-export function DefectsTable({ defects }: DefectsTableProps) {
+export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
   const sortedDefects = [...defects].sort((a, b) => {
     try {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -16,6 +17,8 @@ export function DefectsTable({ defects }: DefectsTableProps) {
       return 0;
     }
   });
+
+  const defectsToShow = showAll ? sortedDefects : sortedDefects.slice(0, 10);
 
   return (
     <div className="w-full overflow-hidden rounded-md border">
@@ -26,11 +29,13 @@ export function DefectsTable({ defects }: DefectsTableProps) {
             <TableHead>Domain</TableHead>
             <TableHead>Reported By</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Severity</TableHead>
+            <TableHead>Priority</TableHead>
             <TableHead className="text-right">Created Date</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedDefects.slice(0, 20).map((defect) => {
+          {defectsToShow.map((defect) => {
             let isUrgent = false;
             try {
               const isOld = differenceInDays(new Date(), parseISO(defect.created_at)) > 7;
@@ -50,6 +55,8 @@ export function DefectsTable({ defects }: DefectsTableProps) {
                 </TableCell>
                 <TableCell>{defect.reported_by || 'N/A'}</TableCell>
                 <TableCell>{defect.status || 'N/A'}</TableCell>
+                <TableCell>{defect.severity || 'N/A'}</TableCell>
+                <TableCell>{defect.priority || 'N/A'}</TableCell>
                 <TableCell className="text-right text-muted-foreground">
                   {defect.created_at ? format(parseISO(defect.created_at), 'MMM d, yyyy') : 'Invalid Date'}
                 </TableCell>
