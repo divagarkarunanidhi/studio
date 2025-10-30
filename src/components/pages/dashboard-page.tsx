@@ -35,11 +35,9 @@ import { DefectsTable } from '../dashboard/defects-table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { isSameDay, subDays, parseISO } from 'date-fns';
 import { GroupedDefectsView } from '../dashboard/grouped-defects-view';
-import { PredictionPage } from './prediction-page';
-import { ChatbotPage } from './chatbot-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user' | 'prediction' | 'chatbot';
+type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user';
 
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -87,8 +85,6 @@ export function DashboardPage() {
     'all-defects': 'All Defects',
     'by-domain': 'Defects by Domain',
     'by-user': 'Defects by Reporter',
-    prediction: 'AI Defect Prediction',
-    chatbot: 'AI Chatbot',
   }
   
   const viewDescriptions: Record<View, string> = {
@@ -96,8 +92,6 @@ export function DashboardPage() {
     'all-defects': 'A complete list of all imported defects.',
     'by-domain': 'Defects grouped by their application domain.',
     'by-user': 'Defects grouped by the user who reported them.',
-    prediction: 'Use AI to predict the priority, severity, and domain of new defects.',
-    chatbot: 'Chat with an AI to get insights about your defects.',
   }
 
 
@@ -134,18 +128,6 @@ export function DashboardPage() {
               <SidebarMenuButton tooltip="By User" isActive={activeView === 'by-user'} onClick={() => setActiveView('by-user')}>
                 <Users />
                 By Reporter
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="AI Prediction" isActive={activeView === 'prediction'} onClick={() => setActiveView('prediction')}>
-                <Wand2 />
-                AI Prediction
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="AI Chatbot" isActive={activeView === 'chatbot'} onClick={() => setActiveView('chatbot')}>
-                <Bot />
-                AI Chatbot
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -222,14 +204,6 @@ export function DashboardPage() {
 
             {activeView === 'by-user' && (
               <GroupedDefectsView defects={defects} groupKey="reported_by" />
-            )}
-            
-            {activeView === 'prediction' && (
-              <PredictionPage defects={defects} />
-            )}
-
-            {activeView === 'chatbot' && (
-              <ChatbotPage defects={defects} />
             )}
 
           </main>
