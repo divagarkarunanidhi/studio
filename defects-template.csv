@@ -1,0 +1,6 @@
+id,summary,domain,status,reported_by,created_at,severity,priority
+1,"UI glitch on login screen","Mobile App","To-Do","John Smith","2024-05-01T09:00:00Z","Medium","Medium"
+2,"API call fails for user profile","Backend","In Progress","Alice Johnson","2024-05-02T11:30:00Z","High","High"
+3,"Incorrect data displayed on dashboard","Web App","To-Do","Michael Brown","2024-05-03T14:00:00Z","Critical","High"
+4,"Button alignment issue on settings page","Web App","Ready for Testing","Emily Davis","2024-05-03T16:45:00Z","Low","Low"
+5,"App crashes on startup","Mobile App","Done","David Wilson","2024-04-28T10:00:00Z","Critical","High"
