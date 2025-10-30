@@ -71,7 +71,7 @@ export function GroupedDefectsChart({ defects }: GroupedDefectsChartProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full">
+        <div className="h-[300px]">
           <ChartContainer config={chartConfig}>
             <BarChart accessibilityLayer data={groupedData} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
               <CartesianGrid vertical={false} />
