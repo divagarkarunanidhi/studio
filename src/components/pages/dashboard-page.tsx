@@ -225,7 +225,7 @@ export function DashboardPage() {
             )}
             
             {activeView === 'prediction' && (
-              <PredictionPage />
+              <PredictionPage defects={defects} />
             )}
 
             {activeView === 'chatbot' && (

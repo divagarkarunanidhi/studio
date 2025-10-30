@@ -24,9 +24,23 @@ const PredictDefectOutputSchema = z.object({
 });
 export type PredictDefectOutput = z.infer<typeof PredictDefectOutputSchema>;
 
+const BulkPredictDefectInputSchema = z.array(PredictDefectInputSchema);
+export type BulkPredictDefectInput = z.infer<typeof BulkPredictDefectInputSchema>;
+
+const BulkPredictDefectOutputSchema = z.array(PredictDefectOutputSchema.extend({
+  summary: z.string(),
+}));
+export type BulkPredictDefectOutput = z.infer<typeof BulkPredictDefectOutputSchema>;
+
+
 export async function predictDefect(input: PredictDefectInput): Promise<PredictDefectOutput> {
   return predictDefectFlow(input);
 }
+
+export async function bulkPredictDefects(input: BulkPredictDefectInput): Promise<BulkPredictDefectOutput> {
+    return bulkPredictDefectFlow(input);
+}
+
 
 const prompt = ai.definePrompt({
   name: 'predictDefectPrompt',
@@ -51,3 +65,30 @@ const predictDefectFlow = ai.defineFlow(
     return output!;
   }
 );
+
+const bulkPredictDefectFlow = ai.defineFlow(
+    {
+      name: 'bulkPredictDefectFlow',
+      inputSchema: BulkPredictDefectInputSchema,
+      outputSchema: BulkPredictDefectOutputSchema,
+    },
+    async (defects) => {
+      const requests = defects.map((defect) => ({
+        summary: defect.summary,
+        description: defect.description || defect.summary,
+      }));
+  
+      const results = await Promise.all(
+        requests.map(async (req) => {
+          const { output } = await prompt(req);
+          return {
+            ...output!,
+            summary: req.summary,
+          };
+        })
+      );
+  
+      return results;
+    }
+  );
+  
