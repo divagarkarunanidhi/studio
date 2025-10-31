@@ -25,7 +25,6 @@ import {
   TestTube,
   Network,
   Users,
-  Wand2,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -34,10 +33,9 @@ import { DefectsTable } from '../dashboard/defects-table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { isSameDay, subDays, parseISO } from 'date-fns';
 import { GroupedDefectsView } from '../dashboard/grouped-defects-view';
-import { AIAssistantPage } from './ai-assistant-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user' | 'ai-assistant';
+type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user';
 
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -85,7 +83,6 @@ export function DashboardPage() {
     'all-defects': 'All Defects',
     'by-domain': 'Defects by Domain',
     'by-user': 'Defects by Reporter',
-    'ai-assistant': 'AI Assistant',
   }
   
   const viewDescriptions: Record<View, string> = {
@@ -93,7 +90,6 @@ export function DashboardPage() {
     'all-defects': 'A complete list of all imported defects.',
     'by-domain': 'Defects grouped by their application domain.',
     'by-user': 'Defects grouped by the user who reported them.',
-    'ai-assistant': 'AI-powered predictions and chat for your defects.',
   }
 
 
@@ -130,12 +126,6 @@ export function DashboardPage() {
               <SidebarMenuButton tooltip="By User" isActive={activeView === 'by-user'} onClick={() => setActiveView('by-user')}>
                 <Users />
                 By Reporter
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="AI Assistant" isActive={activeView === 'ai-assistant'} onClick={() => setActiveView('ai-assistant')}>
-                <Wand2 />
-                AI Assistant
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -186,9 +176,9 @@ export function DashboardPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-                  <Card className="col-span-1 lg:col-span-5">
+                  <div className="col-span-1 lg:col-span-5">
                      <GroupedDefectsChart defects={defects} />
-                  </Card>
+                  </div>
                 </div>
                 
                 <Card>
@@ -220,10 +210,6 @@ export function DashboardPage() {
 
             {activeView === 'by-user' && (
               <GroupedDefectsView defects={defects} groupKey="reported_by" />
-            )}
-
-            {activeView === 'ai-assistant' && (
-              <AIAssistantPage defects={defects} />
             )}
 
           </main>
