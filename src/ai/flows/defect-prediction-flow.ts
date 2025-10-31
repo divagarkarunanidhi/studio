@@ -6,7 +6,6 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
 import {
   type BulkPredictDefectInput,
   type BulkPredictDefectOutput,
@@ -54,9 +53,9 @@ export async function bulkPredictDefects(input: BulkPredictDefectInput): Promise
         console.error(`Failed to generate prediction for defect ${defect.id}:`, error);
         return {
           id: defect.id,
-          predicted_severity: 'Medium',
-          predicted_priority: 'Medium',
-          prediction_summary: 'Could not generate prediction due to an error.',
+          predicted_severity: 'N/A',
+          predicted_priority: 'N/A',
+          prediction_summary: 'Could not generate prediction due to a model error.',
         };
       }
     })
