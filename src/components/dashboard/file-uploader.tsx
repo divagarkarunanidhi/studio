@@ -65,8 +65,10 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
                 console.warn(`Row ${rowIndex + 2} has more columns than headers (expected ${headers.length}, got ${values.length}). Truncating row.`);
                 values.length = headers.length;
             } else if (values.length < headers.length) {
-                console.warn(`Row ${rowIndex + 2} has fewer columns than headers (expected ${headers.length}, got ${values.length}). Skipping row.`);
-                return null;
+                // Pad the values array if it's shorter than headers
+                while (values.length < headers.length) {
+                    values.push('');
+                }
             }
 
              const defect: any = headers.reduce((obj, header, index) => {

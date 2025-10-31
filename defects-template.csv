@@ -1,6 +1,1346 @@
-id,summary,domain,status,reported_by,created_at,severity,priority
-1,"UI glitch on login screen","Mobile App","To-Do","John Smith","2024-05-01T09:00:00Z","Medium","Medium"
-2,"API call fails for user profile","Backend","In Progress","Alice Johnson","2024-05-02T11:30:00Z","High","High"
-3,"Incorrect data displayed on dashboard","Web App","To-Do","Michael Brown","2024-05-03T14:00:00Z","Critical","High"
-4,"Button alignment issue on settings page","Web App","Ready for Testing","Emily Davis","2024-05-03T16:45:00Z","Low","Low"
-5,"App crashes on startup","Mobile App","Done","David Wilson","2024-04-28T10:00:00Z","Critical","High"
+Issue Type,Issue key,Issue id,Summary,Assignee,Assignee Id,Reporter,Reporter Id,Priority,Status,Resolution,Created,Updated,Due date,Creator,Creator Id,Last Viewed,Resolved,Custom field (Resolved At),Time Spent,Custom field (Bug Category),Custom field (Business Domain),Custom field (Last Comment),Description
+Bug,TSTAUTO-31027,388502,BACARDI - Same transport mode is displayed for the multimodal Shipments multimodal shipment,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,To Do,,29/Oct/25 12:44 PM,30/Oct/25 9:37 AM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,31/Oct/25 9:59 AM,,,,Configuration,Bacardi,,"h3. *Steps to Reproduce:*
+
+1. Navigate to Business Process Automation-->Integration --> Integration Manager
+2. Upload the XML file 'FB-AU-RJ-07 Order'.xml
+3. Copy transmission No generated after XML upload
+4. Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+5. Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+6. Login with Planner/Super user and Navigate to Order Release Workbench and use replace option to search Order id.
+7. Open the order in EDIT mode and Go to 'Constraints' tab, and enter the itinerary ID 'ITI-MULTILEG-20250613' in 'Buy Fixed Itinerary' field and click Finished.
+8. Now, plan the order.
+9. As a multi-leg setup, there should be 3 shipments created for a single order with below sequence:
+10. Source Location to Port, Port To Port, Port To destination location
+
+----
+
+h3. *Data:*
+
+Order release id: is TAAS_20251029160435
+
+ShipmentID : 1000005601,1000005599,1000005600
+
+----
+
+h3. *Expected Result:*
+
+Transport mode should be ROAD_FTL,OCEAN_FCL,ROAD_LTL
+
+----
+
+h3. *Actual Result:*
+
+All 3 shipment has transport mode as OCEAN_FCL
+
+----
+
+h3. *XML and Screenshots:*
+
+[^CreateOrderTemplate_Multileg_new_834.xml]
+
+!image-20251029-105106.png|width=678,alt=""image-20251029-105106.png""!
+
+
+
+ "
+Bug,TSTAUTO-31023,388497,BACARDI - driver name and hbol values are not reflected after mass update,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Highest,To Do,,29/Oct/25 12:27 PM,29/Oct/25 12:38 PM,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,,,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+
+* *Login* to OTM as user *TaasOTMuser*.
+* *Switch role* to *SUPER_USER_ROLE*.
+* *Create integration XML* for order creation using the template *CreateOrderTemplate* (file: {{TL.xml}}).
+** XML generated: {{TL_new_38.xml}}
+** *Order Release ID:* {{TAAS_20251029162011}}
+* *Upload* the XML through *Integration Manager → Upload Transmission*.
+** Confirm transmission status: *STAGED → PROCESSED*.
+* Go to *Order Management → Order Release Workbench*.
+* Search for *Order Release ID = TAAS_20251029162011*.
+** Verify that the order release is displayed successfully.
+* *Plan shipment* using *Operational Planning → Create Buy Shipment → Bulk Plan - Buy* with the required planning parameter set.
+** Bulk plan completed successfully.
+** *Shipment ID:* {{1000005636}} generated.
+* Navigate to *Shipment Workbench* and *search* for *Shipment ID = 1000005636*.
+** Shipment record displayed successfully.
+* *Tender* the shipment and confirm that it is *accepted*.
+* *Switch OTM role* to *SUPER_USER_ROLE* again (after tender acceptance).
+* Navigate to *Debrief Workbench*.
+* *Search* for *Shipment ID = 1000005636*.
+** Shipment retrieved successfully.
+* Enter the following details under *Debrief Header*:
+** *Driver Name*
+** *HBOL*
+** Save the changes.
+* Go to *Actions → Print → Print Security Details*.
+** *Expected Result:* The printed report should display the entered *Driver Name*  and *HBOL*  values.
+** *Actual Result:* The *Driver Name* and *HBOL* values are *not reflected* in the *Print Security Details* output.
+
+!image-20251029-103729.png|width=850,alt=""image-20251029-103729.png""!
+
+
+
+!image-20251029-103744.png|width=1114,alt=""image-20251029-103744.png""!"
+Bug,TSTAUTO-31019,388486,BACARDI -Total actual cost was not updated with change in weight and volume values,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Highest,To Do,,29/Oct/25 12:07 PM,29/Oct/25 12:17 PM,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,29/Oct/25 1:22 PM,,,,Configuration,Bacardi,,"# *Login* to OTM as user *TaasOTMuser*.
+# *Switch role* to *SUPER_USER_ROLE*.
+# *Create integration XML* for order creation using template *CreateOrderTemplate* (template file: {{LTL.xml}}).
+#* A new XML file is generated, e.g., {{LTL_new_15.xml}}, with a unique Order Release ID ({{TAAS_20251029153752}}).
+# *Upload* the generated XML via *Integration Manager → Upload Transmission*.
+#* Confirm transmission status changes from *STAGED → PROCESSED*.
+# Navigate to *Order Release Workbench*.
+# *Verify* the newly created *Order Release* is displayed ({{Order Release ID: TAAS_20251029153752}}).
+# *Plan shipment* using *Operational Planning → Create Buy Shipment → Bulk Plan - Buy* with the required parameter set.
+#* Confirm the *Bulk Plan* completes successfully ({{Status: COMPLETED}}, {{Bulk Plan ID: 20251029-0049}}).
+#* Shipment is built successfully ({{Shipment ID: 1000005596}}).
+# Navigate to *Shipment Dispatch Workbench* and *search* for the created shipment.
+#* Verify the shipment record is displayed successfully.
+# *Verify initial shipment values:*
+#* *Total Gross Weight:* 2000.00 KG 
+#* *Total Gross Volume:* 4.00 CUMTR 
+#* *Total Ship Unit Count:* 2 
+#* *Total Actual Cost:* 320 
+# *Edit the Shipment* (as part of update validation).
+# *Create shipment event XML* using the template *Order Release update - Actuals1.xml*.
+
+* A new XML file is created, e.g., {{Order Release update - Actuals1_new_157.xml}}.
+
+# *Upload* the update XML through *Integration Manager*.
+
+* Confirm transmission status changes to *PROCESSED*.
+
+# Navigate again to *Shipment Dispatch Workbench* and *search* for the same Shipment ID ({{1000005596}}).
+# *Verify updated shipment field values:*
+
+* *Total Gross Weight:* 1500.00 KG 
+* *Total Gross Volume:* 6.00 CUMTR 
+* *Total Ship Unit Count:* 3 
+* *Total Actual Cost:* _320_
+
+Total actual cost value doesnt change with gross weight and gross volume change
+
+!image-20251029-101300.png|width=1138,alt=""image-20251029-101300.png""!"
+Bug,TSTAUTO-31002,388412,BACARDI - AA-Pick-up Appointment Date and/or Time is not available in add shipment event,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,To Do,,29/Oct/25 9:31 AM,29/Oct/25 9:39 AM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,30/Oct/25 9:38 AM,,,,Data,Bacardi,,"Steps to reproduce:
+
+|# Login as Super user role
+# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the XML 
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Navigate to Order release Workbench and use replace option to search order release id.
+# Plan the order release using bulk plan option.
+# Once it is planned, copy the shipment id.
+# Go to Shipment debreif workbench.
+# Add shipment tracking event using shipment action.
+# select responsble party as carrier, status as AA-Pick-up Appointment Date and/or Time, type as AA-Pick-up Appointment Date and/or Time, Shipment stop as 1 and event date with current date.|
+
+Expected:  *AA-Pick-up Appointment Date and/or Time* status should be available in add shipment tracking event
+
+Actual: *AA-Pick-up Appointment Date and/or Time* status is not available in add shipment tracking event
+
+|shipmentID:1000005588|
+
+!image-20251029-073528.png|width=678,alt=""image-20251029-073528.png""!
+
+[^CreateOrderTemplate_FTL_C_SE_D08_13_new_46.xml]
+
+"
+Bug,TSTAUTO-30719,386713,BACARDI-Appointment Pickup Time is not displayed in Shipment stop screen,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,Done,Done,24/Oct/25 2:53 PM,27/Oct/25 12:42 PM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,31/Oct/25 10:21 AM,27/Oct/25 12:42 PM,,,Data,Bacardi,,"Steps to reproduce:
+
+|# Login as Super user role
+# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the FTL XML 
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Navigate to Order release Workbench and use replace option to search order release id.
+# Plan the order release using bulk plan option.
+# Once it is planned, copy the shipment id and open the shipment in Shipment debreif workbench.
+# Tender the shipment using secure resource action and accept the tender.
+# Upload slot book xml.
+# Switch to Planner role and go to shipment debreif workbench and seach for shipment.
+# Once the shipment is select, under Shipment track event split screen, added event should be visible.
+# *Edit the shipment and move to stop tab and edit 2nd stop of the shipment and check Appointment Pickup Time, it should be same as event time*|
+
+Expected: Appointment Pickup Time should be displayed  same as event time
+
+Actual: Appointment Pickup Time is displayed as blank
+
+Shipment ID : 1000005325
+
+!image-20251024-115617.png|width=678,alt=""image-20251024-115617.png""!"
+Bug,TSTAUTO-30718,386704,BACARDI -Unable to build shipment through show routing options,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Highest,In Progress,,24/Oct/25 2:32 PM,29/Oct/25 12:38 PM,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,29/Oct/25 1:19 PM,,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+
+# Launch the *BACARDI* automation test suite using the test data file.
+# Log in to OTM as user *“TaasOTMuser”*.
+# Create integration XML for order creation using template *“CreateOrderTemplate”*.
+#* New Order ID generated (example: {{TAAS_20251024064416}}).
+# Switch OTM role to *“TAAS_ROBOT”* and upload the XML file to create the order.
+#* Transmission status shown as *PROCESSED*.
+# Switch OTM role to *“SUPER_USER_ROLE”* and navigate to *Order Release Workbench*.
+#* Verify that the Order Release is displayed.
+# Retrieve “Source Location ID”, “Plan From Location ID”, “Destination Location ID”, and “Plan To Location ID” field values for the Order Release.
+#* “Plan From” and “Plan To” fields are blank.
+# Attempt to *Create OTM Cloud Shipment using Show Routing Options* from the Order Release screen.
+
+----
+
+h3. *Actual Result*
+
+* The *Show Routing Options* did *not appear*.
+
+----
+
+h3. *Expected Result*
+
+* The *Show Routing Options* dialog should appear with routing options for the order.
+* Shipment creation process should proceed 
+!image-20251024-114229.png|width=691,alt=""image-20251024-114229.png""!"
+Bug,TSTAUTO-30474,383268,BACARDI - Invoice status is displayed as mismatch (Shipment and invoice service provider is matching),"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,In Progress,,16/Oct/25 1:43 PM,20/Oct/25 10:24 AM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,29/Oct/25 1:19 PM,,,,Data,Bacardi,,"
+
+Steps to reproduce ::
+
+|# Login as Planner/Super user role
+# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the XML file 'FB-AU-RJ-07 Order'.xml
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Navigate to Order Release Workbench and use replace option to search Order id.
+# Plan the order and create a shipment.
+# Navigate to Shipment Dispatch Workbench and use replace option to search Shipment id.
+\\
+10. Open the shipment in EDIT mode and check the refnum value of refnum qualifier FBA_PROCESS_MODE.
+11. If its value is AUTOMATIC, Add CK-Cost OK event to the shipment, tender the shipment, accept the tender.
+12. If its value is MANUAL, Select the shipment > Go to Actions> Click 'Switch FBA Process Mode' action. This will change the value to AUTOMATIC.
+13. Navigate to Business Process Automation-->Integration --> Integration Manager
+14. Upload the XML file 'StandardInvoiceAutomatic FB-AU-RJ-07'.xml to create standard invoice.
+15. Copy transmission No generated after XML upload
+16. Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+17. Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+18. Switch to FBA Super User Role
+19. Navigate to Automated Invoice Workbench and use replace option to search Invoice id.
+*20. Invoice should be present under 'Automated Invoice' tab and linked to the shipment.*|
+
+Invoice ID:TAASINV20251016160832
+Shipment Id:1000004830 
+
+Order release Id:TAAS_20251016160433
+
+Actual: Invoice is not linked to shipment
+
+Expected: Invoice should to linked to shipment and planning status should be new
+
+!image-20251016-104859.png|width=690,alt=""image-20251016-104859.png""!"
+Bug,TSTAUTO-30466,382814,BACARDI - Amount due is displayed in EUR instead of USD in Bill disbursement,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,To Do,,16/Oct/25 10:10 AM,22/Oct/25 5:57 AM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,29/Oct/25 1:19 PM,,,,Data,Bacardi,,"Steps to reproduce ::
+
+|# Login to fba user or FBA Super User and Naviagate to Bill(Disbursement) Workbench
+# Select any one of the bill 
+# Check the Amount Due|
+
+ Actual: amount Due is displayed in EUR
+
+Expected : Amount due is displayed in USD
+
+!image-20251016-131538.png|width=690,alt=""image-20251016-131538.png""!"
+Bug,TSTAUTO-30170,378363,BACARDI - Rejection code A1 - OTM INVOICE ALREADY VALIDATED BY FBA - FBA CHECK FAILURE is missing,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Highest,Done,Done,06/Oct/25 3:43 PM,16/Oct/25 11:50 AM,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,,16/Oct/25 11:50 AM,,,Data,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+           
+
+
+{noformat}    And Login to OTM as ""TaasOTMuser"" user
+# And set LocalTestData
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Create Order by Uploading xml file
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+    And Navigate to OTM screen ""Shipment Dispatch Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Verify ""Status_TENDERED"" field value for all ""Shipments"" records
+    Then Edit the Shipment OTM Cloud
+    And Verify below Reference Number values
+      | FBA_PROCESS_MODE |
+    And Close Edit Window and switchback
+    Then Perform Switch FBA Process Mode for Shipment
+    And Search shipment by using ""ShipmentID""
+    And Edit the Shipment OTM Cloud
+    And Verify below Reference Number values
+      | FBA_PROCESS_MODE_MODIFIED |
+    And Close Edit Window and switchback
+    Then Create integration xml for invoice using template ""InvoiceTemplate""
+    And Create Order by Uploading xml file
+    And Switch OTM role as ""FBA_ROLE""
+    And Navigate to OTM screen ""Automated Invoice workbench""
+#    And Search Invoice by using ""InvoiceID""
+    And Search Invoice by using ""InvoiceID"" in Tab ""Automated Invoice""
+    #And Verify ""Status_New"" field value for all ""Invoices"" records
+    And Verify ""Consolidation Type"" field value for all ""Invoices"" records
+    Then Edit Invoice and update Rejection code ""RejectionCode"" in OTM Cloud
+    And Reject the Invoice using ""RejectionMenu"" in OTM Cloud
+    And Verify Invoice Rejection Carrier Action in OTM Cloud
+    And Verify ""Status_Rejected"" field value for ""Invoices""{noformat}
+
+
+
+Rejection code A1 - OTM INVOICE ALREADY VALIDATED BY FBA - FBA CHECK FAILURE is missing
+
+
+
+OR ID:TAAS_20251006180324
+
+
+
+!image-20251006-130126.png|width=622,alt=""image-20251006-130126.png""!"
+Bug,TSTAUTO-30162,378301,BACARDI - Service Provider ID mismatch in show routing screen,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Highest,Done,Done,06/Oct/25 1:59 PM,16/Oct/25 9:27 AM,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,,16/Oct/25 9:27 AM,,,Data,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+           
+
+
+{noformat}And Login to OTM as ""TaasOTMuser"" user
+And Create integration xml for order creation using template ""CreateOrderTemplate""
+Then Switch OTM role as ""TAAS_ROBOT""
+And Create Order by Uploading xml file
+Then Switch OTM role as ""SUPER_USER_ROLE""
+And Navigate to OTM screen ""Order Release""
+And Verify Order Release is displayed
+And Edit Order Release OTM Cloud
+And Edit SourceLocationID and navigate to ""Routing"" tab
+And Note down the ""Service Provider"" from Source Location of Order ReleaseID
+And Verify ""Service Provider"" value shown while performing Show Routing Options Rate display screen{noformat}
+
+
+
+Actual: Service Provider ID given in sourcelocation is different from the serviceprovider id seen in show routing options screen
+
+
+
+OR ID:TAAS_20251006162539
+
+!image-20251006-110221.png|width=622,alt=""image-20251006-110221.png""!
+
+!image-20251006-110256.png|width=622,alt=""image-20251006-110256.png""!"
+Bug,TSTAUTO-30145,378231,BACARDI - Shipment using Bulk Plan is failing,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,Done,Done,06/Oct/25 11:28 AM,15/Oct/25 2:37 PM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,,15/Oct/25 2:37 PM,,,Data,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+           
+Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+#And set LocalTestData
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    And Create Order by Uploading xml file
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+    And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+
+
+
+Actual: Shipment is not built
+
+Expected: Shipment should built without any issues
+
+
+
+OR ID:TAAS_20251006034648
+
+
+
+!image-20251006-083434.png|width=690,alt=""image-20251006-083434.png""!"
+Bug,TSTAUTO-30017,208178,BACARDI -Financial Cut off remark is not present in transaction xml,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,Done,Done,23/Sep/25 4:04 PM,15/Oct/25 1:58 PM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,,15/Oct/25 1:58 PM,,,Data,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+         
+Given Read Test Data for <iteration number>
+And Login to OTM as ""TaasOTMuser"" user
+And Create integration xml for order creation using template ""CreateOrderTemplate""
+Then Switch OTM role as ""TAAS_ROBOT""
+And Create Order by Uploading xml file
+Then Switch OTM role as ""SUPER_USER_ROLE""
+And Navigate to OTM screen ""Order Release""
+And Verify Order Release is displayed
+And Edit Order Release OTM Cloud
+And Verify below Remark values
+| FINANCIAL_CUT_OFF |
+And Close Edit Window and switchback
+And Create OTM Cloud Shipment using Show Routing Options
+And Navigate to OTM screen ""Shipment""
+And Search shipment by using ""ShipmentID""
+# When Perform Secure Resource for Shipment
+Then Verify ""Status_TENDERED"" field value for ""Shipments""
+And Navigate to OTM screen ""Transmission Manager""
+And Search transmission using ""ShipmentID""
+And Get Latest TransmissionID in OTM Cloud
+And Verify the ""FINANCIAL_CUT_OFF Remark"" is present in Transaction XML
+ 
+TransmissionID 2245734
+Shipment ID : 1000003567 
+Order Release ID : TAAS_20250923183006
+
+  "
+Bug,TSTAUTO-30016,208544,BACARDI - Error message not displayed while Adjusting cost for Automated Invoice,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,Done,Done,23/Sep/25 3:49 PM,16/Oct/25 2:10 PM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,,16/Oct/25 2:10 PM,,,Data,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+           
+Given Read Test Data for <iteration number>
+And Login to OTM as ""TaasOTMuser"" user
+And Create integration xml for order creation using template ""CreateOrderTemplate""
+Then Switch OTM role as ""TAAS_ROBOT""
+And Create Order by Uploading xml file
+Then Switch OTM role as ""SUPER_USER_ROLE""
+And Navigate to OTM screen ""Order Release""
+And Verify Order Release is displayed
+And Create OTM Cloud Shipment using Show Routing Options
+And Navigate to OTM screen ""Shipment""
+And Search shipment by using ""ShipmentID""
+Then Perform Switch FBA Process Mode for Shipment
+Then Edit the Shipment OTM Cloud
+And Verify below Reference Number values
+| FBA_PROCESS_MODE |
+And Close Edit Window and switchback
+And Create integration xml for invoice using template ""InvoiceTemplate""
+And Create Order by Uploading xml file
+And Navigate to OTM screen ""Shipment""
+And Search shipment by using ""ShipmentID""
+And Edit the Shipment OTM Cloud
+And Add New Shipments Cost ""Other"" for ""Shipments Dispatch"" in the finance tab
+And Verify ""ErrorMessage"" after clicking Invoice Adjusted Cost in OTM Cloud
+ 
+Expected message: This Action is not applicable for FBA PROCESS MODE as AUTOMATIC
+Actual Message: No adjustments made for shipment BACARDI.1000003562.
+ 
+Shipment ID: 1000003562"
+Bug,TSTAUTO-30014,207837,BACARDI -Create Appointment option is not available in Non-LLP Shipment workbench,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,Done,Done,23/Sep/25 3:17 PM,16/Oct/25 7:28 AM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,,16/Oct/25 7:28 AM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+           Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    Then Switch OTM role as ""CUSTOMER""
+    And Navigate to OTM screen ""Slot Book - Non-LLP Shipments Workbench""
+    And Search location by using ""LocationID""
+    Then Create Appointment in ""Slot Book - Non-LLP Shipments Workbench""
+  "
+Bug,TSTAUTO-30012,248295,BACARDI -Servprov Shipment Workbench is not available in serv prov user,,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Highest,Done,Done,23/Sep/25 3:06 PM,25/Sep/25 8:29 AM,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,,25/Sep/25 8:29 AM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+    Given Read Test Data for <iteration number>
+    And Login to OTM as ""EUBacardiOTMuser"" user
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Create Shipment using Show Routing Options with Itinerary as ""Itinenary Value"" OTM Cloud
+    And Navigate to OTM screen ""Shipment""
+    And Search shipment by using ""ShipmentID""
+    Then Verify ""Status_New"" field value for ""Shipments""
+    Then Verify ""Tender Status_Not Started"" field value for ""Shipments""
+    And Perform Secure Resource for Shipment
+    And Logout and Login to OTMCloud  as ""EUBacardiServProvUser"" using SSO
+    Then Switch OTM role as ""BACARDI_SERVPROV""
+    And Navigate to OTM screen ""Servprov Shipment Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Accept the Tender as ServPro OTMCloud
+    Then Verify ""Status_TENDERED"" field value for ""Shipments""
+
+ !screenshot-1.png|thumbnail! "
+Bug,TSTAUTO-30004,209921,BACARDI -Unable to perform spot bid tender ,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Highest,Done,Done,23/Sep/25 1:58 PM,24/Oct/25 2:42 PM,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,,16/Oct/25 10:32 AM,,,Configuration,Bacardi,,"Req: TP-PS-SP-06_Spot Bid Tender_FTL_Tender Acceptance
+
+Steps to reproduce ::
+Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Edit Order Release OTM Cloud
+    And Update Constraints for OrderRelease in OTM Cloud
+    And Create OTM Cloud Shipment using Show Routing Options
+    And Navigate to OTM screen ""Shipment Dispatch Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Edit ServiceProvider and Cost OTM Cloud from Change Service provider Main Menu
+    Then Verify ""Service Provider ID"" field value for ""Shipments""
+    And Do SpotBid Tender in OTM Cloud
+    Then Verify ""Tender Status_1"" field value for ""Shipments""
+    And Logout and Login to OTMCloud  as ""TaasOTMuser2"" using SSO
+    And Switch OTM role as ""BACARDI_SERVPROV_Default""
+    #And Switch OTM role as ""BACARDI_SERVPROV""
+    And Navigate to OTM screen ""Online Booking/Tendering""
+    And Search the shipment in Online Booking or Tendering page otm cloud
+    And Edit and Update the spot bid rate value for ""ServProvServiceProvider"" ServiceProvider
+    And Logout and Login to OTMCloud  as ""TaasOTMuser"" using SSO
+    And Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Shipment Dispatch Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Search Online Booking or Tender with Tender Type ""Spot Bid "" in otm cloud
+    And Do Award BID in OTM Cloud
+     And Navigate to OTM screen ""Shipment Dispatch Workbench""
+    And Search shipment by using ""ShipmentID""
+    Then Verify ""Tender Status_2"" field value for ""Shipments""
+    And Logout and Login to OTMCloud  as ""TaasOTMuser2"" using SSO
+    #And Switch OTM role as ""BACARDI_SERVPROV""
+    And Switch OTM role as ""BACARDI_SERVPROV_Default""
+    And Navigate to OTM screen ""Online Booking/Tendering""
+    And Search the Online Booking or Tender in Online Booking or Tendering page with Tender type ""Ordinary"" OTM Cloud
+    And Accept the Tender in Online Booking or Tendering page
+    And Logout and Login to OTMCloud  as ""TaasOTMuser"" using SSO
+    And Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Shipment Dispatch Workbench""
+    And Search shipment by using ""ShipmentID""
+    Then Verify ""Tender Status_3"" field value for ""Shipments""
+
+When trying to perform spot bind tender, below error is coming in test instance
+
+
+ !screenshot-1.png|thumbnail! 
+
+Shipment ID: 1000003463"
+Bug,TSTAUTO-29996,209307,BACARDI: Shipment Plan is not failing when EarlyPickup and LateDelivery Date is same,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,To Do,,23/Sep/25 10:15 AM,16/Oct/25 4:07 PM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,,,,,Data,Bacardi,,"Requirement :TP-RC-CD-01
+
+Steps to reproduce :
+
+|# Login as Super user role
+# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the XML 
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Navigate to Order release Workbench and use replace option to search order release id.
+# Edit the order release and search for early pickup and late delivery date(date should be same). Also Make data emphasis as DELV in constraint tab
+# *Plan the order using bulk plan, shipment should not be planned*|
+
+Shipment ID:1000003511
+
+Order Release ID: TAAS_20250923124123
+
+ Actual: Shipment planned successfully
+
+Expected: shipment should not be planned"
+Bug,TSTAUTO-29994,207295,BACARDI - Invoice Matching rules are displayed as Invalid for few rules,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,To Do,,23/Sep/25 9:54 AM,28/Oct/25 6:50 AM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,29/Oct/25 1:18 PM,,,,Data,Bacardi,,"Steps to reproduce ::
+
+|# Login as Super user role
+# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the Release_Automatic.xml
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Navigate to Order release Workbench and use replace option to search order release id.
+# Plan the order release using bulk plan option.
+# Once it is planned, take the shipment id.
+\\
+10. Navigate to Shipment Dispatch workbench and use replace option to search shipment id.
+11. Check tender status of the shipment - it should be SECURE RESOURCES_TENDERED as rate is auto tender as yes
+12. Go to action Shipment management -> tender -> accept tender option to accept it
+13. Navigate to Business Process Automation-->Integration --> Transmission manager and move to transaction tab and provide shipment id in object field to search.
+14. Add tracking event (Action-> Shipment Management -> Events -> Add shipment tracking event) -> select responsble party as Control Tower, status as X3-Arrived at Pick-up Location, type as X3-Arrived at Pick-up Location, Shipment stop as 1 and event date with current date and save it.
+15. Add tracking event (Action-> Shipment Management -> Events -> Add shipment tracking event) -> select responsble party as Carrier, status as U1-Completed Unloading at Delivery Location, type as U1-Completed Unloading at Delivery Location, Shipment stop as Final stop and event date with current date and save it.
+16. Add tracking event (Action-> Shipment Management -> Events -> Add shipment tracking event) -> select responsble party as Carrier, status as COST OK, type as COST OK, Shipment stop as 1 and event date with current date and save it.
+17. Upload Automatic_Invoice_Standard.xml
+18. Switch to FBA_SUPER_USER_ROLE
+19. Navigate to Automatic Invoice Workbench
+20. Search for Invoice and edit it.
+21. *Edit screen should have Match Rules displaying all match rules whether it is valid or not valid*|
+
+ below is the latest shipment and invoice ID:
+
+Invoice:TAASINV20251023095421
+
+Shipment ID : 1000005140
+
+Expected: All the matching rules should be valid
+
+Actual : Few rules are matching(please the screen the attached screenshot)
+
+ "
+Bug,TSTAUTO-29992,211932,BACARDI -shipment Start time and End time is not updated with slot booking time,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,Done,Done,23/Sep/25 9:14 AM,29/Oct/25 12:59 PM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,29/Oct/25 12:59 PM,29/Oct/25 12:59 PM,,,Data,Bacardi,,"Req: BRS-CR57-D08-01
+
+Steps to reproduce ::
+
+|# Login as Super user role
+# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the XML 
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Navigate to Order release Workbench and use replace option to search order release id.
+# Plan the order release using bulk plan option.
+# Once it is planned, copy the shipment id.
+\\
+10. Open Slot Book - LLP Shipments Workbench and search for shipment id, Note the start and end date of the shipment
+11. Add shipment tracking event using shipment action.
+12. select responsble party as carrier, status as AA-Pick-up Appointment Date and/or Time, type as AA-Pick-up Appointment Date and/or Time, Shipment stop as 1 and event date with current date.
+13. Switch to Planner role and go to shipment debreif workbench and seach for shipment.
+14. Once the shipment is select, under Shipment track event split screen, added event should be visible.
+*15. Edit the shipment and check start and end time of the shipment, it should be updated based on slot booking time*|
+
+Shipment ID: 1000004776
+
+Expected: shipment check start and end time of the shipment, it should be updated based on slot booking time
+
+Actual : shipment check start and end time of the shipment, is updated based on slot booking time"
+Bug,TSTAUTO-29991,209919,BACARDI -Commitment allocation usage planned count is not updated,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,To Do,,23/Sep/25 9:03 AM,16/Oct/25 4:44 PM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,29/Oct/25 1:18 PM,,,,Data,Bacardi,,"Req: BRS-CR39-D24-01
+
+Steps to reproduce ::
+
+|# Login as Super user role
+# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the XML 
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Navigate to ""Commitment Allocation Usage"" in super user role and make a note of Planned Count for Commitment Allocation Usage ID
+# Navigate to Order release Workbench and use replace option to search order release id.
+# Plan the order release using bulk plan option.
+# Order should be planned to the shipment.
+10. *Once the Planning is completed, Navigate to """"Commitment Allocation Usage"""" in super user role and check the Planned Count, It should be +1 with the initial count*|
+
+Expected : Planned count should be increased by 1
+
+Actual: Planned count is not increased
+
+ 
+
+|ORID:TAAS_20250922165132| Shipment ID: 1000003417|
+
+!image-2025-09-23-11-36-54-516.png|width=570,height=119!
+
+ "
+Bug,TSTAUTO-29966,208683,BACARDI: System allows to add shipment tracking event when the slot is already booked,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Highest,Done,Done,22/Sep/25 1:46 PM,23/Oct/25 9:24 AM,,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,24/Oct/25 3:12 PM,23/Oct/25 9:24 AM,,,Data,Bacardi,,"
+
+Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+    Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    And Create Order by Uploading xml file
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+#And set LocalTestData
+    And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+    Then Verify ""Tender Status_1"" field value for ""Shipment Debrief Workbench""
+    When Perform Secure Resource for Shipment Debrief Workbench
+    Then Verify ""Tender Status_2"" field value for ""Shipment Debrief Workbench""
+    And Accept the Tender as Planner OTMCloud in ""Shipment Debrief-Shipment""
+    Then Verify ""Tender Status_3"" field value for ""Shipment Debrief Workbench""
+    Given Create shipment event xml using template ""SlotBookTemplate""
+    And Create Order by Uploading xml file
+    And Switch OTM role as ""PLANNER_ROLE""
+    And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Verify record displayed in ""Shipment Track Event"" Shipment split screen
+    And Verify Appointment Pickup Time is same as Tracking Event Time
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Slot Book LLP Shipments""
+    And Search shipment by using ""ShipmentID"" in Tab ""LLP Shipments""
+
+    And Verify ""ErrorMessage"" upon performing Schedule Appointment
+    And Add Shipment Tracking Event ""AA-Pick-up"" in ""LLP Shipments"" and Verify Error Message
+
+ 
+
+Actual: System allows to add shipment
+
+Expected: System should throw error message as ""This action cannot be performed because a slot is already booked for this location.""
+
+ 
+
+Report : [https://dhl.atlassian.net/wiki/download/attachments/316610362/TSTAUTO-29961_2025-09-22_100956.html?api=v2|https://dhl.atlassian.net/wiki/download/attachments/316610362/TSTAUTO-29961_2025-09-22_100956.html?api=v2]
+
+ 
+
+ "
+Bug,TSTAUTO-29897,214407,BACARDI - Bill Number in audit history is updated twice but reflected in remarks only once,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Highest,Done,Done,19/Sep/25 3:18 PM,16/Oct/25 1:58 PM,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,,16/Oct/25 1:58 PM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+    Given Read Test Data for <iteration number>
+    And  Create integration xml for order creation using template ""CreateOrderTemplate""
+    Given Login to OTM as ""EUBacardiOTMuser"" user
+    And Switch OTM role as ""SUPER_USER_ROLE""
+    And Create Order by Uploading xml file
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+    And Navigate to OTM screen ""Shipment""
+    And Search shipment by using ""ShipmentID""
+    And Perform Secure Resource for Shipment
+    And Accept Tender as SuperUser OTMCloud
+    And Add Shipment Tracking Event ""ARRIVED_AT_PICKUP_LOCATION"" in ""Shipments Dispatch""
+    And Add Shipment Tracking Event ""COMPLETED_UNLOADING"" in ""Shipments Dispatch""
+    And Add Shipment Tracking Event ""COST_OK"" in ""Shipments Dispatch""
+    Then Switch OTM role as ""FBA_SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Invoice workbench""
+    And Search Invoice by using ""ManualInvoiceShipmentID""
+    And Edit the Invoice OTM Cloud to Approve
+    And Approve Invoice using ""ApproveMenu"" in OTM Cloud
+    And Note down the ""Invoice ID"" value as ""InvoiceID"" in page name ""Invoices"" OTMCloud
+    And Note down the ""Voucher ID"" value as ""VoucherID"" in page name ""Invoices"" OTMCloud
+    And Create integration xml for invoice using template ""InvoiceTemplate""
+    And Switch OTM role as ""SUPER_USER_ROLE""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""FBA_SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Billing workbench""
+    And Verify Disbursement Bill is displayed
+    And Edit the Bill with below details
+      |BILL ID              |
+      |BILL DATE            |
+      |Actual Bill Value    |
+    And Note down the ""Disbursement Request Number"" value as ""OldBillID"" in page name ""Disbursement Bill"" OTMCloud
+    And Note down the ""Disbursement Request Date"" value as ""OldBillDate"" in page name ""Disbursement Bill"" OTMCloud
+    And Edit the Bill with below details
+      |BILL ID              |
+      |BILL DATE            |
+    Then Verify ""Disbursement Request Date"" field value as assigned value ""UpdatedBillDate"" for ""Disbursement Bill""
+    Then Verify ""Disbursement Request Number"" field value as assigned value ""UpdatedBillID"" for ""Disbursement Bill""
+    And Note down the ""Disbursement Request Number"" value as ""NewBillID"" in page name ""Disbursement Bill"" OTMCloud
+    And Note down the ""Disbursement Request Date"" value as ""NewBillDate"" in page name ""Disbursement Bill"" OTMCloud
+    Then Edit the Bill OTM Cloud
+    Then Verify the Edited values in Bill Remarks
+   
+
+ 
+Bill ID: CB-20250919-0014
+Here we have updated the bull number twice, but in the remarks it reflected only once (the first update) second update didnt reflect, where as bill date is reflected twice properly which was updated along with the bill number
+
+
+ !screenshot-1.png|thumbnail! "
+Bug,TSTAUTO-29867,210176,BACARDI -Shipment cost was not recalculated or Adjusted in Test environment,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,18/Sep/25 7:19 PM,29/Oct/25 12:13 PM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,27/Oct/25 12:42 PM,22/Oct/25 5:45 PM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+* *Prepare Pre-booking Order*
+** Use template: {{TP-PS-PB-03b_TOP.xml}}
+** Order ID created: {{TAAS_20250918140543}}
+* *Login to OTM* as user {{EUBacardiOTMuser}}.
+* Switch to OTM role: *SUPER_USER_ROLE*
+* *Upload Order via Integration Manager*
+** Transmission ID: {{2233707}}
+** Status: {{PROCESSED}}
+* Navigate to *Order Release Workbench*
+** Verify Order ID {{TAAS_20250918140543}} is displayed.
+* Edit Order Release
+** Verify Reference Numbers: {{PRE_BOOKING}}, {{PRE_BOOKING_PO_REF}}
+* *Plan shipment using Bulk Plan - Buy*
+** Shipment ID created: {{1000002964}}
+* *Prepare Actual Transport Request Order*
+** Use template: {{TP-PS-PB-03b_SAP.xml}}
+** Order ID created: {{TAAS_20250918140750}}
+* Upload Order via Integration Manager
+** Transmission ID: {{2234365}}
+** Status: {{PROCESSED}}
+* Navigate to *Order Release Workbench*
+** Verify Order ID {{TAAS_20250918140750}} is displayed.
+* Edit Order Release
+** Verify Reference Number: {{SHIPPER_REFERENCE}}
+* *Assign Actual Order to Existing Shipment*
+** Using *Manually Assign to Existing Shipment*
+* Navigate back to Order Release for pre-booking order ({{TAAS_20250918140543}})
+* *Unassign Pre-booking Order from Shipment*
+** Using *Unassign Order - Buy*
+** Shipment ID unassigned: {{1000002964}}
+* *Set Order Status to HOLD*
+* *Navigate to Shipment Dispatch Workbench*
+* Search for shipment ID: {{1000002964}}
+* *Note the original ""Total Actual Cost""*
+** Original Cost: {{100}}
+* *Recalculate Shipment Cost*
+** Menu Path:
+{{Shipment Management → Change Shipment Costs → Recalculate Shipment Cost}}
+* *Verify if Shipment Cost is Recalculated*
+
+Expected Result:
+
+Total Actual Cost should be recalculated 
+
+Actual Result:
+
+Total Actual Cost remains same
+
+ 
+ 
+
+!image-20251016-131955.png|width=727,alt=""image-20251016-131955.png""!"
+Bug,TSTAUTO-29866,211931,BACARDI -Government Stamp Value is not displayed in invoice,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,18/Sep/25 6:32 PM,16/Oct/25 9:23 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,16/Oct/25 9:23 AM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+       Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Order Release""
+   And Verify Order Release is displayed
+   And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+    And Navigate to OTM screen ""Shipment""
+    And Search shipment by using ""ShipmentID""
+    Then Verify ""Status_TENDERED"" field value for ""Shipments""
+    And Accept Tender as SuperUser OTMCloud
+    Then Verify ""Status_ACCEPTED"" field value for ""Shipments""
+    And Add Shipment Tracking Event ""X3-Arrived at Pick-up Location"" in ""Shipments Dispatch""
+    And Add Shipment Tracking Event ""Delivered"" in ""Shipments Dispatch""
+    And Add Shipment Tracking Event ""CK-Cost OK"" in ""Shipments Dispatch""
+    And Create integration xml for invoice using template ""CreateInvoiceTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""FBA_SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Automated Invoice""
+    And Search Invoice by using ""InvoiceID""
+    Then Verify ""Government Stamp Value"" field value for ""Invoices""
+    Then verify below values in RemarksTable OTMCloud
+        | CELATON_GOVT_STAMP_VALUE |
+
+ 
+ 
+ 
+|Invoice ID : TAASINV20250918093349|
+
+TAASINV20250922062724 "
+Bug,TSTAUTO-29865,209050,BACARDI -MATCH_START  and MATCH_end is not present in Invoice remarks,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,To Do,,18/Sep/25 6:27 PM,29/Oct/25 9:36 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,31/Oct/25 10:22 AM,,,,Data,Bacardi,,"Steps to reproduce:
+
+|# Login as Super user role
+# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the Release_Automatic.xml
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Navigate to Order release Workbench and use replace option to search order release id.
+# Plan the order release using bulk plan option.
+# Once it is planned, take the shipment id.
+\\
+10. Navigate to Shipment Dispatch workbench and use replace option to search shipment id.
+11. Check tender status of the shipment - it should be SECURE RESOURCES_TENDERED as rate is auto tender as yes
+12. Go to action Shipment management -> tender -> accept tender option to accept it
+13. Navigate to Business Process Automation-->Integration --> Transmission manager and move to transaction tab and provide shipment id in object field to search.
+14. Add tracking event (Action-> Shipment Management -> Events -> Add shipment tracking event) -> select responsble party as Control Tower, status as X3-Arrived at Pick-up Location, type as X3-Arrived at Pick-up Location, Shipment stop as 1 and event date with current date and save it.
+15. Add tracking event (Action-> Shipment Management -> Events -> Add shipment tracking event) -> select responsble party as Carrier, status as U1-Completed Unloading at Delivery Location, type as U1-Completed Unloading at Delivery Location, Shipment stop as Final stop and event date with current date and save it.
+16. Add tracking event (Action-> Shipment Management -> Events -> Add shipment tracking event) -> select responsble party as Carrier, status as COST OK, type as COST OK, Shipment stop as 1 and event date with current date and save it.
+17. Upload Automatic_Invoice_Standard.xml
+18. Switch to FBA_SUPER_USER_ROLE
+19. Navigate to Automatic Invoice Workbench
+20. Search for Invoice and edit it.
+21. Edit screen should have Match Rules displaying all match rules whether it is valid or not valid
+22.Edit the invoice and move to remark tab
+23.*There should be MATCH_START and MATCH_END remark qualifier*|
+
+Expected: Match start and end field should be displayed
+
+Actual: Match start and end field is not displayed
+
+|Invoice ID : TAASINV20251014171506|
+
+!image-20251016-130457.png|width=690,alt=""image-20251016-130457.png""!"
+Bug,TSTAUTO-29862,208270,BACARDI -Order was not get Auto planned,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,18/Sep/25 5:55 PM,17/Oct/25 2:33 PM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,17/Oct/25 2:33 PM,,,Data,Bacardi,,"Steps to reproduce ::
+
+|# Login as Super user role
+# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the XML 
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Navigate to Order release Workbench and use replace option to search order release id.
+# *Order should have planned automatically, check whether shipment is present for the order*|
+
+
+   
+
+ 
+
+Order ID is TAAS_20250922101307
+
+ 
+
+ 
+
+ "
+Bug,TSTAUTO-29861,207836,BACARDI - Unable to perform Send Disbursement to SAP,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Highest,Done,Done,18/Sep/25 5:55 PM,16/Oct/25 12:09 PM,,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,,16/Oct/25 12:09 PM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+   Given Read Test Data for <iteration number>
+And  Create integration xml for order creation using template ""CreateOrderTemplate""
+Given Login to OTM as ""TaasOTMuser"" user
+And Switch OTM role as ""SUPER_USER_ROLE""
+And Create Order by Uploading xml file
+And Navigate to OTM screen ""Order Release""
+And Verify Order Release is displayed
+And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+And Navigate to OTM screen ""Shipment""
+And Search shipment by using ""ShipmentID""
+And Perform Secure Resource for Shipment
+And Accept Tender as SuperUser OTMCloud
+And Add Shipment Tracking Event ""ARRIVED_AT_PICKUP_LOCATION"" in ""Shipments Dispatch""
+And Add Shipment Tracking Event ""COMPLETED_UNLOADING"" in ""Shipments Dispatch""
+And Add Shipment Tracking Event ""COST_OK"" in ""Shipments Dispatch""
+Then Switch OTM role as ""FBA_SUPER_USER_ROLE""
+And Navigate to OTM screen ""Invoice workbench""
+And Search Invoice by using ""ManualInvoiceShipmentID""
+And Verify Approve Manual Invoice ""ErrorMessage"" in OTM cloud
+And Edit the Invoice OTM Cloud to Approve
+And Reset Shipment IDs
+And Approve Invoice using ""ApproveMenu"" in OTM Cloud
+Then Switch OTM role as ""TAAS_ROBOT""
+And Create Bill xml for invoice using template ""InvoiceTemplatexml""
+And Create Order by Uploading xml file
+Then Switch OTM role as ""FBA_SUPER_USER_ROLE""
+And Navigate to OTM screen ""Bill(Disbursement) Workbench""
+And Verify Disbursement Bill is displayed
+And upload the document to disbursement bill ""Document""
+And Verify the uploaded document to disbursement
+And Edit the Bill with below details
+  | Bill ID   |
+  | Actual Bill Value |
+And Approve the bill
+And Set ""Send Disbursement to SAP"" to Approved Bill
+Then Verify ""Status_SENT_TO_SAP"" field value for ""Disbursement Bill""
+And Verify external system message ""DISBURSEMENT_TO_SAP"" is trigger by using ""BillID"" in OTMCloud
+And Navigate to OTM screen ""Bill(Disbursement) Workbench""
+And Verify Disbursement Bill is displayed
+And Set ""Set Status to Not Sent to SAP"" to Approved Bill
+Then Verify ""Status_NOT_SENT_TO_SAP"" field value for ""Disbursement Bill""
+Examples:
+  | iteration number |
+  | Iteration 1      |
+
+Unable to perform Send Disbursement to SAP action due to below error 
+
+
+Shipment ID : 1000002818
+ !screenshot-1.png|thumbnail! "
+Bug,TSTAUTO-29471,247998,BACARDI - 1 invoice was created instead of 2 invoice,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,10/Sep/25 7:30 PM,29/Oct/25 12:53 PM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,29/Oct/25 12:59 PM,29/Oct/25 12:46 PM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+Dev URL - 
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+h3. *Steps to Reproduce:*
+
+# Log in to OTM as user {{EUBacardiOTMuser}}.
+# Create a new order using the template: {{CreateOrderTemplate_SAPTRFCL.xml}}.
+# Plan the order via *Bulk Plan - Buy*.
+# Debrief the shipment:
+#* Perform *Secure Resource*
+#* *Accept Tender*
+#* Add tracking events in sequence:
+#** {{VESSEL_DEPARTURE}}
+#** {{X3-Arrived at Pick-up Location}}
+#** {{CKP-Departed Origin Port Cost Ok}}
+# Switch to role {{FBA_SUPER_USER_ROLE}}.
+# Go to *Manual Invoice Workbench*, search for the shipment, and approve the generated invoice.
+# Switch back to role {{SUPER_USER_ROLE}}.
+# Edit the same shipment and:
+#* Add new shipment cost under *Finance tab*
+#* Re-log the *CKP-Departed Origin Port Cost Ok* event again
+# Switch again to {{FBA_SUPER_USER_ROLE}}.
+# Navigate to *Manual Invoice Workbench*, search by the same shipment ID.
+# Verify the invoice count.
+
+----
+
+h3. *Expected Result:*
+
+Two invoices should be generated when the *CKP-Departed Origin Port Cost Ok* event is logged twice after cost adjustment.
+
+----
+
+h3. *Actual Result:*
+
+Only *one invoice* is found.
+
+ 
+
+Shipment ID:- 1000002986
+
+!image-20251016-130432.png|width=727,alt=""image-20251016-130432.png""!
+
+
+
+ "
+Bug,TSTAUTO-29469,208538,BACARDI -Invoice Approval_Failed Status for Automate invoice,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,10/Sep/25 7:24 PM,16/Oct/25 2:22 PM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,16/Oct/25 2:22 PM,,,Data,Bacardi,,"Steps to reproduce ::
+
+Dev URL - 
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+    Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    And  Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+ #  And set LocalTestData
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+    And Navigate to OTM screen ""Shipment""
+    And Search shipment by using ""ShipmentID""
+    Then Verify ""Status_TENDERED"" field value for ""Shipments""
+    And Accept Tender as SuperUser OTMCloud
+    Then Verify ""Status_ACCEPTED"" field value for ""Shipments""
+    And Add Shipment Tracking Event ""Delivered"" in ""Shipments Dispatch""
+    And Create integration xml for invoice using template ""CreateInvoiceTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""FBA_SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Automated Invoice""
+    And Search Invoice by using ""InvoiceID""
+
+ 
+
+Invoice ID:- TAASINV20250909175944 
+
+ 
+
+!image-2025-09-10-21-55-19-389.png!"
+Bug,TSTAUTO-29129,241885,BACARDI -Service Provider Profile is not available for Order Release ID,,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,03/Sep/25 6:59 PM,25/Sep/25 8:26 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,25/Sep/25 8:15 AM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+         Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Edit Order Release OTM Cloud
+    And Edit SourceLocationID and navigate to ""Routing"" tab
+    And Note down the ""Service Provider"" from Source Location of Order ReleaseID
+    And Verify ""Service Provider"" value shown while performing Show Routing Options Rate display screen
+   
+
+ 
+
+Order Release ID: TAAS_20250829195032
+
+ 
+
+ 
+
+!image-2025-09-03-21-59-09-832.png!"
+Bug,TSTAUTO-29128,241884,BACARDI -Location '40000426' not found  in Non-LLP Shipments Workbench,,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,03/Sep/25 6:51 PM,25/Sep/25 8:17 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,25/Sep/25 8:16 AM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+           Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    Then Switch OTM role as ""CUSTOMER""
+    And Navigate to OTM screen ""Slot Book - Non-LLP Shipments Workbench""
+    And Search location by using ""LocationID""
+    Then Create Appointment in ""Slot Book - Non-LLP Shipments Workbench""
+   Location ID- 40000426
+
+ 
+
+Note: Location Id input box is not available
+
+!image-2025-09-23-11-50-04-826.png|width=399,height=178!"
+Bug,TSTAUTO-29127,246265,"BACARDI -""ShipmentID"" was not found in LLP Shipment Screen",,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,03/Sep/25 6:47 PM,25/Sep/25 8:18 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,25/Sep/25 8:17 AM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+         Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    And Create Order by Uploading xml file
+#And set LocalTestData
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Verify ""Planning_Status1"" field value for all ""Order Release"" records
+    Then Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+    And Switch OTM role as ""CUSTOMER""
+    And Navigate to OTM screen ""Slot Book - LLP Shipments Workbench""
+    And Search shipment by using ""ShipmentID"" in Tab ""Shipments Needing Appointment""
+
+ 
+
+Shipment ID:- 1000000897
+
+ 
+
+!image-2025-09-03-21-20-08-495.png!"
+Bug,TSTAUTO-29126,209905,BACARDI -Record not exists in Shipment Track Event ,"Sandeep Reyyi (DHL IT Services), external",712020:d5fecd38-a07c-41c1-9c70-b44decdbb854,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,To Do,,03/Sep/25 6:43 PM,23/Oct/25 2:10 PM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,29/Oct/25 1:18 PM,,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+# *Login to OTM* as user {{EUBacardiOTMuser}}.
+# Switch to role: *SUPER_USER_ROLE*.
+# Create an order using XML template: {{SAPTR.xml}}.
+→ Order ID: {{TAAS_20250918133032}}
+# Upload order through *Integration Manager*.
+→ Transmission ID: {{2233606}}, Status: {{PROCESSED}}
+# Navigate to *Order Release Workbench* and verify order is displayed.
+# Plan shipment using *Bulk Plan - Buy*.
+→ Shipment ID: {{1000002948}}
+# Navigate to *Shipment Debrief Workbench* and search for the shipment.
+# Verify *Tender Status* is {{SECURE RESOURCES_TENDERED}}.
+# Accept the tender as *Planner OTMCloud*.
+# Verify *Tender Status* is updated to {{SECURE RESOURCES_ACCEPTED}}.
+# Switch to role: *TAAS_ROBOT*.
+# Create shipment event using XML template: {{POST_GOODS_ISSUE_Updated.xml}}.
+# Upload the XML via *Integration Manager*.
+→ Transmission ID: {{2233624}}, Status: {{PROCESSED}}
+# Switch to role: *PLANNER_ROLE*.
+# Navigate to *Shipment Debrief Workbench* and search for the same shipment ({{1000002948}}).
+# Try to verify if *shipment event is displayed* in the *Shipment Track Event split screen*.
+
+----
+
+h3. *Actual Outcome:*
+
+* *No record* is displayed in the *Shipment Track Event* screen.
+
+
+
+Expected Outcome:
+
+A record in Shipment Tract Event should be displayed
+
+!image-20251016-131205.png|width=727,alt=""image-20251016-131205.png""!
+
+
+
+ 
+
+ "
+Bug,TSTAUTO-29125,246812,"BACARDI - ""CommitmentAllocationUsage_ID"" is not displayed in Commitment Allocation Usage screen",,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,03/Sep/25 6:41 PM,25/Sep/25 8:24 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,23/Sep/25 9:22 AM,,,Data,Bacardi,,"Steps to reproduce ::
+
+Dev URL - 
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+    Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    And Switch OTM role as ""SUPER_USER_ROLE""
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    And Create Order by Uploading xml file
+    And Navigate to OTM screen ""Order Release""
+    Then Verify Order Release is displayed
+    And Create Shipment using Show Routing Options with Itinerary as ""Itinerary Value"" OTM Cloud
+    And Navigate to OTM screen ""Shipment Dispatch Workbench""
+    And Search shipment by using ""ShipmentID""
+    Then Verify ""Service Provider ID"" field value for ""Shipments""
+
+ 
+
+Shipment ID:- 1000000880 
+
+ 
+
+!image-2025-09-03-21-10-19-467.png!"
+Bug,TSTAUTO-29123,254293,BACARDI -Shipment needing Appointment tab is missing in Test environment for LLP Shipments Workbench,,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,03/Sep/25 6:30 PM,25/Sep/25 8:21 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,25/Sep/25 8:21 AM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+Dev URL - 
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+ Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    And Create Order by Uploading xml file
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+    And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+    Then Verify ""Tender Status_1"" field value for ""Shipment Debrief Workbench""
+    When Perform Secure Resource for Shipment Debrief Workbench
+    Then Verify ""Tender Status_2"" field value for ""Shipment Debrief Workbench""
+    And Accept the Tender as Planner OTMCloud in ""Shipment Debrief-Shipment""
+    Then Verify ""Tender Status_3"" field value for ""Shipment Debrief Workbench""
+    Given Create shipment event xml using template ""SlotBookTemplate""
+    And Create Order by Uploading xml file
+    And Switch OTM role as ""PLANNER_ROLE""
+    And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Verify record displayed in ""Shipment Track Event"" Shipment split screen
+    Then Switch OTM role as ""CUSTOMER""
+    And Navigate to OTM screen ""Slot Book - LLP Shipments Workbench""
+    And Search shipment by using ""ShipmentID"" in Tab ""Shipments Needing Appointment""
+
+ 
+
+Shipment ID:- 1000000864 
+
+ 
+
+ "
+Bug,TSTAUTO-29122,249036,BACARDI -PLANNED_SHIPMENT_TO_GERLACH not able to search in transmission screen ,,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,03/Sep/25 6:25 PM,25/Sep/25 8:24 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,16/Sep/25 4:05 PM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+Dev URL - 
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+ Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    And Create Order by Uploading xml file
+#And set LocalTestData
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Verify ""Planning_Status1"" field value for all ""Order Release"" records
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    Then Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+    And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Perform Secure Resource for Shipment Debrief Workbench
+    And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Accept the Tender as Planner OTMCloud in ""Shipment Debrief-Shipment""
+    And Navigate to OTM screen ""Transmission Manager""
+    When Set External System as ""ExternalSystem"" and search by Shipment in OTM Cloud
+    And Verify Transmission Record count is ""1""
+   # Then Switch OTM role as ""SUPER_USER_ROLE""
+    Given Create Transaction xml for order creation using template ""PostGoodsTemplate""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""PLANNER_ROLE""
+    And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Verify record displayed in ""Shipment Track Event"" Shipment split screen
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Transmission Manager""
+    When Set External System as ""ExternalSystem"" and search by Shipment in OTM Cloud
+
+ 
+
+Shipment ID:- 1000000865
+
+ 
+
+ "
+Bug,TSTAUTO-29121,207287,BACARDI -Rates are not displayed during show routing ,"Divagar Karunanidhi (DHL IT Services), external",712020:c2a0ab85-6549-46c4-955b-ae528db8aef1,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,03/Sep/25 6:17 PM,17/Oct/25 1:27 PM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,24/Oct/25 3:05 PM,17/Oct/25 1:27 PM,,,Data,Bacardi,,"Steps to reproduce ::
+
+|# Navigate to Business Process Automation-->Integration --> Integration Manager
+# Upload the XML file 'FB-AU-RJ-07 Order'.xml
+# Copy transmission No generated after XML upload
+# Go to Business Process Automation-->Integration --> Transmission Manager -- Give the copied Transmission No
+# Check the status Of the Transmission it should be in Process, open the transmission and Copy the Object ID without domain name.
+# Login with Planner/Super user and Navigate to Order Release Workbench and use replace option to search Order id.
+# *Plan the order using show routing option*|
+
+ 
+
+Order ID:- 
+
+|TAAS_20251014154026|
+
+ Expected: rates should be displayed to plan via SRO
+
+Actual: Rates are not displayed"
+Bug,TSTAUTO-29120,250684,BACARDI -Automated Invoice Status was not display,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,03/Sep/25 6:08 PM,25/Sep/25 8:22 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,10/Sep/25 7:23 PM,,,Data,Bacardi,,"Steps to reproduce ::
+
+Dev URL - 
+[https://otmgtm-test-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/|https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+    Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    And  Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+ #  And set LocalTestData
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+    And Navigate to OTM screen ""Shipment""
+    And Search shipment by using ""ShipmentID""
+    Then Verify ""Status_TENDERED"" field value for ""Shipments""
+    And Accept Tender as SuperUser OTMCloud
+    Then Verify ""Status_ACCEPTED"" field value for ""Shipments""
+    And Add Shipment Tracking Event ""Delivered"" in ""Shipments Dispatch""
+    And Create integration xml for invoice using template ""CreateInvoiceTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""FBA_SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Automated Invoice""
+    And Search Invoice by using ""InvoiceID""
+
+ 
+
+Invoice ID:- TAASINV20250829204501 
+
+ 
+
+!image-2025-09-03-20-43-08-275.png!"
+Bug,TSTAUTO-29118,243824,BACARDI - Invoice Approval Error,"Rahul Gaur (DHL SUPPLY CHAIN), external",712020:2039ceeb-f6df-40cd-bdd4-ce97e300ca31,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,Highest,Done,Done,03/Sep/25 6:00 PM,25/Sep/25 8:22 AM,,Sivamoorthy Arumugam (DHL IT Services),712020:b02d3f8a-5392-4517-8986-efd62808d411,,05/Sep/25 8:39 AM,,,Configuration,Bacardi,,"Steps to reproduce ::
+
+Dev URL - 
+[https://otmgtm-dev1-dhlsctcoe.otmgtm.eu-frankfurt-1.ocs.oraclecloud.com/]
+
+    Given Read Test Data for <iteration number>
+    And Login to OTM as ""TaasOTMuser"" user
+    And Create integration xml for order creation using template ""CreateOrderTemplate""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+   # And Navigate to OTM screen ""Shipment Dispatch Workbench""
+   And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Save shipment as ""ShipmentID1"" in OTMCloud
+ #    And Merge 1 shipment in OTMCloud
+   # And Accept Tender as SuperUser OTMCloud
+   And Accept the Tender as Planner OTMCloud in ""Shipment Debrief-Shipment""
+    #And Add Shipment Tracking Event ""X3-Arrived at Pick-up Location"" in ""Shipments Dispatch""
+    And Add Shipment Tracking Event ""X3-Arrived at Pick-up Location"" in ""Shipment Debrief Workbench""
+    And Add Shipment Tracking Event ""U1-Completed Unloading at Delivery Location"" in ""Shipment Debrief Workbench""
+    And Add Shipment Tracking Event ""CK-Cost OK"" in ""Shipment Debrief Workbench""
+    And Create integration xml for order creation using template ""CreateOrderTemplate1""
+    Then Switch OTM role as ""TAAS_ROBOT""
+    And Create Order by Uploading xml file
+    Then Switch OTM role as ""SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Order Release""
+    And Verify Order Release is displayed
+    And Plan shipment through Bulk Plan with ParameterSetId as ""parameterSetid"" OTM Cloud
+   # And Navigate to OTM screen ""Shipment Dispatch Workbench""
+   And Navigate to OTM screen ""Shipment Debrief Workbench""
+    And Search shipment by using ""ShipmentID""
+    And Save shipment as ""ShipmentID2"" in OTMCloud
+    And Merge 2 shipment in OTMCloud
+    #And Accept Tender as SuperUser OTMCloud
+    And Accept the Tender as Planner OTMCloud in ""Shipment Debrief-Shipment""
+    And Add Shipment Tracking Event ""X3-Arrived at Pick-up Location"" in ""Shipment Debrief Workbench""
+    And Add Shipment Tracking Event ""U1-Completed Unloading at Delivery Location"" in ""Shipment Debrief Workbench""
+    And Add Shipment Tracking Event ""CK-Cost OK"" in ""Shipment Debrief Workbench""
+    Then Switch OTM role as ""FBA_SUPER_USER_ROLE""
+    And Navigate to OTM screen ""Invoice workbench""
+    And Search and Verify Invoice ID display using AllShipmentID
+    And Create Consolidated Invoice in OTMCloud
+    And Navigate to OTM screen ""Invoice workbench""
+    And Search Invoice using Parent Invoice ID in OTM Cloud
+   And Fill the mandatory informations in Manual Invoice
+    And Approve Invoice using ""ApproveMenu"" in OTM Cloud
+ 
+
+Shipment ID-1000000945
+
+Invoice ID:- 20250829-0050
+
+ 
+
+!image-2025-09-03-20-34-46-305.png!"
