@@ -14,8 +14,8 @@ export const DefectSchema = z.object({
 
 export type Defect = z.infer<typeof DefectSchema>;
 
-const SEVERITY_LEVELS = ['Critical', 'High', 'Medium', 'Low', 'Trivial'];
-const PRIORITY_LEVELS = ['Urgent', 'High', 'Medium', 'Low'];
+export const SEVERITY_LEVELS = ['Critical', 'High', 'Medium', 'Low', 'Trivial'];
+export const PRIORITY_LEVELS = ['Urgent', 'High', 'Medium', 'Low'];
 
 export const PredictDefectInputSchema = z.object({
   id: z.coerce.number().describe('The ID of the defect.'),

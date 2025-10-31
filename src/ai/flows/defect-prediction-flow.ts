@@ -11,6 +11,8 @@ import {
   type BulkPredictDefectOutput,
   PredictDefectInputSchema,
   PredictDefectOutputSchema,
+  SEVERITY_LEVELS,
+  PRIORITY_LEVELS,
 } from '@/lib/types';
 
 
@@ -24,6 +26,9 @@ Provide a brief summary of your reasoning.
 
 Defect Summary: {{{summary}}}
 Defect Description: {{{description}}}
+
+You must choose a severity from the following list: ${SEVERITY_LEVELS.join(', ')}.
+You must choose a priority from the following list: ${PRIORITY_LEVELS.join(', ')}.
 
 Return the original defect ID.`,
 });
