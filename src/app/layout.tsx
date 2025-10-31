@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Defect Insights Dashboard',
+  title: 'AI Model for TaaS Bug Prediction and Analysis',
   description: 'An intelligent dashboard for analyzing software defect data from CSV files.',
 };
 
