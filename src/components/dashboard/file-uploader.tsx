@@ -9,6 +9,31 @@ interface FileUploaderProps {
   onDataUploaded: (data: Defect[]) => void;
 }
 
+const parseCsvRow = (row: string): string[] => {
+  const result: string[] = [];
+  let currentField = '';
+  let inQuotes = false;
+  for (let i = 0; i < row.length; i++) {
+    const char = row[i];
+    if (char === '"') {
+      if (inQuotes && i + 1 < row.length && row[i + 1] === '"') {
+        currentField += '"';
+        i++; // Skip next quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(currentField.trim());
+      currentField = '';
+    } else {
+      currentField += char;
+    }
+  }
+  result.push(currentField.trim());
+  return result;
+};
+
+
 export function FileUploader({ onDataUploaded }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
@@ -23,16 +48,17 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
           if (rows.length < 2) {
             throw new Error('CSV file must have a header and at least one data row.');
           }
-          const headers = rows[0].split(',').map(h => h.trim());
+          
+          const headers = parseCsvRow(rows[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+
           const data = rows.slice(1).map((row, rowIndex) => {
-            const values = row.split(',').map(v => v.trim());
+            const values = parseCsvRow(row);
             if (values.length !== headers.length) {
-                console.warn(`Row ${rowIndex + 2} has incorrect number of columns. Skipping.`);
+                console.warn(`Row ${rowIndex + 2} has incorrect number of columns (expected ${headers.length}, got ${values.length}). Skipping.`);
                 return null;
             }
             return headers.reduce((obj, header, index) => {
-              const key = header.toLowerCase().replace(/\s+/g, '_');
-              obj[key] = values[index];
+              obj[header] = values[index];
               return obj;
             }, {} as any);
           }).filter(Boolean);
