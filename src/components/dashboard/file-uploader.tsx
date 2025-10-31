@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Defect } from '@/lib/types';
+import { Button } from '../ui/button';
 
 interface FileUploaderProps {
   onDataUploaded: (data: Defect[]) => void;
@@ -148,7 +149,7 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
   };
 
   return (
-    <div className="w-full max-w-lg">
+    <div className="w-full max-w-lg text-center">
       <label
         htmlFor="file-upload"
         className={`relative flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 text-center cursor-pointer transition-colors ${
@@ -175,6 +176,14 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
           onChange={handleFileChange}
         />
       </label>
+      <div className="mt-4">
+        <Button variant="outline" asChild>
+          <a href="/defects-template.csv" download>
+            <Download className="mr-2 h-4 w-4" />
+            Download CSV Template
+          </a>
+        </Button>
+      </div>
     </div>
   );
 }

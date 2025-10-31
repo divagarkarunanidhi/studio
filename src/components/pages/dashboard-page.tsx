@@ -164,7 +164,15 @@ export function DashboardPage() {
 
         {defects.length === 0 ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
-            <FileUploader onDataUploaded={handleDataUploaded} />
+            <div className="flex flex-col items-center justify-center gap-4 text-center">
+              <div className="rounded-lg bg-card p-6 shadow-sm">
+                <h2 className="text-2xl font-bold">Welcome!</h2>
+                <p className="mt-2 text-muted-foreground">
+                  To get started, please upload a CSV file containing your defect data.
+                </p>
+              </div>
+              <FileUploader onDataUploaded={handleDataUploaded} />
+            </div>
           </main>
         ) : (
           <main className="flex-1 space-y-4 p-4 md:space-y-6 md:p-6">
