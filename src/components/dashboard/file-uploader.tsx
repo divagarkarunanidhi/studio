@@ -49,20 +49,49 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
             throw new Error('CSV file must have a header and at least one data row.');
           }
           
-          const headers = parseCsvRow(rows[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+          const headers = parseCsvRow(rows[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
+
+          const requiredHeaders = ['issue_id', 'summary', 'created'];
+          for(const requiredHeader of requiredHeaders) {
+            if(!headers.includes(requiredHeader)) {
+              throw new Error(`CSV must include the following headers: ${requiredHeaders.join(', ')}. Missing: ${requiredHeader}`);
+            }
+          }
 
           const data = rows.slice(1).map((row, rowIndex) => {
             const values = parseCsvRow(row);
             if (values.length !== headers.length) {
-                console.warn(`Row ${rowIndex + 2} has incorrect number of columns (expected ${headers.length}, got ${values.length}). Skipping.`);
+                console.warn(`Row ${rowIndex + 2} has an incorrect number of columns (expected ${headers.length}, got ${values.length}). Skipping row.`);
                 return null;
             }
-            return headers.reduce((obj, header, index) => {
-              obj[header] = values[index];
+             const defect: any = headers.reduce((obj, header, index) => {
+              const key = header as keyof Defect;
+              // Map headers to the Defect type
+              if(key === 'issue_id') {
+                obj['id'] = values[index];
+              } else if(key === 'created') {
+                obj['created_at'] = values[index];
+              } else if (key === 'reporter') {
+                obj['reported_by'] = values[index];
+              }
+              else {
+                obj[key] = values[index];
+              }
               return obj;
             }, {} as any);
-          }).filter(Boolean);
+
+            // Ensure required fields are present
+            if (!defect.id || !defect.summary || !defect.created_at) {
+              console.warn(`Row ${rowIndex + 2} is missing required data (id, summary, or created_at). Skipping row.`);
+              return null;
+            }
+            return defect;
+          }).filter((d): d is Defect => d !== null);
           
+          if(data.length === 0) {
+            throw new Error('No valid defect data could be parsed from the file. Please check the console for warnings about skipped rows.');
+          }
+
           onDataUploaded(data as Defect[]);
           toast({
             title: 'Success!',
