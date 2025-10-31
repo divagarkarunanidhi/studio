@@ -31,6 +31,9 @@ You must choose a severity from the following list: ${SEVERITY_LEVELS.join(', ')
 You must choose a priority from the following list: ${PRIORITY_LEVELS.join(', ')}.
 
 Return the original defect ID.`,
+  config: {
+    temperature: 0,
+  }
 });
 
 const defectPredictionFlow = ai.defineFlow(
