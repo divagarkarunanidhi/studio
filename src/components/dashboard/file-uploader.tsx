@@ -61,12 +61,16 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
 
           const data = rows.slice(1).map((row, rowIndex) => {
             const values = parseCsvRow(row);
-            if (values.length !== headers.length) {
-                console.warn(`Row ${rowIndex + 2} has an incorrect number of columns (expected ${headers.length}, got ${values.length}). Skipping row.`);
+            if (values.length > headers.length) {
+                console.warn(`Row ${rowIndex + 2} has more columns than headers (expected ${headers.length}, got ${values.length}). Truncating row.`);
+                values.length = headers.length;
+            } else if (values.length < headers.length) {
+                console.warn(`Row ${rowIndex + 2} has fewer columns than headers (expected ${headers.length}, got ${values.length}). Skipping row.`);
                 return null;
             }
+
              const defect: any = headers.reduce((obj, header, index) => {
-              const key = header as keyof Defect;
+              const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' ;
               // Map headers to the Defect type
               if(key === 'issue_id') {
                 obj['id'] = values[index];
@@ -74,6 +78,8 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
                 obj['created_at'] = values[index];
               } else if (key === 'reporter') {
                 obj['reported_by'] = values[index];
+              } else if (key === 'issue_type') {
+                obj['domain'] = values[index];
               }
               else {
                 obj[key] = values[index];
