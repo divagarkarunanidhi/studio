@@ -9,14 +9,23 @@
 
 import { ai } from '@/ai/genkit';
 import {
-  DefectAnalysisInputSchema,
+  DefectSchema,
   DefectAnalysisOutputSchema,
-  type DefectAnalysisInput,
   type DefectAnalysisOutput,
+  type Defect,
 } from '@/lib/types';
+import { z } from 'zod';
+
+
+const DefectAnalysisInputSchema = z.object({
+  defects: z.string(),
+});
+
+export type DefectAnalysisInput = z.infer<typeof DefectAnalysisInputSchema>;
+
 
 export async function analyzeDefects(
-  input: DefectAnalysisInput
+  input: { defects: Defect[] }
 ): Promise<DefectAnalysisOutput> {
   return defectAnalysisFlow(input);
 }
@@ -34,7 +43,7 @@ Based on the provided defect data:
 3.  **Defect Source**: Identify where most defects are originating from. This could be a specific application domain, a certain type of issue, or related to a particular component.
 
 Here is the defect data:
-{{{jsonStringify defects}}}
+{{{defects}}}
 
 Provide a concise, insightful analysis for each of the three areas.
 `,
@@ -43,14 +52,15 @@ Provide a concise, insightful analysis for each of the three areas.
 const defectAnalysisFlow = ai.defineFlow(
   {
     name: 'defectAnalysisFlow',
-    inputSchema: DefectAnalysisInputSchema,
+    inputSchema: z.object({ defects: z.array(DefectSchema) }),
     outputSchema: DefectAnalysisOutputSchema,
     config: {
       temperature: 0.2, // Lower temperature for more deterministic and factual analysis
     }
   },
   async ({ defects }) => {
-    const { output } = await analysisPrompt({ defects });
+    const defectsString = JSON.stringify(defects, null, 2);
+    const { output } = await analysisPrompt({ defects: defectsString });
     if (!output) {
       throw new Error('The model did not return a valid analysis.');
     }
