@@ -25,6 +25,7 @@ import {
   TestTube,
   Network,
   Users,
+  FileHeart,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -33,9 +34,10 @@ import { DefectsTable } from '../dashboard/defects-table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { isSameDay, subDays, parseISO } from 'date-fns';
 import { GroupedDefectsView } from '../dashboard/grouped-defects-view';
+import { AnalysisPage } from './analysis-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user';
+type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user' | 'analysis';
 
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -48,6 +50,7 @@ export function DashboardPage() {
         created_at: d.created_at ? new Date(d.created_at).toISOString() : new Date().toISOString()
     })).filter(d => d.id && d.summary && d.created_at);
     setDefects(parsedData);
+    setActiveView('dashboard');
   };
 
   const yesterdayDefectsCount = useMemo(() => {
@@ -83,6 +86,7 @@ export function DashboardPage() {
     'all-defects': 'All Defects',
     'by-domain': 'Defects by Domain',
     'by-user': 'Defects by Reporter',
+    analysis: 'Defect Analysis',
   }
   
   const viewDescriptions: Record<View, string> = {
@@ -90,6 +94,7 @@ export function DashboardPage() {
     'all-defects': 'A complete list of all imported defects.',
     'by-domain': 'Defects grouped by their application domain.',
     'by-user': 'Defects grouped by the user who reported them.',
+    analysis: 'AI-powered analysis of the defect data.',
   }
 
 
@@ -108,6 +113,12 @@ export function DashboardPage() {
               <SidebarMenuButton tooltip="Dashboard" isActive={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')}>
                 <LayoutDashboard />
                 Dashboard
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Defect Analysis" isActive={activeView === 'analysis'} onClick={() => setActiveView('analysis')}>
+                <FileHeart />
+                Defect Analysis
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -190,6 +201,10 @@ export function DashboardPage() {
                   </CardContent>
                 </Card>
               </>
+            )}
+
+            {activeView === 'analysis' && (
+              <AnalysisPage defects={defects} />
             )}
 
             {activeView === 'all-defects' && (
