@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -18,7 +18,7 @@ export function AnalysisPage({ defects }: AnalysisPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleRunAnalysis = async () => {
+  const handleRunAnalysis = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setAnalysis(null);
@@ -31,14 +31,13 @@ export function AnalysisPage({ defects }: AnalysisPageProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [defects]);
 
   useEffect(() => {
     if (defects.length > 0) {
       handleRunAnalysis();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defects]);
+  }, [defects, handleRunAnalysis]);
 
   const renderContent = (title: string, content: string | undefined) => {
     if (isLoading) {
