@@ -26,6 +26,7 @@ import {
   Timer,
   LineChart,
   PieChart,
+  AlertTriangle,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -47,7 +48,7 @@ import {
   } from '@/components/ui/select';
 import Image from 'next/image';
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -96,7 +97,8 @@ export function DashboardPage() {
     prediction: 'Defect Prediction',
     'resolution-time': 'Resolution Time Analysis',
     'trend-analysis': 'Trend Analysis',
-    summary: 'Defect Summary'
+    summary: 'Defect Summary',
+    'required-attention': 'Defects Requiring Attention'
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -106,7 +108,8 @@ export function DashboardPage() {
     prediction: 'Predict defect properties using an AI assistant.',
     'resolution-time': 'Analysis of the time taken to resolve defects.',
     'trend-analysis': 'Visualize the creation of defects over time.',
-    summary: 'AI-powered summary of defect root cause and functional area.'
+    summary: 'AI-powered summary of defect root cause and functional area.',
+    'required-attention': 'Defects that are missing key information and are not yet done.'
   };
 
   const uniqueDomains = useMemo(() => {
@@ -141,6 +144,25 @@ export function DashboardPage() {
         return domainMatch && reporterMatch && statusMatch;
     });
   }, [defects, filterDomain, filterReportedBy, filterStatus]);
+
+  const attentionDefects = useMemo(() => {
+    const requiredKeywords = ['expected', 'actual'];
+    const testDataKeywords = ['order release id', 'shipment id', 'invoice'];
+
+    return defects.filter(defect => {
+      const description = defect.description?.toLowerCase() || '';
+      const status = defect.status?.toLowerCase() || '';
+
+      const isNotDone = status !== 'done';
+
+      const hasAllRequiredKeywords = requiredKeywords.every(kw => description.includes(kw));
+      const hasAnyTestDataKeyword = testDataKeywords.some(kw => description.includes(kw));
+      
+      const needsAttention = !hasAllRequiredKeywords || !hasAnyTestDataKeyword;
+
+      return isNotDone && needsAttention;
+    });
+  }, [defects]);
   
   useEffect(() => {
     setCurrentPage(1);
@@ -209,6 +231,12 @@ export function DashboardPage() {
               <SidebarMenuButton tooltip="All Defects" isActive={activeView === 'all-defects'} onClick={() => setActiveView('all-defects')}>
                 <Bug />
                 All Defects
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Required Attention" isActive={activeView === 'required-attention'} onClick={() => setActiveView('required-attention')}>
+                <AlertTriangle />
+                Required Attention
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -361,6 +389,20 @@ export function DashboardPage() {
                    </div>
                 </CardContent>
               </Card>
+            )}
+
+            {activeView === 'required-attention' && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{viewTitles['required-attention']} ({attentionDefects.length})</CardTitle>
+                        <CardDescription>
+                            These defects have a status other than "Done" and are missing one or more of the following: "Expected" and "Actual" keywords, or a test data ID in their description.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <DefectsTable defects={attentionDefects} showAll />
+                    </CardContent>
+                </Card>
             )}
 
           </main>
