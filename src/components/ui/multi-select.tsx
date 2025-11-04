@@ -44,9 +44,18 @@ function MultiSelect({
   const [open, setOpen] = React.useState(false);
 
   const handleUnselect = (e: React.MouseEvent, item: string) => {
+    e.preventDefault();
     e.stopPropagation();
     onChange(selected.filter((i) => i !== item));
   };
+
+  const handleSelect = (value: string) => {
+    onChange(
+        selected.includes(value)
+          ? selected.filter((item) => item !== value)
+          : [...selected, value]
+      );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -104,13 +113,7 @@ function MultiSelect({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  onSelect={() => {
-                    onChange(
-                      selected.includes(option.value)
-                        ? selected.filter((item) => item !== option.value)
-                        : [...selected, option.value]
-                    );
-                  }}
+                  onSelect={() => handleSelect(option.value)}
                 >
                   <Check
                     className={cn(
