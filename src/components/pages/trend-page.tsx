@@ -12,7 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getYear, parseISO } from 'date-fns';
+import { getYear, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { DateRangePicker } from '../ui/date-range-picker';
+import type { DateRange } from 'react-day-picker';
 
 interface TrendPageProps {
   defects: Defect[];
@@ -34,6 +36,7 @@ export function TrendPage({ defects }: TrendPageProps) {
   }, [defects]);
   
   const [selectedYear, setSelectedYear] = useState<number>(() => availableYears[0] || new Date().getFullYear());
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   return (
     <div className="space-y-6">
@@ -42,11 +45,13 @@ export function TrendPage({ defects }: TrendPageProps) {
         onValueChange={(value) => setPeriod(value as TrendPeriod)}
         className="w-full"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <TabsList>
             <TabsTrigger value="all-time">All Time</TabsTrigger>
-            <TabsTrigger value="yearly">Yearly</TabsTrigger>
+            <TabsTrigger value="weekly">Weekly</TabsTrigger>
             <TabsTrigger value="monthly">Monthly</TabsTrigger>
+            <TabsTrigger value="yearly">Yearly</TabsTrigger>
+            <TabsTrigger value="custom">Custom</TabsTrigger>
           </TabsList>
           {period === 'monthly' && (
             <Select
@@ -63,15 +68,24 @@ export function TrendPage({ defects }: TrendPageProps) {
               </SelectContent>
             </Select>
           )}
+          {period === 'custom' && (
+             <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+          )}
         </div>
         <TabsContent value="all-time" className="mt-4">
           <DefectTrendChart defects={defects} period="all-time" />
+        </TabsContent>
+        <TabsContent value="weekly" className="mt-4">
+          <DefectTrendChart defects={defects} period="weekly" />
         </TabsContent>
         <TabsContent value="yearly" className="mt-4">
           <DefectTrendChart defects={defects} period="yearly" />
         </TabsContent>
         <TabsContent value="monthly" className="mt-4">
           <DefectTrendChart defects={defects} period="monthly" year={selectedYear} />
+        </TabsContent>
+        <TabsContent value="custom" className="mt-4">
+          <DefectTrendChart defects={defects} period="custom" dateRange={dateRange} />
         </TabsContent>
       </Tabs>
     </div>
