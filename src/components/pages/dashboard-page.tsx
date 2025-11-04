@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
-import { GroupedDefectsChart } from '../dashboard/grouped-defects-chart';
 import { DefectsTable } from '../dashboard/defects-table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { isSameDay, subDays, parseISO } from 'date-fns';
@@ -238,12 +237,6 @@ export function DashboardPage() {
                   <StatCard title="High Severity" value={highSeverityCount} icon={<AlertTriangle />} />
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-                  <div className="col-span-1 lg:col-span-5">
-                     <GroupedDefectsChart defects={defects} />
-                  </div>
-                </div>
-                
                 <Card>
                   <CardHeader>
                     <CardTitle>Recent Defects</CardTitle>
