@@ -73,7 +73,7 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
             }
 
              const defect: any = headers.reduce((obj, header, index) => {
-              const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' ;
+              const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
               // Map headers to the Defect type
               if(key === 'issue_id') {
                 obj['id'] = values[index];
@@ -81,7 +81,7 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
                 obj['created_at'] = values[index];
               } else if (key === 'reporter') {
                 obj['reported_by'] = values[index];
-              } else if (key === 'issue_type') {
+              } else if (key === 'custom_field_business_domain') {
                 obj['domain'] = values[index];
               }
               else {
