@@ -75,32 +75,39 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
                 }
 
                 const defect: any = headers.reduce((obj, header, index) => {
-                currentHeader = header;
-                const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
-                // Map headers to the Defect type
-                if(key === 'issue_id') {
-                    obj['id'] = values[index];
-                } else if(key === 'created') {
-                    obj['created_at'] = values[index];
-                } else if (key === 'reporter') {
-                    obj['reported_by'] = values[index];
-                } else if (key === 'custom_field_business_domain') {
-                    obj['domain'] = values[index];
-                }
-                else {
-                    obj[key] = values[index];
-                }
-                return obj;
+                  currentHeader = header;
+                  const value = values[index];
+                  // Basic validation inside reduce to throw early
+                  if (header === 'created' && (value === '' || isNaN(new Date(value).getTime()))) {
+                      throw new Error(`Invalid or empty date in 'created' column.`);
+                  }
+
+                  const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
+                  // Map headers to the Defect type
+                  if(key === 'issue_id') {
+                      obj['id'] = value;
+                  } else if(key === 'created') {
+                      obj['created_at'] = value;
+                  } else if (key === 'reporter') {
+                      obj['reported_by'] = value;
+                  } else if (key === 'custom_field_business_domain') {
+                      obj['domain'] = value;
+                  }
+                  else {
+                      obj[key] = value;
+                  }
+                  return obj;
                 }, {} as any);
 
                 // Ensure required fields are present
                 if (!defect.id || !defect.summary || !defect.created_at) {
-                console.warn(`Row ${rowIndex + 2} is missing required data (id, summary, or created_at). Skipping row.`);
-                return null;
+                  console.warn(`Row ${rowIndex + 2} is missing required data (id, summary, or created_at). Skipping row.`);
+                  return null;
                 }
                 return defect;
-            } catch (cellError) {
-                throw new Error(`Error parsing row ${rowIndex + 2} at cell "${currentHeader}". Please check the data format.`);
+            } catch (cellError: any) {
+                // Throw a more specific error that will be caught by the main catch block
+                throw new Error(`Error parsing row ${rowIndex + 2} at cell "${currentHeader}". Details: ${cellError.message}`);
             }
           }).filter((d): d is Defect => d !== null);
           
