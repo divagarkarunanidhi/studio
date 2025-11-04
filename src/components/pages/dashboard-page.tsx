@@ -45,6 +45,7 @@ import {
     SelectTrigger,
     SelectValue,
   } from '@/components/ui/select';
+import Image from 'next/image';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary';
 
@@ -55,6 +56,8 @@ export function DashboardPage() {
   const [activeView, setActiveView] = useState<View>('dashboard');
   
   const [filterDomain, setFilterDomain] = useState<string>('all');
+  const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -114,16 +117,38 @@ export function DashboardPage() {
     return Array.from(domains).filter(Boolean).sort();
   }, [defects]);
 
+  const uniqueReporters = useMemo(() => {
+    const reporters = new Set<string>();
+    defects.forEach(defect => {
+      if (defect.reported_by) reporters.add(defect.reported_by);
+    });
+    return Array.from(reporters).filter(Boolean).sort();
+    }, [defects]);
+
+    const uniqueStatuses = useMemo(() => {
+    const statuses = new Set<string>();
+    defects.forEach(defect => {
+        if (defect.status) statuses.add(defect.status);
+    });
+    return Array.from(statuses).filter(Boolean).sort();
+    }, [defects]);
+
   const filteredDefects = useMemo(() => {
-    if (filterDomain === 'all') {
-      return defects;
-    }
-    return defects.filter(defect => defect.domain === filterDomain);
-  }, [defects, filterDomain]);
+    return defects.filter(defect => {
+        const domainMatch = filterDomain === 'all' || defect.domain === filterDomain;
+        const reporterMatch = filterReportedBy === 'all' || defect.reported_by === filterReportedBy;
+        const statusMatch = filterStatus === 'all' || defect.status === filterStatus;
+        return domainMatch && reporterMatch && statusMatch;
+    });
+  }, [defects, filterDomain, filterReportedBy, filterStatus]);
   
   useEffect(() => {
     setCurrentPage(1);
-  }, [filteredDefects]);
+    // Reset filters when new data is uploaded
+    setFilterDomain('all');
+    setFilterReportedBy('all');
+    setFilterStatus('all');
+  }, [defects]);
 
 
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
@@ -266,20 +291,42 @@ export function DashboardPage() {
             {activeView === 'all-defects' && (
                <Card>
                 <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <CardTitle>{viewTitles['all-defects']}</CardTitle>
                             <CardDescription>{viewDescriptions['all-defects']}</CardDescription>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-2">
                             <Select value={filterDomain} onValueChange={setFilterDomain}>
-                                <SelectTrigger className="w-[240px]">
+                                <SelectTrigger className="w-[180px]">
                                     <SelectValue placeholder="Filter by Domain" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Domains</SelectItem>
                                     {uniqueDomains.map(domain => (
                                     <SelectItem key={domain} value={domain}>{domain}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={filterReportedBy} onValueChange={setFilterReportedBy}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Filter by Reporter" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Reporters</SelectItem>
+                                    {uniqueReporters.map(reporter => (
+                                    <SelectItem key={reporter} value={reporter}>{reporter}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Filter by Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    {uniqueStatuses.map(status => (
+                                    <SelectItem key={status} value={status}>{status}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -306,7 +353,7 @@ export function DashboardPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                disabled={currentPage === totalPages}
+                                disabled={currentPage === totalPages || totalPages === 0}
                             >
                                 Next
                             </Button>
