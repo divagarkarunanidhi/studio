@@ -1,16 +1,25 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import type { Defect } from '@/lib/types';
 import { differenceInHours, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatCard } from '../dashboard/stat-card';
 import { Timer, Hourglass, ChevronsRight } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Button } from '../ui/button';
 
 interface ResolutionTimePageProps {
   defects: Defect[];
+  uniqueDomains: string[];
 }
 
 const formatDuration = (hours: number): string => {
@@ -21,9 +30,18 @@ const formatDuration = (hours: number): string => {
   return `${days.toFixed(1)} days`;
 };
 
-export function ResolutionTimePage({ defects }: ResolutionTimePageProps) {
+export function ResolutionTimePage({ defects, uniqueDomains }: ResolutionTimePageProps) {
+  const [filterDomain, setFilterDomain] = useState<string>('all');
+
+  const filteredDefects = useMemo(() => {
+    if (filterDomain === 'all') {
+      return defects;
+    }
+    return defects.filter(defect => defect.domain === filterDomain);
+  }, [defects, filterDomain]);
+
   const resolutionStats = useMemo(() => {
-    const resolvedDefects = defects.filter(
+    const resolvedDefects = filteredDefects.filter(
       (d) =>
         d.status?.toLowerCase() === 'done' &&
         d.created_at &&
@@ -69,7 +87,7 @@ export function ResolutionTimePage({ defects }: ResolutionTimePageProps) {
       max,
       count: resolvedDefects.length,
     };
-  }, [defects]);
+  }, [filteredDefects]);
 
   return (
     <div className="space-y-6">
@@ -78,9 +96,25 @@ export function ResolutionTimePage({ defects }: ResolutionTimePageProps) {
           <CardTitle>Resolution Time Analysis</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-4">
             This analysis calculates the time taken to resolve defects based on their creation and last updated dates. Only defects with a status of "Done" are included.
           </p>
+          <div className="flex items-center gap-4">
+            <Select value={filterDomain} onValueChange={setFilterDomain}>
+              <SelectTrigger className="w-[240px]">
+                <SelectValue placeholder="Filter by Domain" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Domains</SelectItem>
+                {uniqueDomains.map(domain => (
+                  <SelectItem key={domain} value={domain}>{domain}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => setFilterDomain('all')} disabled={filterDomain === 'all'}>
+                Clear Filter
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -111,6 +145,7 @@ export function ResolutionTimePage({ defects }: ResolutionTimePageProps) {
           <AlertTitle>No Resolved Defects Found</AlertTitle>
           <AlertDescription>
             To perform this analysis, please upload a CSV file that contains defects with a status of "Done" and includes valid `created` and `updated` dates.
+            {filterDomain !== 'all' && ` For the selected domain: "${filterDomain}".`}
           </AlertDescription>
         </Alert>
       )}

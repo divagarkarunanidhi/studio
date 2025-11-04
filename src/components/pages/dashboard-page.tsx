@@ -264,7 +264,7 @@ export function DashboardPage() {
             )}
 
             {activeView === 'resolution-time' && (
-              <ResolutionTimePage defects={defects} />
+              <ResolutionTimePage defects={defects} uniqueDomains={uniqueDomains} />
             )}
 
             {activeView === 'all-defects' && (
