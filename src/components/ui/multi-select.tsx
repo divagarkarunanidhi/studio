@@ -137,5 +137,3 @@ function MultiSelect({
 }
 
 export { MultiSelect };
-
-    
