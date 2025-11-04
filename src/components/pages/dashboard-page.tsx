@@ -176,7 +176,6 @@ export function DashboardPage() {
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2 p-2">
-            <Image src="/icon.png" alt="logo" width={32} height={32} />
             <h1 className="text-lg font-semibold">TaaS BugSense AI</h1>
           </div>
         </SidebarHeader>
@@ -371,5 +370,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
