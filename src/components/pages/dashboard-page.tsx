@@ -26,6 +26,7 @@ import {
   Wand2,
   Timer,
   LineChart,
+  PieChart,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -36,10 +37,11 @@ import { AnalysisPage } from './analysis-page';
 import { PredictionPage } from './prediction-page';
 import { ResolutionTimePage } from './resolution-time-page';
 import { TrendPage } from './trend-page';
+import { SummaryPage } from './summary-page';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -90,6 +92,7 @@ export function DashboardPage() {
     prediction: 'Defect Prediction',
     'resolution-time': 'Resolution Time Analysis',
     'trend-analysis': 'Trend Analysis',
+    summary: 'Defect Summary'
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -99,6 +102,7 @@ export function DashboardPage() {
     prediction: 'Predict defect properties using an AI assistant.',
     'resolution-time': 'Analysis of the time taken to resolve defects.',
     'trend-analysis': 'Visualize the creation of defects over time.',
+    summary: 'AI-powered summary of defect root cause and functional area.'
   };
 
   const {
@@ -193,6 +197,12 @@ export function DashboardPage() {
                 Trend Analysis
               </SidebarMenuButton>
             </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Defect Summary" isActive={activeView === 'summary'} onClick={() => setActiveView('summary')}>
+                <PieChart />
+                Defect Summary
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Defect Analysis" isActive={activeView === 'analysis'} onClick={() => setActiveView('analysis')}>
                 <FileHeart />
@@ -276,6 +286,10 @@ export function DashboardPage() {
 
             {activeView === 'trend-analysis' && (
               <TrendPage defects={defects} />
+            )}
+
+            {activeView === 'summary' && (
+              <SummaryPage defects={defects} uniqueDomains={uniqueDomains.map(d => d.value)} />
             )}
 
             {activeView === 'analysis' && (

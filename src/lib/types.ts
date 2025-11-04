@@ -64,3 +64,9 @@ export const DefectSummaryOutputSchema = z.object({
 });
 
 export type DefectSummaryOutput = z.infer<typeof DefectSummaryOutputSchema>;
+
+export const DefectSummaryInputSchema = z.object({
+    defects: z.array(DefectSchema),
+});
+
+export type DefectSummaryInput = z.infer<typeof DefectSummaryInputSchema>;
