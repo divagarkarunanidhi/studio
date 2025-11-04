@@ -82,6 +82,9 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  html {
     background-image: url('/dhl-background.png');
     background-size: cover;
     background-position: center;
