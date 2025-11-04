@@ -60,6 +60,7 @@ export function PredictionPage({ defects }: { defects: Defect[] }) {
         predictedSeverity: prediction?.predictedSeverity,
         predictedPriority: prediction?.predictedPriority,
         predictionDescription: prediction?.predictionDescription,
+        predictedRootCause: prediction?.predictedRootCause,
       };
     });
   }, [defects, predictions]);
@@ -92,10 +93,9 @@ export function PredictionPage({ defects }: { defects: Defect[] }) {
                     <TableHeader>
                         <TableRow>
                         <TableHead>Summary</TableHead>
-                        <TableHead>Actual Severity</TableHead>
-                        <TableHead>Predicted Severity</TableHead>
-                        <TableHead>Actual Priority</TableHead>
-                        <TableHead>Predicted Priority</TableHead>
+                        <TableHead>Actual / Predicted Severity</TableHead>
+                        <TableHead>Actual / Predicted Priority</TableHead>
+                        <TableHead>Predicted Root Cause</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -103,54 +103,39 @@ export function PredictionPage({ defects }: { defects: Defect[] }) {
                         ? Array.from({ length: 5 }).map((_, i) => (
                             <TableRow key={i}>
                                 <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                             </TableRow>
                             ))
                         : defectsWithPredictions.map((defect) => (
                             <TableRow key={defect.id}>
-                                <TableCell className="font-medium max-w-sm truncate">{defect.summary}</TableCell>
-                                <TableCell>
-                                    <Badge variant="outline">{defect.severity || 'N/A'}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Badge variant="secondary" className="cursor-help">
-                                                {defect.predictedSeverity || '...'}
-                                                {defect.predictionDescription && <Info className="ml-2 h-3 w-3" />}
-                                            </Badge>
-                                        </TooltipTrigger>
-                                        {defect.predictionDescription && (
+                                <TableCell className="font-medium max-w-sm truncate">
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="cursor-help underline decoration-dashed">{defect.summary}</span>
+                                            </TooltipTrigger>
                                             <TooltipContent>
-                                                <p className="max-w-xs">{defect.predictionDescription}</p>
+                                                <p className="max-w-xs">{defect.predictionDescription || 'No description available'}</p>
                                             </TooltipContent>
-                                        )}
-                                    </Tooltip>
-                                </TooltipProvider>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="outline">{defect.priority || 'N/A'}</Badge>
+                                    <div className="flex flex-col gap-1">
+                                        <Badge variant="outline" className="w-fit">{defect.severity || 'N/A'}</Badge>
+                                        <Badge variant="secondary" className="w-fit">{defect.predictedSeverity || '...'}</Badge>
+                                    </div>
                                 </TableCell>
                                 <TableCell>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Badge variant="secondary" className="cursor-help">
-                                                {defect.predictedPriority || '...'}
-                                                {defect.predictionDescription && <Info className="ml-2 h-3 w-3" />}
-                                            </Badge>
-                                        </TooltipTrigger>
-                                        {defect.predictionDescription && (
-                                            <TooltipContent>
-                                                <p className="max-w-xs">{defect.predictionDescription}</p>
-                                            </TooltipContent>
-                                        )}
-                                    </Tooltip>
-                                </TooltipProvider>
+                                     <div className="flex flex-col gap-1">
+                                        <Badge variant="outline" className="w-fit">{defect.priority || 'N/A'}</Badge>
+                                        <Badge variant="secondary" className="w-fit">{defect.predictedPriority || '...'}</Badge>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant="outline">{defect.predictedRootCause || '...'}</Badge>
                                 </TableCell>
                             </TableRow>
                         ))}

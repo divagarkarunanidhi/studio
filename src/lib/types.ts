@@ -34,6 +34,7 @@ export const DefectPredictionSchema = z.object({
     predictedSeverity: z.string().describe("The predicted severity of the defect (Critical, High, Medium, Low)."),
     predictedPriority: z.string().describe("The predicted priority of the defect (Highest, High, Medium, Low)."),
     predictionDescription: z.string().describe("A short, one-sentence description explaining the reasoning for the prediction."),
+    predictedRootCause: z.string().describe("A brief, one or two-word potential root cause for the defect (e.g., 'Data Integrity', 'Configuration', 'UI/UX')."),
 });
 
 export type DefectPrediction = z.infer<typeof DefectPredictionSchema> & { id: string };

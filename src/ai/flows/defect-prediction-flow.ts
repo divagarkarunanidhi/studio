@@ -27,9 +27,10 @@ const predictionPrompt = ai.definePrompt({
   name: 'defectPredictionPrompt',
   input: { schema: z.object({ defect: DefectSchema }) },
   output: { schema: DefectPredictionSchema },
-  prompt: `As a QA expert, analyze the following defect and predict its severity and priority.
+  prompt: `As a QA expert, analyze the following defect and predict its severity, priority and root cause.
   - Severity should be one of: Critical, High, Medium, Low.
   - Priority should be one of: Highest, High, Medium, Low.
+  - The predicted root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX').
   - Provide a short, one-sentence description explaining your reasoning.
 
   Defect:
