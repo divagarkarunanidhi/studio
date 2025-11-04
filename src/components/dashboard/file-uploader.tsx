@@ -66,7 +66,7 @@ const parseDate = (dateString: string): Date | null => {
 }
 
 
-export function FileUploader({ onDataUploaded }: FileUploaderProps) {
+export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect[]) => void; }) {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
