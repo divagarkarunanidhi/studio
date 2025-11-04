@@ -23,8 +23,6 @@ import {
   Github,
   LayoutDashboard,
   TestTube,
-  Network,
-  Users,
   FileHeart,
   Wand2,
   Timer,
@@ -35,7 +33,6 @@ import { GroupedDefectsChart } from '../dashboard/grouped-defects-chart';
 import { DefectsTable } from '../dashboard/defects-table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { isSameDay, subDays, parseISO } from 'date-fns';
-import { GroupedDefectsView } from '../dashboard/grouped-defects-view';
 import { AnalysisPage } from './analysis-page';
 import { PredictionPage } from './prediction-page';
 import { ResolutionTimePage } from './resolution-time-page';
@@ -43,7 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Button } from '../ui/button';
 
 
-type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user' | 'analysis' | 'prediction' | 'resolution-time';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time';
 
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -96,8 +93,6 @@ export function DashboardPage() {
   const viewTitles: Record<View, string> = {
     dashboard: 'Dashboard',
     'all-defects': 'All Defects',
-    'by-domain': 'Defects by Domain',
-    'by-user': 'Defects by Reporter',
     analysis: 'Static Defect Analysis',
     prediction: 'Defect Prediction',
     'resolution-time': 'Resolution Time Analysis'
@@ -106,8 +101,6 @@ export function DashboardPage() {
   const viewDescriptions: Record<View, string> = {
     dashboard: 'A summary of all defect data.',
     'all-defects': 'A complete list of all imported defects.',
-    'by-domain': 'Defects grouped by their application domain.',
-    'by-user': 'Defects grouped by the user who reported them.',
     analysis: 'AI-powered analysis of the defect data.',
     prediction: 'Predict defect properties using an AI assistant.',
     'resolution-time': 'Analysis of the time taken to resolve defects.'
@@ -196,18 +189,6 @@ export function DashboardPage() {
               <SidebarMenuButton tooltip="All Defects" isActive={activeView === 'all-defects'} onClick={() => setActiveView('all-defects')}>
                 <Bug />
                 All Defects
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="By Domain" isActive={activeView === 'by-domain'} onClick={() => setActiveView('by-domain')}>
-                <Network />
-                By Domain
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="By User" isActive={activeView === 'by-user'} onClick={() => setActiveView('by-user')}>
-                <Users />
-                By Reporter
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -343,14 +324,6 @@ export function DashboardPage() {
                   <DefectsTable defects={filteredDefects} showAll />
                 </CardContent>
               </Card>
-            )}
-
-            {activeView === 'by-domain' && (
-              <GroupedDefectsView defects={defects} groupKey="domain" />
-            )}
-
-            {activeView === 'by-user' && (
-              <GroupedDefectsView defects={defects} groupKey="reported_by" />
             )}
 
           </main>
