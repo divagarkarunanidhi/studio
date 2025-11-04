@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/icons';
 import {
-  AlertTriangle,
   Bug,
   CalendarClock,
   Github,
@@ -81,12 +80,6 @@ export function DashboardPage() {
     ).length;
   }, [defects]);
   
-  const highSeverityCount = useMemo(() => {
-    if (defects.length === 0) return 0;
-    return defects.filter(
-      defect => defect.severity && (defect.severity.toLowerCase() === 'high' || defect.severity.toLowerCase() === 'critical')
-    ).length;
-  }, [defects]);
 
   const totalDefects = useMemo(() => defects.length, [defects]);
 
@@ -265,11 +258,10 @@ export function DashboardPage() {
           <main className="flex-1 space-y-4 p-4 md:space-y-6 md:p-6">
             {activeView === 'dashboard' && (
               <>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   <StatCard title="Total Defects" value={totalDefects} icon={<Bug />} />
                   <StatCard title="Created Yesterday" value={yesterdayDefectsCount} icon={<CalendarClock />} />
                   <StatCard title="Ready for Testing" value={readyForTestingCount} icon={<TestTube />} />
-                  <StatCard title="High Severity" value={highSeverityCount} icon={<AlertTriangle />} />
                 </div>
 
                 <Card>
