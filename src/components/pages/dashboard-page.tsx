@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
-import type { Defect, DefectSummaryOutput } from '@/lib/types';
+import type { Defect } from '@/lib/types';
 import {
   SidebarProvider,
   Sidebar,
@@ -37,8 +37,6 @@ import { PredictionPage } from './prediction-page';
 import { ResolutionTimePage } from './resolution-time-page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
-import { summarizeDefects } from '@/ai/flows/defect-summary-flow';
-import { DefectPieChart } from '../dashboard/defect-pie-chart';
 import { DefectTrendChart } from '../dashboard/defect-trend-chart';
 
 
@@ -47,31 +45,11 @@ type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolutio
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
-  const [summary, setSummary] = useState<DefectSummaryOutput | null>(null);
-  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
-
+  
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
-
-  useEffect(() => {
-    async function getSummary() {
-        if (defects.length > 0) {
-            setIsSummaryLoading(true);
-            try {
-                const result = await summarizeDefects({ defects });
-                setSummary(result);
-            } catch (error) {
-                console.error("Failed to get defect summary:", error);
-                // Optionally, show a toast notification
-            } finally {
-                setIsSummaryLoading(false);
-            }
-        }
-    }
-    getSummary();
-  }, [defects]);
 
   const handleDataUploaded = (data: Defect[]) => {
     // Basic validation and date parsing
@@ -263,21 +241,6 @@ export function DashboardPage() {
                     <DefectTrendChart defects={defects} />
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <DefectPieChart 
-                        data={summary?.rootCause || []} 
-                        title="Defects by Root Cause"
-                        description="AI-predicted root cause distribution"
-                        isLoading={isSummaryLoading}
-                    />
-                    <DefectPieChart 
-                        data={summary?.defectArea || []} 
-                        title="Defects by Area"
-                        description="AI-predicted functional area distribution"
-                        isLoading={isSummaryLoading}
-                    />
-                </div>
-
                 <Card>
                   <CardHeader>
                     <CardTitle>Recent Defects</CardTitle>
@@ -366,5 +329,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
