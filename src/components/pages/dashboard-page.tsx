@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -26,6 +27,7 @@ import {
   Users,
   FileHeart,
   Wand2,
+  Timer,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -36,9 +38,10 @@ import { isSameDay, subDays, parseISO } from 'date-fns';
 import { GroupedDefectsView } from '../dashboard/grouped-defects-view';
 import { AnalysisPage } from './analysis-page';
 import { PredictionPage } from './prediction-page';
+import { ResolutionTimePage } from './resolution-time-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user' | 'analysis' | 'prediction';
+type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user' | 'analysis' | 'prediction' | 'resolution-time';
 
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -48,7 +51,8 @@ export function DashboardPage() {
     // Basic validation and date parsing
     const parsedData = data.map(d => ({
         ...d,
-        created_at: d.created_at ? new Date(d.created_at).toISOString() : new Date().toISOString()
+        created_at: d.created_at ? new Date(d.created_at).toISOString() : new Date().toISOString(),
+        updated: d.updated ? new Date(d.updated).toISOString() : new Date().toISOString(),
     })).filter(d => d.id && d.summary && d.created_at);
     setDefects(parsedData);
     setActiveView('dashboard');
@@ -89,6 +93,7 @@ export function DashboardPage() {
     'by-user': 'Defects by Reporter',
     analysis: 'Static Defect Analysis',
     prediction: 'Defect Prediction',
+    'resolution-time': 'Resolution Time Analysis'
   }
   
   const viewDescriptions: Record<View, string> = {
@@ -98,6 +103,7 @@ export function DashboardPage() {
     'by-user': 'Defects grouped by the user who reported them.',
     analysis: 'AI-powered analysis of the defect data.',
     prediction: 'Predict defect properties using an AI assistant.',
+    'resolution-time': 'Analysis of the time taken to resolve defects.'
   }
 
 
@@ -128,6 +134,12 @@ export function DashboardPage() {
               <SidebarMenuButton tooltip="Defect Prediction" isActive={activeView === 'prediction'} onClick={() => setActiveView('prediction')}>
                 <Wand2 />
                 Defect Prediction
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Resolution Time" isActive={activeView === 'resolution-time'} onClick={() => setActiveView('resolution-time')}>
+                <Timer />
+                Resolution Time
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -218,6 +230,10 @@ export function DashboardPage() {
 
             {activeView === 'prediction' && (
               <PredictionPage defects={defects} />
+            )}
+
+            {activeView === 'resolution-time' && (
+              <ResolutionTimePage defects={defects} />
             )}
 
             {activeView === 'all-defects' && (

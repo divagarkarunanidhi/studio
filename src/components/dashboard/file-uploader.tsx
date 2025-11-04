@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useCallback } from 'react';
@@ -52,7 +53,7 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
           
           const headers = parseCsvRow(rows[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
 
-          const requiredHeaders = ['issue_id', 'summary', 'created'];
+          const requiredHeaders = ['issue_id', 'summary', 'created', 'updated'];
           for(const requiredHeader of requiredHeaders) {
             if(!headers.includes(requiredHeader)) {
               throw new Error(`CSV must include the following headers: ${requiredHeaders.join(', ')}. Missing: ${requiredHeader}`);

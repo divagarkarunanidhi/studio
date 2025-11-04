@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export const DefectSchema = z.object({
@@ -8,6 +9,7 @@ export const DefectSchema = z.object({
     status: z.string().optional().nullable(),
     reported_by: z.string().optional().nullable(),
     created_at: z.string(),
+    updated: z.string().optional().nullable(),
     severity: z.string().optional().nullable(),
     priority: z.string().optional().nullable(),
 });
