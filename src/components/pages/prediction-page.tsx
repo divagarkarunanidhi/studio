@@ -16,13 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Lightbulb, AlertTriangle, Info } from 'lucide-react';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-  } from "@/components/ui/tooltip"
+import { Lightbulb, AlertTriangle } from 'lucide-react';
 
 export function PredictionPage({ defects }: { defects: Defect[] }) {
   const [predictions, setPredictions] = useState<DefectPrediction[]>([]);
@@ -91,6 +85,7 @@ export function PredictionPage({ defects }: { defects: Defect[] }) {
                 <TableHeader>
                     <TableRow>
                     <TableHead>Summary</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead>Actual / Predicted Severity</TableHead>
                     <TableHead>Actual / Predicted Priority</TableHead>
                     <TableHead>Predicted Root Cause</TableHead>
@@ -101,6 +96,7 @@ export function PredictionPage({ defects }: { defects: Defect[] }) {
                     ? Array.from({ length: 5 }).map((_, i) => (
                         <TableRow key={i}>
                             <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-64" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
@@ -109,16 +105,10 @@ export function PredictionPage({ defects }: { defects: Defect[] }) {
                     : defectsWithPredictions.map((defect) => (
                         <TableRow key={defect.id}>
                             <TableCell className="font-medium max-w-sm truncate">
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <span className="cursor-help underline decoration-dashed">{defect.summary}</span>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p className="max-w-xs">{defect.predictionDescription || 'No description available'}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                {defect.summary}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground max-w-md truncate">
+                                {defect.predictionDescription || '...'}
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-col gap-1">
