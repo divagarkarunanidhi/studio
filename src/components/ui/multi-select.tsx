@@ -98,7 +98,6 @@ function MultiSelect({
                         ? selected.filter((item) => item !== option.value)
                         : [...selected, option.value]
                     );
-                    setOpen(true);
                   }}
                 >
                   <Check
