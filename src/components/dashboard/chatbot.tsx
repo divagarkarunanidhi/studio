@@ -20,9 +20,13 @@ export function Chatbot({ defects }: ChatbotProps) {
 
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     api: '/api/chat',
-    body: {
-        defects,
-    }
+    initialMessages: [
+        {
+            id: 'initial',
+            role: 'system',
+            content: `You are a helpful QA assistant. The user has provided the following defect data in JSON format: ${JSON.stringify(defects, null, 2)}`
+        }
+    ]
   });
 
   const handleFeedback = (id: string, newFeedback: 'like' | 'dislike') => {
@@ -40,7 +44,7 @@ export function Chatbot({ defects }: ChatbotProps) {
       <CardContent className="flex-grow flex flex-col gap-4 overflow-hidden">
         <ScrollArea className="flex-grow pr-4 -mr-4">
           <div className="space-y-4">
-            {messages.map((m, index) => (
+            {messages.filter(m => m.role !== 'system').map((m, index) => (
               <div
                 key={index}
                 className={cn(
@@ -64,7 +68,7 @@ export function Chatbot({ defects }: ChatbotProps) {
                   )}
                 >
                   <p className="whitespace-pre-wrap">{m.content}</p>
-                   {m.role !== 'user' && m.id && (
+                   {m.role !== 'user' && m.id && m.id !== 'initial' && (
                      <div className="mt-2 flex items-center gap-2">
                         <button onClick={() => handleFeedback(m.id, 'like')} className={cn("p-1 rounded-full hover:bg-muted-foreground/20", feedback[m.id] === 'like' && 'text-primary')}>
                             <ThumbsUp className="size-4" />

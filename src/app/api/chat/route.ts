@@ -7,9 +7,10 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const json = await req.json();
-  const { messages, defects } = json;
+  const { messages } = json;
 
-  const result = ChatInputSchema.safeParse({ defects, messages });
+  // The 'defects' are now part of the system message, so we don't need to parse them separately here.
+  const result = ChatInputSchema.safeParse({ messages });
   if (!result.success) {
     return new Response(JSON.stringify(result.error), { status: 400 });
   }
