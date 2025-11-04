@@ -1,20 +1,19 @@
 export const Logo = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
+      width="117"
+      height="26"
+      viewBox="0 0 117 26"
+      fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
       {...props}
     >
-      <rect width="18" height="18" x="3" y="3" rx="2" />
-      <path d="M12 16a4 4 0 0 0-8 0" />
-      <path d="M12 12h.01" />
-      <path d="M16 12h.01" />
-      <path d="M8 12h.01" />
-      <path d="M16 8h.01" />
+        <path d="M0 25.042V0.958496H10.1602V10.1287H20.3203V0.958496H30.4805V25.042H20.3203V15.8718H10.1602V25.042H0Z" />
+        <path d="M36.1914 0.958496L36.1914 25.042H56.5117L56.5117 15.8718H46.3516L46.3516 0.958496H36.1914Z" />
+        <path d="M62.2227 0.958496V25.042H83.5592V20.4571H72.3828V0.958496H62.2227Z" />
+        <path d="M89.3652 13.0002L102.046 25.042H116.38L97.5252 8.1659L115.364 0.958496H101.401L89.3652 11.233V13.0002Z" />
+        <path d="M102.836 18.0645H116.38V21.6498H89.3652V18.0645H102.836Z" />
+        <path d="M102.836 14.4792H116.38V18.0645H89.3652V14.4792H102.836Z" />
+        <path d="M102.836 10.8939H116.38V14.4792H89.3652V10.8939H102.836Z" />
     </svg>
-  );
+);
   
