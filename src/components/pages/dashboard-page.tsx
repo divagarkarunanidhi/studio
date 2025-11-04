@@ -147,7 +147,7 @@ export function DashboardPage() {
 
   const attentionDefects = useMemo(() => {
     const requiredKeywords = ['expected', 'actual'];
-    const testDataKeywords = ['order release id', 'shipment id', 'invoice'];
+    const testDataKeywords = ['test data', 'order release id', 'shipment id', 'invoice id'];
   
     return defects
       .map(defect => {
@@ -159,17 +159,15 @@ export function DashboardPage() {
   
         const missingInfo: string[] = [];
   
-        const hasAllRequiredKeywords = requiredKeywords.every(kw => description.includes(kw));
-        if (!hasAllRequiredKeywords) {
-            requiredKeywords.forEach(kw => {
-                if(!description.includes(kw)) {
-                    missingInfo.push(`Missing '${kw}' keyword`);
-                }
-            })
+        if (!description.includes('expected')) {
+          missingInfo.push("Missing 'Expected' keyword");
+        }
+        if (!description.includes('actual')) {
+          missingInfo.push("Missing 'Actual' keyword");
         }
   
-        const hasAnyTestDataKeyword = testDataKeywords.some(kw => description.includes(kw));
-        if (!hasAnyTestDataKeyword) {
+        const hasTestData = testDataKeywords.some(kw => description.includes(kw));
+        if (!hasTestData) {
           missingInfo.push("Missing Test Data ID");
         }
         
