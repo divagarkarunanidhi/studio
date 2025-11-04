@@ -18,17 +18,21 @@ export type ChatInput = z.infer<typeof ChatInputSchema>;
 export async function chatWithDefects(
   input: ChatInput
 ) {
-
   const history = input.messages;
+  
+  // The system message provides context to the model.
   const systemMessage = history.find(m => m.role === 'system')?.content || '';
+  
+  // The user prompt is the last message from the user.
   const userMessages = history.filter(m => m.role === 'user');
   const userPrompt = userMessages[userMessages.length - 1]?.content || '';
   
-  const genkitHistory: Message[] = history.map(m => ({ id: '', role: m.role, content: m.content }));
+  // The Genkit history should include everything *except* the latest user prompt.
+  const genkitHistory: Message[] = history.slice(0, -1).map(m => ({ id: '', role: m.role, content: m.content }));
 
 
   const stream = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
+    // The model is now set globally, but can be overridden here.
     system: systemMessage,
     prompt: userPrompt,
     history: genkitHistory,
