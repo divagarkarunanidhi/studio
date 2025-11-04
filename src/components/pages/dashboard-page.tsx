@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -90,7 +88,7 @@ export function DashboardPage() {
     'by-domain': 'Defects by Domain',
     'by-user': 'Defects by Reporter',
     analysis: 'Static Defect Analysis',
-    prediction: 'Defect Prediction & Chat',
+    prediction: 'Defect Prediction',
   }
   
   const viewDescriptions: Record<View, string> = {
@@ -99,7 +97,7 @@ export function DashboardPage() {
     'by-domain': 'Defects grouped by their application domain.',
     'by-user': 'Defects grouped by the user who reported them.',
     analysis: 'AI-powered analysis of the defect data.',
-    prediction: 'Predict defect properties and chat with an AI assistant.',
+    prediction: 'Predict defect properties using an AI assistant.',
   }
 
 
@@ -129,7 +127,7 @@ export function DashboardPage() {
              <SidebarMenuItem>
               <SidebarMenuButton tooltip="Defect Prediction" isActive={activeView === 'prediction'} onClick={() => setActiveView('prediction')}>
                 <Wand2 />
-                Prediction & Chat
+                Defect Prediction
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
