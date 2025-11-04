@@ -148,20 +148,38 @@ export function DashboardPage() {
   const attentionDefects = useMemo(() => {
     const requiredKeywords = ['expected', 'actual'];
     const testDataKeywords = ['order release id', 'shipment id', 'invoice'];
-
-    return defects.filter(defect => {
-      const description = defect.description?.toLowerCase() || '';
-      const status = defect.status?.toLowerCase() || '';
-
-      const isNotDone = status !== 'done';
-
-      const hasAllRequiredKeywords = requiredKeywords.every(kw => description.includes(kw));
-      const hasAnyTestDataKeyword = testDataKeywords.some(kw => description.includes(kw));
-      
-      const needsAttention = !hasAllRequiredKeywords || !hasAnyTestDataKeyword;
-
-      return isNotDone && needsAttention;
-    });
+  
+    return defects
+      .map(defect => {
+        const description = defect.description?.toLowerCase() || '';
+        const status = defect.status?.toLowerCase() || '';
+  
+        const isNotDone = status !== 'done';
+        if (!isNotDone) return null;
+  
+        const missingInfo: string[] = [];
+  
+        const hasAllRequiredKeywords = requiredKeywords.every(kw => description.includes(kw));
+        if (!hasAllRequiredKeywords) {
+            requiredKeywords.forEach(kw => {
+                if(!description.includes(kw)) {
+                    missingInfo.push(`Missing '${kw}' keyword`);
+                }
+            })
+        }
+  
+        const hasAnyTestDataKeyword = testDataKeywords.some(kw => description.includes(kw));
+        if (!hasAnyTestDataKeyword) {
+          missingInfo.push("Missing Test Data ID");
+        }
+        
+        if (missingInfo.length > 0) {
+          return { ...defect, reasonForAttention: missingInfo.join(', ') };
+        }
+  
+        return null;
+      })
+      .filter((d): d is Defect & { reasonForAttention: string } => d !== null);
   }, [defects]);
   
   useEffect(() => {

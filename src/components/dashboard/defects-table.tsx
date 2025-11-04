@@ -4,8 +4,10 @@ import type { Defect } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { differenceInDays, parseISO, format } from 'date-fns';
 
+type AugmentedDefect = Defect & { reasonForAttention?: string };
+
 interface DefectsTableProps {
-  defects: Defect[];
+  defects: AugmentedDefect[];
   showAll?: boolean;
 }
 
@@ -19,6 +21,8 @@ export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
   });
 
   const defectsToShow = showAll ? sortedDefects : sortedDefects.slice(0, 10);
+  const showReasonColumn = defectsToShow.some(d => d.reasonForAttention);
+
 
   return (
     <div className="w-full overflow-hidden rounded-md border">
@@ -26,6 +30,7 @@ export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Summary</TableHead>
+            {showReasonColumn && <TableHead>Reason for Attention</TableHead>}
             <TableHead>Domain</TableHead>
             <TableHead>Reported By</TableHead>
             <TableHead>Status</TableHead>
@@ -50,6 +55,11 @@ export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
                 <TableCell className="font-medium max-w-xs truncate">
                   <span className={cn(isUrgent && 'text-destructive font-semibold')}>{defect.summary}</span>
                 </TableCell>
+                {showReasonColumn && (
+                  <TableCell className="text-xs text-destructive max-w-sm">
+                    {defect.reasonForAttention}
+                  </TableCell>
+                )}
                 <TableCell>
                   <Badge variant="outline">{defect.domain || 'N/A'}</Badge>
                 </TableCell>
