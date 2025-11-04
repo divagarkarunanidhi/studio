@@ -260,7 +260,7 @@ export function DashboardPage() {
                   <StatCard title="High Severity" value={highSeverityCount} icon={<AlertTriangle />} />
                 </div>
                 
-                <div className='grid gap-4 md:grid-cols-1'>
+                <div className="grid grid-cols-1 gap-4">
                     <DefectTrendChart defects={defects} />
                 </div>
 
@@ -331,7 +331,7 @@ export function DashboardPage() {
                           <SelectItem key={reporter} value={reporter}>{reporter}</SelectItem>
                         ))}
                       </SelectContent>
-                    </Select>
+                    </select>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Filter by Status" />
@@ -342,7 +342,7 @@ export function DashboardPage() {
                           <SelectItem key={status} value={status}>{status}</SelectItem>
                         ))}
                       </SelectContent>
-                    </Select>
+                    </select>
                     <Select value={filterPriority} onValueChange={setFilterPriority}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Filter by Priority" />
