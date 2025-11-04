@@ -52,13 +52,7 @@ export function DashboardPage() {
   const [filterPriority, setFilterPriority] = useState<string>('all');
 
   const handleDataUploaded = (data: Defect[]) => {
-    // Basic validation and date parsing
-    const parsedData = data.map(d => ({
-        ...d,
-        created_at: d.created_at ? new Date(d.created_at).toISOString() : new Date().toISOString(),
-        updated: d.updated ? new Date(d.updated).toISOString() : new Date().toISOString(),
-    })).filter(d => d.id && d.summary && d.created_at);
-    setDefects(parsedData);
+    setDefects(data);
     setActiveView('dashboard');
   };
 

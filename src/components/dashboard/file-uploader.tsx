@@ -7,10 +7,6 @@ import { useToast } from '@/hooks/use-toast';
 import type { Defect } from '@/lib/types';
 import { Button } from '../ui/button';
 
-interface FileUploaderProps {
-  onDataUploaded: (data: Defect[]) => void;
-}
-
 const parseCsvRow = (row: string): string[] => {
   const result: string[] = [];
   let currentField = '';
@@ -34,6 +30,40 @@ const parseCsvRow = (row: string): string[] => {
   result.push(currentField.trim());
   return result;
 };
+
+// Function to parse flexible date formats
+const parseDate = (dateString: string): Date | null => {
+  if (!dateString) return null;
+  // Try standard ISO and common formats first
+  let date = new Date(dateString);
+  if (!isNaN(date.getTime())) {
+    return date;
+  }
+  // Try format "M/d/yyyy h:mm:ss a"
+  const parts = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\s+([AP]M)/);
+  if (parts) {
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const year = parseInt(parts[3], 10);
+    let hour = parseInt(parts[4], 10);
+    const minute = parseInt(parts[5], 10);
+    const second = parseInt(parts[6], 10);
+    const ampm = parts[7];
+
+    if (ampm === 'PM' && hour < 12) {
+      hour += 12;
+    }
+    if (ampm === 'AM' && hour === 12) {
+      hour = 0;
+    }
+    date = new Date(year, month, day, hour, minute, second);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+
+  return null; // Return null if all parsing fails
+}
 
 
 export function FileUploader({ onDataUploaded }: FileUploaderProps) {
@@ -76,10 +106,15 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
 
                 const defect: any = headers.reduce((obj, header, index) => {
                   currentHeader = header;
-                  const value = values[index];
-                  // Basic validation inside reduce to throw early
-                  if (header === 'created' && (value === '' || isNaN(new Date(value).getTime()))) {
-                      throw new Error(`Invalid or empty date in 'created' column.`);
+                  let value = values[index];
+                  
+                  // Handle date fields
+                  if (header === 'created' || header === 'updated') {
+                    const parsedDate = parseDate(value);
+                    if (!parsedDate) {
+                        throw new Error(`Invalid or empty date in '${header}' column.`);
+                    }
+                    value = parsedDate.toISOString();
                   }
 
                   const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
