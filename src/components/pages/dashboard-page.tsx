@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -26,6 +27,7 @@ import {
   Network,
   Users,
   FileHeart,
+  Wand2,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -35,9 +37,10 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui
 import { isSameDay, subDays, parseISO } from 'date-fns';
 import { GroupedDefectsView } from '../dashboard/grouped-defects-view';
 import { AnalysisPage } from './analysis-page';
+import { PredictionPage } from './prediction-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user' | 'analysis';
+type View = 'dashboard' | 'all-defects' | 'by-domain' | 'by-user' | 'analysis' | 'prediction';
 
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -86,7 +89,8 @@ export function DashboardPage() {
     'all-defects': 'All Defects',
     'by-domain': 'Defects by Domain',
     'by-user': 'Defects by Reporter',
-    analysis: 'Defect Analysis',
+    analysis: 'Static Defect Analysis',
+    prediction: 'Defect Prediction & Chat',
   }
   
   const viewDescriptions: Record<View, string> = {
@@ -95,6 +99,7 @@ export function DashboardPage() {
     'by-domain': 'Defects grouped by their application domain.',
     'by-user': 'Defects grouped by the user who reported them.',
     analysis: 'AI-powered analysis of the defect data.',
+    prediction: 'Predict defect properties and chat with an AI assistant.',
   }
 
 
@@ -118,11 +123,17 @@ export function DashboardPage() {
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Defect Analysis" isActive={activeView === 'analysis'} onClick={() => setActiveView('analysis')}>
                 <FileHeart />
-                Defect Analysis
+                Static Analysis
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Defect Prediction" isActive={activeView === 'prediction'} onClick={() => setActiveView('prediction')}>
+                <Wand2 />
+                Prediction & Chat
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Defects" isActive={activeView === 'all-defects'} onClick={() => setActiveView('all-defects')}>
+              <SidebarMenuButton tooltip="All Defects" isActive={activeView === 'all-defects'} onClick={() => setActiveView('all-defects')}>
                 <Bug />
                 All Defects
               </SidebarMenuButton>
@@ -205,6 +216,10 @@ export function DashboardPage() {
 
             {activeView === 'analysis' && (
               <AnalysisPage defects={defects} />
+            )}
+
+            {activeView === 'prediction' && (
+              <PredictionPage defects={defects} />
             )}
 
             {activeView === 'all-defects' && (

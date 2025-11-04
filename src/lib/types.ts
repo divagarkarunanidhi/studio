@@ -28,3 +28,22 @@ export const DefectAnalysisOutputSchema = z.object({
 });
 
 export type DefectAnalysisOutput = z.infer<typeof DefectAnalysisOutputSchema>;
+
+// Prediction Flow Schemas
+export const DefectPredictionSchema = z.object({
+    predictedSeverity: z.string().describe("The predicted severity of the defect (Critical, High, Medium, Low)."),
+    predictedPriority: z.string().describe("The predicted priority of the defect (Highest, High, Medium, Low)."),
+    predictionDescription: z.string().describe("A short, one-sentence description explaining the reasoning for the prediction."),
+});
+
+export type DefectPrediction = z.infer<typeof DefectPredictionSchema> & { id: string };
+
+export const DefectPredictionOutputSchema = z.object({
+    predictions: z.array(
+        DefectPredictionSchema.extend({
+            id: z.string(),
+        })
+    ),
+});
+
+export type DefectPredictionOutput = z.infer<typeof DefectPredictionOutputSchema>;
