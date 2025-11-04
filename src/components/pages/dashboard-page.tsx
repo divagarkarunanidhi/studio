@@ -37,8 +37,8 @@ import { AnalysisPage } from './analysis-page';
 import { PredictionPage } from './prediction-page';
 import { ResolutionTimePage } from './resolution-time-page';
 import { TrendPage } from './trend-page';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
+import { MultiSelect } from '../ui/multi-select';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis';
 
@@ -46,10 +46,10 @@ export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
   
-  const [filterDomain, setFilterDomain] = useState<string>('all');
-  const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [filterDomain, setFilterDomain] = useState<string[]>([]);
+  const [filterReportedBy, setFilterReportedBy] = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
+  const [filterPriority, setFilterPriority] = useState<string[]>([]);
 
   const handleDataUploaded = (data: Defect[]) => {
     setDefects(data);
@@ -120,29 +120,31 @@ export function DashboardPage() {
       if (defect.priority) priorities.add(defect.priority);
     });
 
+    const toOptions = (items: Set<string>) => Array.from(items).sort().map(item => ({ value: item, label: item }));
+
     return {
-      uniqueDomains: Array.from(domains).sort(),
-      uniqueReportedBy: Array.from(reporters).sort(),
-      uniqueStatuses: Array.from(statuses).sort(),
-      uniquePriorities: Array.from(priorities).sort(),
+      uniqueDomains: toOptions(domains),
+      uniqueReportedBy: toOptions(reporters),
+      uniqueStatuses: toOptions(statuses),
+      uniquePriorities: toOptions(priorities),
     };
   }, [defects]);
 
   const filteredDefects = useMemo(() => {
     return defects.filter(defect => {
-      const domainMatch = filterDomain === 'all' || defect.domain === filterDomain;
-      const reportedByMatch = filterReportedBy === 'all' || defect.reported_by === filterReportedBy;
-      const statusMatch = filterStatus === 'all' || defect.status === filterStatus;
-      const priorityMatch = filterPriority === 'all' || defect.priority === filterPriority;
+      const domainMatch = filterDomain.length === 0 || (defect.domain && filterDomain.includes(defect.domain));
+      const reportedByMatch = filterReportedBy.length === 0 || (defect.reported_by && filterReportedBy.includes(defect.reported_by));
+      const statusMatch = filterStatus.length === 0 || (defect.status && filterStatus.includes(defect.status));
+      const priorityMatch = filterPriority.length === 0 || (defect.priority && filterPriority.includes(defect.priority));
       return domainMatch && reportedByMatch && statusMatch && priorityMatch;
     });
   }, [defects, filterDomain, filterReportedBy, filterStatus, filterPriority]);
 
   const clearFilters = () => {
-    setFilterDomain('all');
-    setFilterReportedBy('all');
-    setFilterStatus('all');
-    setFilterPriority('all');
+    setFilterDomain([]);
+    setFilterReportedBy([]);
+    setFilterStatus([]);
+    setFilterPriority([]);
   };
 
   return (
@@ -263,7 +265,7 @@ export function DashboardPage() {
             )}
 
             {activeView === 'resolution-time' && (
-              <ResolutionTimePage defects={defects} uniqueDomains={uniqueDomains} />
+              <ResolutionTimePage defects={defects} uniqueDomains={uniqueDomains.map(d => d.value)} />
             )}
 
             {activeView === 'all-defects' && (
@@ -274,50 +276,34 @@ export function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="mb-4 flex flex-wrap items-center gap-4">
-                    <Select value={filterDomain} onValueChange={setFilterDomain}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filter by Domain" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Domains</SelectItem>
-                        {uniqueDomains.map(domain => (
-                          <SelectItem key={domain} value={domain}>{domain}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterReportedBy} onValueChange={setFilterReportedBy}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filter by Reporter" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Reporters</SelectItem>
-                        {uniqueReportedBy.map(reporter => (
-                          <SelectItem key={reporter} value={reporter}>{reporter}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filter by Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        {uniqueStatuses.map(status => (
-                          <SelectItem key={status} value={status}>{status}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterPriority} onValueChange={setFilterPriority}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filter by Priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Priorities</SelectItem>
-                        {uniquePriorities.map(priority => (
-                          <SelectItem key={priority} value={priority}>{priority}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <MultiSelect
+                      options={uniqueDomains}
+                      selected={filterDomain}
+                      onChange={setFilterDomain}
+                      placeholder="Filter by Domain..."
+                      className="w-[200px]"
+                    />
+                    <MultiSelect
+                      options={uniqueReportedBy}
+                      selected={filterReportedBy}
+                      onChange={setFilterReportedBy}
+                      placeholder="Filter by Reporter..."
+                      className="w-[200px]"
+                    />
+                    <MultiSelect
+                      options={uniqueStatuses}
+                      selected={filterStatus}
+                      onChange={setFilterStatus}
+                      placeholder="Filter by Status..."
+                      className="w-[200px]"
+                    />
+                    <MultiSelect
+                      options={uniquePriorities}
+                      selected={filterPriority}
+                      onChange={setFilterPriority}
+                      placeholder="Filter by Priority..."
+                      className="w-[200px]"
+                    />
                     <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
                   </div>
                   <DefectsTable defects={filteredDefects} showAll />
