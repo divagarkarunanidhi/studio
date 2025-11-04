@@ -55,7 +55,14 @@ export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
             return (
               <TableRow key={defect.id} className={cn(isUrgent && 'bg-destructive/10')}>
                 <TableCell className="font-medium">
-                  {defect.id}
+                  <a
+                    href={`https://dhl2.atlassian.net/browse/${defect.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {defect.id}
+                  </a>
                 </TableCell>
                 <TableCell className="font-medium max-w-xs truncate">
                   <span className={cn(isUrgent && 'text-destructive font-semibold')}>{defect.summary}</span>
