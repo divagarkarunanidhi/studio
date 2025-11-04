@@ -104,10 +104,10 @@ export function PredictionPage({ defects }: { defects: Defect[] }) {
                         ))
                     : defectsWithPredictions.map((defect) => (
                         <TableRow key={defect.id}>
-                            <TableCell className="font-medium max-w-sm truncate">
+                            <TableCell className="font-medium">
                                 {defect.summary}
                             </TableCell>
-                            <TableCell className="text-muted-foreground max-w-md truncate">
+                            <TableCell className="text-muted-foreground">
                                 {defect.predictionDescription || '...'}
                             </TableCell>
                             <TableCell>
