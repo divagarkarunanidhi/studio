@@ -83,7 +83,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
           
           const headers = parseCsvRow(rows[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
 
-          const requiredHeaders = ['issue_id', 'summary', 'created', 'updated'];
+          const requiredHeaders = ['issue_id', 'summary', 'created'];
           for(const requiredHeader of requiredHeaders) {
             if(!headers.includes(requiredHeader)) {
               throw new Error(`CSV must include the following headers: ${requiredHeaders.join(', ')}. Missing: "${requiredHeader}"`);
@@ -111,10 +111,10 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
                   // Handle date fields
                   if (header === 'created' || header === 'updated') {
                     const parsedDate = parseDate(value);
-                    if (!parsedDate) {
+                    if (!parsedDate && header === 'created') { // 'created' is required
                         throw new Error(`Invalid or empty date in '${header}' column.`);
                     }
-                    value = parsedDate.toISOString();
+                    value = parsedDate ? parsedDate.toISOString() : '';
                   }
 
                   const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
@@ -244,3 +244,5 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
     </div>
   );
 }
+
+    
