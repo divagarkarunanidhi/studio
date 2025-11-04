@@ -1,3 +1,4 @@
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { Defect } from '@/lib/types';
@@ -29,6 +30,7 @@ export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Defect ID</TableHead>
             <TableHead>Summary</TableHead>
             {showReasonColumn && <TableHead>Reason for Attention</TableHead>}
             <TableHead>Domain</TableHead>
@@ -52,6 +54,9 @@ export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
 
             return (
               <TableRow key={defect.id} className={cn(isUrgent && 'bg-destructive/10')}>
+                <TableCell className="font-medium">
+                  {defect.id}
+                </TableCell>
                 <TableCell className="font-medium max-w-xs truncate">
                   <span className={cn(isUrgent && 'text-destructive font-semibold')}>{defect.summary}</span>
                 </TableCell>
