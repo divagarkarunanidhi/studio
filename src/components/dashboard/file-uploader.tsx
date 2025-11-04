@@ -56,46 +56,52 @@ export function FileUploader({ onDataUploaded }: FileUploaderProps) {
           const requiredHeaders = ['issue_id', 'summary', 'created', 'updated'];
           for(const requiredHeader of requiredHeaders) {
             if(!headers.includes(requiredHeader)) {
-              throw new Error(`CSV must include the following headers: ${requiredHeaders.join(', ')}. Missing: ${requiredHeader}`);
+              throw new Error(`CSV must include the following headers: ${requiredHeaders.join(', ')}. Missing: "${requiredHeader}"`);
             }
           }
 
           const data = rows.slice(1).map((row, rowIndex) => {
-            const values = parseCsvRow(row);
-            if (values.length > headers.length) {
-                console.warn(`Row ${rowIndex + 2} has more columns than headers (expected ${headers.length}, got ${values.length}). Truncating row.`);
-                values.length = headers.length;
-            } else if (values.length < headers.length) {
-                // Pad the values array if it's shorter than headers
-                while (values.length < headers.length) {
-                    values.push('');
+            let currentHeader = '';
+            try {
+                const values = parseCsvRow(row);
+                if (values.length > headers.length) {
+                    console.warn(`Row ${rowIndex + 2} has more columns than headers (expected ${headers.length}, got ${values.length}). Truncating row.`);
+                    values.length = headers.length;
+                } else if (values.length < headers.length) {
+                    // Pad the values array if it's shorter than headers
+                    while (values.length < headers.length) {
+                        values.push('');
+                    }
                 }
-            }
 
-             const defect: any = headers.reduce((obj, header, index) => {
-              const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
-              // Map headers to the Defect type
-              if(key === 'issue_id') {
-                obj['id'] = values[index];
-              } else if(key === 'created') {
-                obj['created_at'] = values[index];
-              } else if (key === 'reporter') {
-                obj['reported_by'] = values[index];
-              } else if (key === 'custom_field_business_domain') {
-                obj['domain'] = values[index];
-              }
-              else {
-                obj[key] = values[index];
-              }
-              return obj;
-            }, {} as any);
+                const defect: any = headers.reduce((obj, header, index) => {
+                currentHeader = header;
+                const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
+                // Map headers to the Defect type
+                if(key === 'issue_id') {
+                    obj['id'] = values[index];
+                } else if(key === 'created') {
+                    obj['created_at'] = values[index];
+                } else if (key === 'reporter') {
+                    obj['reported_by'] = values[index];
+                } else if (key === 'custom_field_business_domain') {
+                    obj['domain'] = values[index];
+                }
+                else {
+                    obj[key] = values[index];
+                }
+                return obj;
+                }, {} as any);
 
-            // Ensure required fields are present
-            if (!defect.id || !defect.summary || !defect.created_at) {
-              console.warn(`Row ${rowIndex + 2} is missing required data (id, summary, or created_at). Skipping row.`);
-              return null;
+                // Ensure required fields are present
+                if (!defect.id || !defect.summary || !defect.created_at) {
+                console.warn(`Row ${rowIndex + 2} is missing required data (id, summary, or created_at). Skipping row.`);
+                return null;
+                }
+                return defect;
+            } catch (cellError) {
+                throw new Error(`Error parsing row ${rowIndex + 2} at cell "${currentHeader}". Please check the data format.`);
             }
-            return defect;
           }).filter((d): d is Defect => d !== null);
           
           if(data.length === 0) {
