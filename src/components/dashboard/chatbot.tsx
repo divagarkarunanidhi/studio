@@ -47,18 +47,21 @@ export function Chatbot({ defects }: ChatbotProps) {
       content: input,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
 
     try {
-      const history: MessageData[] = messages.map((msg) => ({
+      const history: MessageData[] = currentMessages
+        .filter(m => m.role !== 'user' || m.id !== userMessage.id) // Exclude the current user message from history
+        .map((msg) => ({
         role: msg.role,
         content: [{ text: msg.content }],
       }));
-      history.push({ role: 'user', content: [{ text: input }] });
 
-      const response = await chatWithDefects({ defects, history });
+      const response = await chatWithDefects({ defects, history, prompt: currentInput });
 
       const modelMessage: Message = {
         id: (Date.now() + 1).toString(),

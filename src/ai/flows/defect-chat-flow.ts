@@ -13,6 +13,7 @@ import { MessageData } from 'genkit';
 const ChatInputSchema = z.object({
   defects: z.array(DefectSchema),
   history: z.array(z.custom<MessageData>()),
+  prompt: z.string(),
 });
 export type ChatInput = z.infer<typeof ChatInputSchema>;
 
@@ -20,7 +21,7 @@ const ChatOutputSchema = z.string();
 export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 
 export async function chatWithDefects(input: ChatInput): Promise<ChatOutput> {
-  const { defects, history } = input;
+  const { defects, history, prompt } = input;
   const defectsJson = JSON.stringify(defects, null, 2);
 
   const { output } = await ai.generate({
@@ -33,6 +34,9 @@ export async function chatWithDefects(input: ChatInput): Promise<ChatOutput> {
 
     Here is the defect data:
     ${defectsJson}
+
+    And here is the user's question:
+    ${prompt}
     `,
     config: {
       temperature: 0.1,
