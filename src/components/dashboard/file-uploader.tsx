@@ -83,7 +83,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
           
           const headers = parseCsvRow(rows[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
 
-          const requiredHeaders = ['issue_id', 'summary', 'created'];
+          const requiredHeaders = ['issue_key', 'summary', 'created'];
           for(const requiredHeader of requiredHeaders) {
             if(!headers.includes(requiredHeader)) {
               throw new Error(`CSV must include the following headers: ${requiredHeaders.join(', ')}. Missing: "${requiredHeader}"`);
@@ -117,9 +117,9 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
                     value = parsedDate ? parsedDate.toISOString() : '';
                   }
 
-                  const key = header as keyof Defect | 'issue_id' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
+                  const key = header as keyof Defect | 'issue_key' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
                   // Map headers to the Defect type
-                  if(key === 'issue_id') {
+                  if(key === 'issue_key') {
                       obj['id'] = value;
                   } else if(key === 'created') {
                       obj['created_at'] = value;
