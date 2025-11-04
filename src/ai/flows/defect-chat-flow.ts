@@ -23,10 +23,8 @@ export async function chatWithDefects(input: ChatInput): Promise<ChatOutput> {
   const { defects, history } = input;
   const defectsJson = JSON.stringify(defects, null, 2);
 
-  const model = ai.getModel('googleai/gemini-2.5-flash');
-
   const { output } = await ai.generate({
-    model,
+    model: 'googleai/gemini-2.5-flash',
     history,
     prompt: `You are an expert software quality assurance analyst.
     Your task is to answer questions based on a provided list of defects in JSON format.
