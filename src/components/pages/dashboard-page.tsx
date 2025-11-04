@@ -15,7 +15,6 @@ import {
   SidebarTrigger,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import Image from 'next/image';
 import {
   Bug,
   CalendarClock,
@@ -39,7 +38,13 @@ import { ResolutionTimePage } from './resolution-time-page';
 import { TrendPage } from './trend-page';
 import { SummaryPage } from './summary-page';
 import { Button } from '../ui/button';
-import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from '@/components/ui/select';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary';
 
@@ -49,11 +54,7 @@ export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
   
-  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
-  const [selectedReporters, setSelectedReporters] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-  const [selectedSeverities, setSelectedSeverities] = useState<string[]>([]);
-  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+  const [filterDomain, setFilterDomain] = useState<string>('all');
   
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -105,48 +106,20 @@ export function DashboardPage() {
     summary: 'AI-powered summary of defect root cause and functional area.'
   };
 
-  const {
-    uniqueDomains,
-    uniqueReporters,
-    uniqueStatuses,
-    uniqueSeverities,
-    uniquePriorities,
-  } = useMemo(() => {
+  const uniqueDomains = useMemo(() => {
     const domains = new Set<string>();
-    const reporters = new Set<string>();
-    const statuses = new Set<string>();
-    const severities = new Set<string>();
-    const priorities = new Set<string>();
-    
     defects.forEach(defect => {
       if (defect.domain) domains.add(defect.domain);
-      if (defect.reported_by) reporters.add(defect.reported_by);
-      if (defect.status) statuses.add(defect.status);
-      if (defect.severity) severities.add(defect.severity);
-      if (defect.priority) priorities.add(defect.priority);
     });
-
-    const toOptions = (items: Set<string>): MultiSelectOption[] => Array.from(items).filter(Boolean).sort().map(item => ({ value: item, label: item }));
-
-    return {
-      uniqueDomains: toOptions(domains),
-      uniqueReporters: toOptions(reporters),
-      uniqueStatuses: toOptions(statuses),
-      uniqueSeverities: toOptions(severities),
-      uniquePriorities: toOptions(priorities),
-    };
+    return Array.from(domains).filter(Boolean).sort();
   }, [defects]);
 
   const filteredDefects = useMemo(() => {
-    return defects.filter(defect => {
-      const domainMatch = selectedDomains.length === 0 || (defect.domain && selectedDomains.includes(defect.domain));
-      const reporterMatch = selectedReporters.length === 0 || (defect.reported_by && selectedReporters.includes(defect.reported_by));
-      const statusMatch = selectedStatuses.length === 0 || (defect.status && selectedStatuses.includes(defect.status));
-      const severityMatch = selectedSeverities.length === 0 || (defect.severity && selectedSeverities.includes(defect.severity));
-      const priorityMatch = selectedPriorities.length === 0 || (defect.priority && selectedPriorities.includes(defect.priority));
-      return domainMatch && reporterMatch && statusMatch && severityMatch && priorityMatch;
-    });
-  }, [defects, selectedDomains, selectedReporters, selectedStatuses, selectedSeverities, selectedPriorities]);
+    if (filterDomain === 'all') {
+      return defects;
+    }
+    return defects.filter(defect => defect.domain === filterDomain);
+  }, [defects, filterDomain]);
   
   useEffect(() => {
     setCurrentPage(1);
@@ -160,20 +133,6 @@ export function DashboardPage() {
     const endIndex = startIndex + RECORDS_PER_PAGE;
     return filteredDefects.slice(startIndex, endIndex);
   }, [filteredDefects, currentPage]);
-
-
-  const clearFilters = () => {
-    setSelectedDomains([]);
-    setSelectedReporters([]);
-    setSelectedStatuses([]);
-    setSelectedSeverities([]);
-    setSelectedPriorities([]);
-  };
-
-  const areFiltersActive = useMemo(() => {
-    return selectedDomains.length > 0 || selectedReporters.length > 0 || selectedStatuses.length > 0 || selectedSeverities.length > 0 || selectedPriorities.length > 0;
-  }, [selectedDomains, selectedReporters, selectedStatuses, selectedSeverities, selectedPriorities]);
-
 
   return (
     <SidebarProvider>
@@ -289,71 +248,50 @@ export function DashboardPage() {
             )}
 
             {activeView === 'summary' && (
-              <SummaryPage defects={defects} uniqueDomains={uniqueDomains.map(d => d.value)} />
+              <SummaryPage defects={defects} uniqueDomains={uniqueDomains} />
             )}
 
             {activeView === 'analysis' && (
-              <AnalysisPage defects={defects} uniqueDomains={uniqueDomains.map(d => d.value)} />
+              <AnalysisPage defects={defects} uniqueDomains={uniqueDomains} />
             )}
 
             {activeView === 'prediction' && (
-              <PredictionPage defects={defects} uniqueDomains={uniqueDomains.map(d => d.value)} />
+              <PredictionPage defects={defects} uniqueDomains={uniqueDomains} />
             )}
 
             {activeView === 'resolution-time' && (
-              <ResolutionTimePage defects={defects} uniqueDomains={uniqueDomains.map(d => d.value)} />
+              <ResolutionTimePage defects={defects} uniqueDomains={uniqueDomains} />
             )}
 
             {activeView === 'all-defects' && (
                <Card>
                 <CardHeader>
-                  <CardTitle>{viewTitles['all-defects']}</CardTitle>
-                  <CardDescription>{viewDescriptions['all-defects']}</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>{viewTitles['all-defects']}</CardTitle>
+                            <CardDescription>{viewDescriptions['all-defects']}</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Select value={filterDomain} onValueChange={setFilterDomain}>
+                                <SelectTrigger className="w-[240px]">
+                                    <SelectValue placeholder="Filter by Domain" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Domains</SelectItem>
+                                    {uniqueDomains.map(domain => (
+                                    <SelectItem key={domain} value={domain}>{domain}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                   <div className="mb-4 p-4 border rounded-lg bg-card">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                          <MultiSelect
-                              options={uniqueDomains}
-                              selected={selectedDomains}
-                              onChange={setSelectedDomains}
-                              placeholder="Filter by Domain..."
-                          />
-                          <MultiSelect
-                              options={uniqueReporters}
-                              selected={selectedReporters}
-                              onChange={setSelectedReporters}
-                              placeholder="Filter by Reporter..."
-                          />
-                          <MultiSelect
-                              options={uniqueStatuses}
-                              selected={selectedStatuses}
-                              onChange={setSelectedStatuses}
-                              placeholder="Filter by Status..."
-                          />
-                          <MultiSelect
-                              options={uniqueSeverities}
-                              selected={selectedSeverities}
-                              onChange={setSelectedSeverities}
-                              placeholder="Filter by Severity..."
-                          />
-                          <MultiSelect
-                              options={uniquePriorities}
-                              selected={selectedPriorities}
-                              onChange={setSelectedPriorities}
-                              placeholder="Filter by Priority..."
-                          />
-                      </div>
-                      {areFiltersActive && (
-                        <div className="mt-4 flex justify-end">
-                            <Button variant="ghost" onClick={clearFilters}>Clear All Filters</Button>
-                        </div>
-                      )}
-                  </div>
                   <DefectsTable defects={paginatedDefects} showAll />
                    <div className="mt-4 flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">
-                            Page {currentPage} of {totalPages}
+                            Showing {paginatedDefects.length > 0 ? (currentPage - 1) * RECORDS_PER_PAGE + 1 : 0}-
+                            {Math.min(currentPage * RECORDS_PER_PAGE, filteredDefects.length)} of {filteredDefects.length} defects
                         </span>
                         <div className="flex items-center gap-2">
                             <Button
@@ -384,3 +322,5 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    

@@ -113,7 +113,9 @@ function MultiSelect({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  onSelect={() => handleSelect(option.value)}
+                  onSelect={() => {
+                    handleSelect(option.value);
+                  }}
                 >
                   <Check
                     className={cn(
@@ -135,3 +137,5 @@ function MultiSelect({
 }
 
 export { MultiSelect };
+
+    
