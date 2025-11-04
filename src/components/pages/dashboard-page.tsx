@@ -118,7 +118,7 @@ export function DashboardPage() {
     analysis: 'Static Defect Analysis',
     prediction: 'Defect Prediction',
     'resolution-time': 'Resolution Time Analysis'
-  }
+  };
   
   const viewDescriptions: Record<View, string> = {
     dashboard: 'A summary of all defect data.',
@@ -126,7 +126,7 @@ export function DashboardPage() {
     analysis: 'AI-powered analysis of the defect data.',
     prediction: 'Predict defect properties using an AI assistant.',
     'resolution-time': 'Analysis of the time taken to resolve defects.'
-  }
+  };
 
   const {
     uniqueDomains,
@@ -170,7 +170,6 @@ export function DashboardPage() {
     setFilterStatus('all');
     setFilterPriority('all');
   };
-
 
   return (
     <SidebarProvider>
@@ -331,7 +330,7 @@ export function DashboardPage() {
                           <SelectItem key={reporter} value={reporter}>{reporter}</SelectItem>
                         ))}
                       </SelectContent>
-                    </select>
+                    </Select>
                     <Select value={filterStatus} onValueChange={setFilterStatus}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Filter by Status" />
@@ -342,7 +341,7 @@ export function DashboardPage() {
                           <SelectItem key={status} value={status}>{status}</SelectItem>
                         ))}
                       </SelectContent>
-                    </select>
+                    </Select>
                     <Select value={filterPriority} onValueChange={setFilterPriority}>
                       <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Filter by Priority" />
@@ -367,3 +366,5 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
