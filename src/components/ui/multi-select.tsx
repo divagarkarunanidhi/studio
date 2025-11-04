@@ -43,7 +43,8 @@ function MultiSelect({
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
-  const handleUnselect = (item: string) => {
+  const handleUnselect = (e: React.MouseEvent, item: string) => {
+    e.stopPropagation();
     onChange(selected.filter((i) => i !== item));
   };
 
@@ -64,13 +65,24 @@ function MultiSelect({
                         variant="secondary"
                         key={item}
                         className="mr-1 mb-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUnselect(item);
-                        }}
+                        onClick={(e) => handleUnselect(e, item)}
                     >
                         {options.find(opt => opt.value === item)?.label}
-                        <X className="ml-1 h-3 w-3" />
+                        <button
+                          className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleUnselect(e as any, item);
+                            }
+                          }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onClick={(e) => handleUnselect(e, item)}
+                        >
+                          <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </button>
                     </Badge>
                 ))
             ) : (
