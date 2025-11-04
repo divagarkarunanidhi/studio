@@ -26,6 +26,7 @@ import {
   FileHeart,
   Wand2,
   Timer,
+  LineChart,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -35,12 +36,11 @@ import { isSameDay, subDays, parseISO } from 'date-fns';
 import { AnalysisPage } from './analysis-page';
 import { PredictionPage } from './prediction-page';
 import { ResolutionTimePage } from './resolution-time-page';
+import { TrendPage } from './trend-page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
-import { DefectTrendChart } from '../dashboard/defect-trend-chart';
 
-
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis';
 
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
@@ -89,7 +89,8 @@ export function DashboardPage() {
     'all-defects': 'All Defects',
     analysis: 'Static Defect Analysis',
     prediction: 'Defect Prediction',
-    'resolution-time': 'Resolution Time Analysis'
+    'resolution-time': 'Resolution Time Analysis',
+    'trend-analysis': 'Trend Analysis',
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -97,7 +98,8 @@ export function DashboardPage() {
     'all-defects': 'A complete list of all imported defects.',
     analysis: 'AI-powered analysis of the defect data.',
     prediction: 'Predict defect properties using an AI assistant.',
-    'resolution-time': 'Analysis of the time taken to resolve defects.'
+    'resolution-time': 'Analysis of the time taken to resolve defects.',
+    'trend-analysis': 'Visualize the creation of defects over time.',
   };
 
   const {
@@ -158,6 +160,12 @@ export function DashboardPage() {
               <SidebarMenuButton tooltip="Dashboard" isActive={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')}>
                 <LayoutDashboard />
                 Dashboard
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Trend Analysis" isActive={activeView === 'trend-analysis'} onClick={() => setActiveView('trend-analysis')}>
+                <LineChart />
+                Trend Analysis
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -230,10 +238,6 @@ export function DashboardPage() {
                   <StatCard title="Ready for Testing" value={readyForTestingCount} icon={<TestTube />} />
                   <StatCard title="High Severity" value={highSeverityCount} icon={<AlertTriangle />} />
                 </div>
-                
-                <div className="grid grid-cols-1 gap-4">
-                    <DefectTrendChart defects={defects} />
-                </div>
 
                 <Card>
                   <CardHeader>
@@ -244,6 +248,10 @@ export function DashboardPage() {
                   </CardContent>
                 </Card>
               </>
+            )}
+
+            {activeView === 'trend-analysis' && (
+              <TrendPage defects={defects} />
             )}
 
             {activeView === 'analysis' && (
@@ -323,3 +331,5 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
