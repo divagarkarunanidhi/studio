@@ -8,7 +8,6 @@ import { Lightbulb, AlertTriangle } from 'lucide-react';
 import type { Defect, DefectAnalysisOutput } from '@/lib/types';
 import { analyzeDefects } from '@/ai/flows/defect-analysis-flow';
 import { Button } from '../ui/button';
-import { Chatbot } from '../dashboard/chatbot';
 
 interface AnalysisPageProps {
   defects: Defect[];
@@ -61,80 +60,65 @@ export function AnalysisPage({ defects }: AnalysisPageProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Static Defect Analysis</CardTitle>
-              <CardDescription>
-                AI-powered insights into your defect data. The analysis is based on the currently loaded CSV file.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {defects.length > 0 && (
-                    <Button onClick={handleRunAnalysis} disabled={isLoading}>
-                        {isLoading ? 'Analyzing...' : 'Re-run Analysis'}
-                    </Button>
-                )}
-            </CardContent>
-          </Card>
-          
-          {error && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Analysis Failed</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+    <div className="max-w-4xl mx-auto space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Static Defect Analysis</CardTitle>
+          <CardDescription>
+            AI-powered insights into your defect data. The analysis is based on the currently loaded CSV file.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+            {defects.length > 0 && (
+                <Button onClick={handleRunAnalysis} disabled={isLoading}>
+                    {isLoading ? 'Analyzing...' : 'Re-run Analysis'}
+                </Button>
+            )}
+        </CardContent>
+      </Card>
+      
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Analysis Failed</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-          {(!analysis && !isLoading && !error) && (
-            <Alert>
-              <Lightbulb className="h-4 w-4" />
-              <AlertTitle>Ready for Analysis</AlertTitle>
-              <AlertDescription>
-                Once you upload a CSV file, the analysis will run automatically. You can also re-run it using the button above.
-              </AlertDescription>
-            </Alert>
-          )}
+      {(!analysis && !isLoading && !error) && (
+        <Alert>
+          <Lightbulb className="h-4 w-4" />
+          <AlertTitle>Ready for Analysis</AlertTitle>
+          <AlertDescription>
+            Once you upload a CSV file, the analysis will run automatically. You can also re-run it using the button above.
+          </AlertDescription>
+        </Alert>
+      )}
 
-          <div className="grid grid-cols-1 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Defect Root Cause</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {renderContent("Root Causes", analysis?.defectCause)}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Suggestions for Reduction</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {renderContent("Suggestions", analysis?.defectSuggestions)}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Source of Defects</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {renderContent("Primary Sources", analysis?.defectSource)}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-        <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle>Defect Chatbot</CardTitle>
-              <CardDescription>
-                Ask questions about the defect data in plain English.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <Chatbot defects={defects} />
-            </CardContent>
+      <div className="grid grid-cols-1 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Defect Root Cause</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderContent("Root Causes", analysis?.defectCause)}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Suggestions for Reduction</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderContent("Suggestions", analysis?.defectSuggestions)}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Source of Defects</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderContent("Primary Sources", analysis?.defectSource)}
+          </CardContent>
         </Card>
       </div>
     </div>
