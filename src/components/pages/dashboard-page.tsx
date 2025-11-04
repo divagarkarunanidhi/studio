@@ -42,6 +42,8 @@ import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis';
 
+const RECORDS_PER_PAGE = 50;
+
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
@@ -51,6 +53,8 @@ export function DashboardPage() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedSeverities, setSelectedSeverities] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+  
+  const [currentPage, setCurrentPage] = useState(1);
 
 
   const handleDataUploaded = (data: Defect[]) => {
@@ -147,6 +151,20 @@ export function DashboardPage() {
     });
   }, [defects, selectedDomains, selectedReporters, selectedStatuses, selectedSeverities, selectedPriorities]);
   
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredDefects]);
+
+
+  const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
+
+  const paginatedDefects = useMemo(() => {
+    const startIndex = (currentPage - 1) * RECORDS_PER_PAGE;
+    const endIndex = startIndex + RECORDS_PER_PAGE;
+    return filteredDefects.slice(startIndex, endIndex);
+  }, [filteredDefects, currentPage]);
+
+
   const clearFilters = () => {
     setSelectedDomains([]);
     setSelectedReporters([]);
@@ -327,7 +345,30 @@ export function DashboardPage() {
                         </div>
                       )}
                   </div>
-                  <DefectsTable defects={filteredDefects} showAll />
+                  <DefectsTable defects={paginatedDefects} showAll />
+                   <div className="mt-4 flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                   </div>
                 </CardContent>
               </Card>
             )}
