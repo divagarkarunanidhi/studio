@@ -39,7 +39,6 @@ export async function chatWithDefects(input: ChatInput) {
   }
 
   const result = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
     system: systemMessage,
     history: history,
     prompt: lastUserMessage.content,
