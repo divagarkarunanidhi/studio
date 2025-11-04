@@ -143,7 +143,7 @@ export function DefectTrendChart({ defects, period, year, dateRange }: DefectTre
       <CardContent>
         <div className="h-[250px]">
           <ChartContainer config={chartConfig}>
-            <AreaChart accessibilityLayer data={trendData} margin={{ left: 12, right: 12 }}>
+            <AreaChart accessibilityLayer data={trendData} margin={{ left: 12, right: 20 }}>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="date"
