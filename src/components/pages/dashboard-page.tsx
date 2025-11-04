@@ -27,12 +27,13 @@ import {
   LineChart,
   PieChart,
   AlertTriangle,
+  Upload,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
 import { DefectsTable } from '../dashboard/defects-table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
-import { isSameDay, subDays, parseISO } from 'date-fns';
+import { isSameDay, subDays, parseISO, format } from 'date-fns';
 import { AnalysisPage } from './analysis-page';
 import { PredictionPage } from './prediction-page';
 import { ResolutionTimePage } from './resolution-time-page';
@@ -54,6 +55,7 @@ const RECORDS_PER_PAGE = 50;
 
 export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
+  const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('dashboard');
   
   const [filterDomain, setFilterDomain] = useState<string>('all');
@@ -62,10 +64,38 @@ export function DashboardPage() {
   
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Load data from localStorage on initial render
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem('defectData');
+      if (savedData) {
+        const { defects: savedDefects, uploadedAt } = JSON.parse(savedData);
+        setDefects(savedDefects);
+        setUploadTimestamp(uploadedAt);
+      }
+    } catch (error) {
+      console.error("Failed to load data from localStorage", error);
+      localStorage.removeItem('defectData'); // Clear corrupted data
+    }
+  }, []);
+
 
   const handleDataUploaded = (data: Defect[]) => {
+    const timestamp = new Date().toISOString();
     setDefects(data);
+    setUploadTimestamp(timestamp);
     setActiveView('dashboard');
+    try {
+      localStorage.setItem('defectData', JSON.stringify({ defects: data, uploadedAt: timestamp }));
+    } catch (error) {
+      console.error("Failed to save data to localStorage", error);
+    }
+  };
+
+  const handleClearData = () => {
+    setDefects([]);
+    setUploadTimestamp(null);
+    localStorage.removeItem('defectData');
   };
 
   const yesterdayDefectsCount = useMemo(() => {
@@ -146,7 +176,6 @@ export function DashboardPage() {
   }, [defects, filterDomain, filterReportedBy, filterStatus]);
 
   const attentionDefects = useMemo(() => {
-    const requiredKeywords = ['expected', 'actual'];
     const testDataKeywords = ['test data', 'order release id', 'shipment id', 'invoice id'];
   
     return defects
@@ -183,9 +212,11 @@ export function DashboardPage() {
   useEffect(() => {
     setCurrentPage(1);
     // Reset filters when new data is uploaded
-    setFilterDomain('all');
-    setFilterReportedBy('all');
-    setFilterStatus('all');
+    if(defects.length > 0) {
+        setFilterDomain('all');
+        setFilterReportedBy('all');
+        setFilterStatus('all');
+    }
   }, [defects]);
 
 
@@ -271,12 +302,26 @@ export function DashboardPage() {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-auto min-h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur-sm sm:h-auto sm:px-6">
-          <SidebarTrigger className="sm:hidden"/>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">{viewTitles[activeView]}</h1>
-            <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
+        <header className="sticky top-0 z-10 flex h-auto min-h-14 flex-col items-start justify-center gap-2 border-b bg-background/95 p-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger className="sm:hidden"/>
+            <div>
+                <h1 className="text-xl font-semibold tracking-tight">{viewTitles[activeView]}</h1>
+                <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
+            </div>
           </div>
+          {uploadTimestamp && (
+            <div className="flex items-center gap-4">
+                <div className="text-xs text-muted-foreground text-right">
+                    Last updated: <br />
+                    {format(parseISO(uploadTimestamp), "MMM d, yyyy 'at' h:mm a")}
+                </div>
+                <Button variant="outline" onClick={handleClearData}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Load New Data
+                </Button>
+            </div>
+          )}
         </header>
 
         {defects.length === 0 ? (
