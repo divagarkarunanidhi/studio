@@ -38,6 +38,7 @@ import { PredictionPage } from './prediction-page';
 import { ResolutionTimePage } from './resolution-time-page';
 import { TrendPage } from './trend-page';
 import { Button } from '../ui/button';
+import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis';
 
@@ -45,6 +46,13 @@ export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
   
+  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
+  const [selectedReporters, setSelectedReporters] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedSeverities, setSelectedSeverities] = useState<string[]>([]);
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+
+
   const handleDataUploaded = (data: Defect[]) => {
     setDefects(data);
     setActiveView('dashboard');
@@ -98,19 +106,58 @@ export function DashboardPage() {
 
   const {
     uniqueDomains,
+    uniqueReporters,
+    uniqueStatuses,
+    uniqueSeverities,
+    uniquePriorities,
   } = useMemo(() => {
     const domains = new Set<string>();
+    const reporters = new Set<string>();
+    const statuses = new Set<string>();
+    const severities = new Set<string>();
+    const priorities = new Set<string>();
     
     defects.forEach(defect => {
       if (defect.domain) domains.add(defect.domain);
+      if (defect.reported_by) reporters.add(defect.reported_by);
+      if (defect.status) statuses.add(defect.status);
+      if (defect.severity) severities.add(defect.severity);
+      if (defect.priority) priorities.add(defect.priority);
     });
 
-    const toOptions = (items: Set<string>) => Array.from(items).sort().map(item => ({ value: item, label: item }));
+    const toOptions = (items: Set<string>): MultiSelectOption[] => Array.from(items).filter(Boolean).sort().map(item => ({ value: item, label: item }));
 
     return {
       uniqueDomains: toOptions(domains),
+      uniqueReporters: toOptions(reporters),
+      uniqueStatuses: toOptions(statuses),
+      uniqueSeverities: toOptions(severities),
+      uniquePriorities: toOptions(priorities),
     };
   }, [defects]);
+
+  const filteredDefects = useMemo(() => {
+    return defects.filter(defect => {
+      const domainMatch = selectedDomains.length === 0 || (defect.domain && selectedDomains.includes(defect.domain));
+      const reporterMatch = selectedReporters.length === 0 || (defect.reported_by && selectedReporters.includes(defect.reported_by));
+      const statusMatch = selectedStatuses.length === 0 || (defect.status && selectedStatuses.includes(defect.status));
+      const severityMatch = selectedSeverities.length === 0 || (defect.severity && selectedSeverities.includes(defect.severity));
+      const priorityMatch = selectedPriorities.length === 0 || (defect.priority && selectedPriorities.includes(defect.priority));
+      return domainMatch && reporterMatch && statusMatch && severityMatch && priorityMatch;
+    });
+  }, [defects, selectedDomains, selectedReporters, selectedStatuses, selectedSeverities, selectedPriorities]);
+  
+  const clearFilters = () => {
+    setSelectedDomains([]);
+    setSelectedReporters([]);
+    setSelectedStatuses([]);
+    setSelectedSeverities([]);
+    setSelectedPriorities([]);
+  };
+
+  const areFiltersActive = useMemo(() => {
+    return selectedDomains.length > 0 || selectedReporters.length > 0 || selectedStatuses.length > 0 || selectedSeverities.length > 0 || selectedPriorities.length > 0;
+  }, [selectedDomains, selectedReporters, selectedStatuses, selectedSeverities, selectedPriorities]);
 
 
   return (
@@ -241,7 +288,46 @@ export function DashboardPage() {
                   <CardDescription>{viewDescriptions['all-defects']}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <DefectsTable defects={defects} showAll />
+                   <div className="mb-4 p-4 border rounded-lg bg-card">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                          <MultiSelect
+                              options={uniqueDomains}
+                              selected={selectedDomains}
+                              onChange={setSelectedDomains}
+                              placeholder="Filter by Domain..."
+                          />
+                          <MultiSelect
+                              options={uniqueReporters}
+                              selected={selectedReporters}
+                              onChange={setSelectedReporters}
+                              placeholder="Filter by Reporter..."
+                          />
+                          <MultiSelect
+                              options={uniqueStatuses}
+                              selected={selectedStatuses}
+                              onChange={setSelectedStatuses}
+                              placeholder="Filter by Status..."
+                          />
+                          <MultiSelect
+                              options={uniqueSeverities}
+                              selected={selectedSeverities}
+                              onChange={setSelectedSeverities}
+                              placeholder="Filter by Severity..."
+                          />
+                          <MultiSelect
+                              options={uniquePriorities}
+                              selected={selectedPriorities}
+                              onChange={setSelectedPriorities}
+                              placeholder="Filter by Priority..."
+                          />
+                      </div>
+                      {areFiltersActive && (
+                        <div className="mt-4 flex justify-end">
+                            <Button variant="ghost" onClick={clearFilters}>Clear All Filters</Button>
+                        </div>
+                      )}
+                  </div>
+                  <DefectsTable defects={filteredDefects} showAll />
                 </CardContent>
               </Card>
             )}
