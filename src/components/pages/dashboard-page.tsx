@@ -104,7 +104,7 @@ export function DashboardPage() {
         <SidebarHeader>
           <div className="flex items-center gap-2 p-2">
             <Logo className="size-8 text-primary" />
-            <h1 className="text-lg font-semibold">TaaS Bug Prediction</h1>
+            <h1 className="text-lg font-semibold">TaaS BugSense AI</h1>
           </div>
         </SidebarHeader>
         <SidebarContent>
