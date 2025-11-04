@@ -257,11 +257,11 @@ export function DashboardPage() {
             )}
 
             {activeView === 'analysis' && (
-              <AnalysisPage defects={defects} />
+              <AnalysisPage defects={defects} uniqueDomains={uniqueDomains.map(d => d.value)} />
             )}
 
             {activeView === 'prediction' && (
-              <PredictionPage defects={defects} />
+              <PredictionPage defects={defects} uniqueDomains={uniqueDomains.map(d => d.value)} />
             )}
 
             {activeView === 'resolution-time' && (
@@ -317,5 +317,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
