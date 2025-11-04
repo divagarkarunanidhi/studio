@@ -38,7 +38,6 @@ import { PredictionPage } from './prediction-page';
 import { ResolutionTimePage } from './resolution-time-page';
 import { TrendPage } from './trend-page';
 import { Button } from '../ui/button';
-import { MultiSelect } from '../ui/multi-select';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis';
 
@@ -46,11 +45,6 @@ export function DashboardPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
   
-  const [filterDomain, setFilterDomain] = useState<string[]>([]);
-  const [filterReportedBy, setFilterReportedBy] = useState<string[]>([]);
-  const [filterStatus, setFilterStatus] = useState<string[]>([]);
-  const [filterPriority, setFilterPriority] = useState<string[]>([]);
-
   const handleDataUploaded = (data: Defect[]) => {
     setDefects(data);
     setActiveView('dashboard');
@@ -104,48 +98,20 @@ export function DashboardPage() {
 
   const {
     uniqueDomains,
-    uniqueReportedBy,
-    uniqueStatuses,
-    uniquePriorities,
   } = useMemo(() => {
     const domains = new Set<string>();
-    const reporters = new Set<string>();
-    const statuses = new Set<string>();
-    const priorities = new Set<string>();
-
+    
     defects.forEach(defect => {
       if (defect.domain) domains.add(defect.domain);
-      if (defect.reported_by) reporters.add(defect.reported_by);
-      if (defect.status) statuses.add(defect.status);
-      if (defect.priority) priorities.add(defect.priority);
     });
 
     const toOptions = (items: Set<string>) => Array.from(items).sort().map(item => ({ value: item, label: item }));
 
     return {
       uniqueDomains: toOptions(domains),
-      uniqueReportedBy: toOptions(reporters),
-      uniqueStatuses: toOptions(statuses),
-      uniquePriorities: toOptions(priorities),
     };
   }, [defects]);
 
-  const filteredDefects = useMemo(() => {
-    return defects.filter(defect => {
-      const domainMatch = filterDomain.length === 0 || (defect.domain && filterDomain.includes(defect.domain));
-      const reportedByMatch = filterReportedBy.length === 0 || (defect.reported_by && filterReportedBy.includes(defect.reported_by));
-      const statusMatch = filterStatus.length === 0 || (defect.status && filterStatus.includes(defect.status));
-      const priorityMatch = filterPriority.length === 0 || (defect.priority && filterPriority.includes(defect.priority));
-      return domainMatch && reportedByMatch && statusMatch && priorityMatch;
-    });
-  }, [defects, filterDomain, filterReportedBy, filterStatus, filterPriority]);
-
-  const clearFilters = () => {
-    setFilterDomain([]);
-    setFilterReportedBy([]);
-    setFilterStatus([]);
-    setFilterPriority([]);
-  };
 
   return (
     <SidebarProvider>
@@ -275,38 +241,7 @@ export function DashboardPage() {
                   <CardDescription>{viewDescriptions['all-defects']}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="mb-4 flex flex-wrap items-center gap-4">
-                    <MultiSelect
-                      options={uniqueDomains}
-                      selected={filterDomain}
-                      onChange={setFilterDomain}
-                      placeholder="Filter by Domain..."
-                      className="w-[200px]"
-                    />
-                    <MultiSelect
-                      options={uniqueReportedBy}
-                      selected={filterReportedBy}
-                      onChange={setFilterReportedBy}
-                      placeholder="Filter by Reporter..."
-                      className="w-[200px]"
-                    />
-                    <MultiSelect
-                      options={uniqueStatuses}
-                      selected={filterStatus}
-                      onChange={setFilterStatus}
-                      placeholder="Filter by Status..."
-                      className="w-[200px]"
-                    />
-                    <MultiSelect
-                      options={uniquePriorities}
-                      selected={filterPriority}
-                      onChange={setFilterPriority}
-                      placeholder="Filter by Priority..."
-                      className="w-[200px]"
-                    />
-                    <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
-                  </div>
-                  <DefectsTable defects={filteredDefects} showAll />
+                  <DefectsTable defects={defects} showAll />
                 </CardContent>
               </Card>
             )}
