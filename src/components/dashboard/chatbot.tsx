@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useChat, type Message } from 'ai/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,59 +9,27 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Send, User, Bot, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Defect } from '@/lib/types';
-import { chatWithDefects } from '@/ai/flows/defect-chat-flow';
+import { useState } from 'react';
 
 interface ChatbotProps {
   defects: Defect[];
 }
 
 export function Chatbot({ defects }: ChatbotProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<{[id: string]: 'like' | 'dislike' | null}>({});
+
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: '/api/chat',
+    body: {
+        defects,
+    }
+  });
 
   const handleFeedback = (id: string, newFeedback: 'like' | 'dislike') => {
     setFeedback(prev => ({
         ...prev,
         [id]: prev[id] === newFeedback ? null : newFeedback
     }));
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-        const chatHistory = messages.filter(m => m.role !== 'user' || m.content !== input);
-        const { response } = await chatWithDefects(defects, chatHistory, input);
-
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        content: response,
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
-      console.error('Error fetching chat response:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        content: 'Sorry, I encountered an error. Please try again.',
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
@@ -81,7 +48,7 @@ export function Chatbot({ defects }: ChatbotProps) {
                   m.role === 'user' ? 'justify-end' : 'justify-start'
                 )}
               >
-                {m.role === 'model' && (
+                {m.role !== 'user' && (
                   <Avatar className="h-8 w-8">
                     <AvatarFallback>
                       <Bot />
@@ -97,7 +64,7 @@ export function Chatbot({ defects }: ChatbotProps) {
                   )}
                 >
                   <p className="whitespace-pre-wrap">{m.content}</p>
-                   {m.role === 'model' && (
+                   {m.role !== 'user' && m.id && (
                      <div className="mt-2 flex items-center gap-2">
                         <button onClick={() => handleFeedback(m.id, 'like')} className={cn("p-1 rounded-full hover:bg-muted-foreground/20", feedback[m.id] === 'like' && 'text-primary')}>
                             <ThumbsUp className="size-4" />
@@ -143,7 +110,7 @@ export function Chatbot({ defects }: ChatbotProps) {
             className="flex-grow"
             disabled={isLoading}
           />
-          <Button type="submit" size="icon" disabled={isLoading}>
+          <Button type="submit" size="icon" disabled={isLoading || !input}>
             <Send className="h-4 w-4" />
           </Button>
         </form>
