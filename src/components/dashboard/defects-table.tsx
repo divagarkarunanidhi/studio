@@ -10,9 +10,10 @@ type AugmentedDefect = Defect & { reasonForAttention?: string };
 interface DefectsTableProps {
   defects: AugmentedDefect[];
   showAll?: boolean;
+  showDescription?: boolean;
 }
 
-export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
+export function DefectsTable({ defects, showAll = false, showDescription = false }: DefectsTableProps) {
   const sortedDefects = [...defects].sort((a, b) => {
     try {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -32,6 +33,7 @@ export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
           <TableRow>
             <TableHead>Defect ID</TableHead>
             <TableHead>Summary</TableHead>
+            {showDescription && <TableHead>Description</TableHead>}
             {showReasonColumn && <TableHead>Reason for Attention</TableHead>}
             <TableHead>Domain</TableHead>
             <TableHead>Reported By</TableHead>
@@ -67,6 +69,11 @@ export function DefectsTable({ defects, showAll = false }: DefectsTableProps) {
                 <TableCell className="font-medium max-w-xs truncate">
                   <span className={cn(isUrgent && 'text-destructive font-semibold')}>{defect.summary}</span>
                 </TableCell>
+                {showDescription && (
+                  <TableCell className="text-xs text-muted-foreground max-w-sm truncate">
+                    {defect.description}
+                  </TableCell>
+                )}
                 {showReasonColumn && (
                   <TableCell className="text-xs text-destructive max-w-sm">
                     {defect.reasonForAttention}

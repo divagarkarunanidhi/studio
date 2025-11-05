@@ -187,27 +187,26 @@ export function DashboardPage() {
           return null;
         }
   
-        const missingInfo: string[] = [];
-  
         const hasExpected = description.includes('expected');
         const hasActual = description.includes('actual');
         const hasTestData = testDataKeywords.some(kw => description.includes(kw.toLowerCase()));
-        
+  
+        if (hasExpected && hasActual && hasTestData) {
+          return null;
+        }
+  
+        const missingInfo: string[] = [];
         if (!hasExpected) {
-          missingInfo.push("Missing 'Expected' keyword");
+          missingInfo.push("Missing 'Expected'");
         }
         if (!hasActual) {
-          missingInfo.push("Missing 'Actual' keyword");
+          missingInfo.push("Missing 'Actual'");
         }
         if (!hasTestData) {
           missingInfo.push("Missing Test Data ID");
         }
         
-        if (missingInfo.length > 0) {
-          return { ...defect, reasonForAttention: missingInfo.join(', ') };
-        }
-  
-        return null;
+        return { ...defect, reasonForAttention: missingInfo.join(', ') };
       })
       .filter((d): d is Defect & { reasonForAttention: string } => d !== null);
   }, [defects]);
@@ -464,7 +463,7 @@ export function DashboardPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <DefectsTable defects={attentionDefects} showAll />
+                        <DefectsTable defects={attentionDefects} showAll showDescription />
                     </CardContent>
                 </Card>
             )}
