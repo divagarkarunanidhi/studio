@@ -176,7 +176,7 @@ export function DashboardPage() {
   }, [defects, filterDomain, filterReportedBy, filterStatus]);
 
   const attentionDefects = useMemo(() => {
-    const testDataKeywords = ['test data', 'order release id', 'shipment id', 'invoice id'];
+    const testDataKeywords = ['test data', 'order release id', 'shipment id', 'invoice id', 'taas202'];
   
     return defects
       .map(defect => {
@@ -188,14 +188,16 @@ export function DashboardPage() {
   
         const missingInfo: string[] = [];
   
-        if (!description.includes('expected')) {
+        const hasExpected = description.includes('expected');
+        const hasActual = description.includes('actual');
+        const hasTestData = testDataKeywords.some(kw => description.includes(kw));
+        
+        if (!hasExpected) {
           missingInfo.push("Missing 'Expected' keyword");
         }
-        if (!description.includes('actual')) {
+        if (!hasActual) {
           missingInfo.push("Missing 'Actual' keyword");
         }
-  
-        const hasTestData = testDataKeywords.some(kw => description.includes(kw));
         if (!hasTestData) {
           missingInfo.push("Missing Test Data ID");
         }
@@ -473,4 +475,5 @@ export function DashboardPage() {
   );
 }
 
+    
     
