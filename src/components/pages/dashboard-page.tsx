@@ -474,6 +474,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
-    
