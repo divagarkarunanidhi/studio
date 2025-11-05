@@ -183,14 +183,15 @@ export function DashboardPage() {
         const description = defect.description?.toLowerCase() || '';
         const status = defect.status?.toLowerCase() || '';
   
-        const isNotDone = status !== 'done';
-        if (!isNotDone) return null;
+        if (status === 'done') {
+          return null;
+        }
   
         const missingInfo: string[] = [];
   
         const hasExpected = description.includes('expected');
         const hasActual = description.includes('actual');
-        const hasTestData = testDataKeywords.some(kw => description.includes(kw));
+        const hasTestData = testDataKeywords.some(kw => description.includes(kw.toLowerCase()));
         
         if (!hasExpected) {
           missingInfo.push("Missing 'Expected' keyword");
