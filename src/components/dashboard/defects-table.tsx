@@ -70,7 +70,7 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                   <span className={cn(isUrgent && 'text-destructive font-semibold')}>{defect.summary}</span>
                 </TableCell>
                 {showDescription && (
-                  <TableCell className="text-xs text-muted-foreground max-w-sm truncate">
+                  <TableCell className="text-xs text-muted-foreground max-w-sm">
                     {defect.description}
                   </TableCell>
                 )}

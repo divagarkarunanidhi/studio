@@ -127,6 +127,8 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
                       obj['reported_by'] = value;
                   } else if (key === 'custom_field_business_domain') {
                       obj['domain'] = value;
+                  } else if (key === 'description') {
+                      obj['description'] = value;
                   }
                   else {
                       obj[key] = value;
@@ -244,5 +246,4 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
     </div>
   );
 }
-
     
