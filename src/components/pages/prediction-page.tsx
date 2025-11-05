@@ -134,6 +134,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                         <Table>
                         <TableHeader>
                             <TableRow>
+                            <TableHead>Defect ID</TableHead>
                             <TableHead>Summary</TableHead>
                             <TableHead>Reasoning</TableHead>
                             <TableHead>Actual / Predicted Severity</TableHead>
@@ -145,6 +146,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                             {isLoading
                             ? Array.from({ length: Math.min(filteredDefects.length, 3) || 1 }).map((_, i) => (
                                 <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-64" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
@@ -154,6 +156,16 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                 ))
                             : defectsWithPredictions.map((defect) => (
                                 <TableRow key={defect.id}>
+                                    <TableCell className="font-medium">
+                                        <a
+                                            href={`https://dhl2.atlassian.net/browse/${defect.id}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary hover:underline"
+                                        >
+                                            {defect.id}
+                                        </a>
+                                    </TableCell>
                                     <TableCell className="font-medium max-w-xs truncate">
                                         {defect.summary}
                                     </TableCell>
