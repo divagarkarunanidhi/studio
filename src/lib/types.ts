@@ -56,11 +56,12 @@ export type DefectPredictionOutput = z.infer<typeof DefectPredictionOutputSchema
 const ChartDataPointSchema = z.object({
     name: z.string(),
     count: z.number(),
+    defectIds: z.array(z.string()),
 });
 
 export const DefectSummaryOutputSchema = z.object({
-    rootCause: z.array(ChartDataPointSchema).describe("An array of objects representing defect counts grouped by their predicted root cause."),
-    defectArea: z.array(ChartDataPointSchema).describe("An array of objects representing defect counts grouped by their predicted functional area."),
+    rootCause: z.array(ChartDataPointSchema).describe("An array of objects representing defect counts and IDs grouped by their predicted root cause."),
+    defectArea: z.array(ChartDataPointSchema).describe("An array of objects representing defect counts and IDs grouped by their predicted functional area."),
 });
 
 export type DefectSummaryOutput = z.infer<typeof DefectSummaryOutputSchema>;

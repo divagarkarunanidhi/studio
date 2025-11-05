@@ -53,25 +53,33 @@ const defectSummaryFlow = ai.defineFlow(
         const { output } = await summaryPrompt({ defect });
         if (!output) {
           // Return a default/unknown category if prediction fails
-          return { rootCause: 'Unknown', functionalArea: 'Unknown' };
+          return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
         }
-        return output;
+        return { id: defect.id, ...output };
       })
     );
 
-    const rootCauseCounts = summaries.reduce((acc, { rootCause }) => {
-      acc[rootCause] = (acc[rootCause] || 0) + 1;
+    const rootCauseCounts = summaries.reduce((acc, { id, rootCause }) => {
+      if (!acc[rootCause]) {
+        acc[rootCause] = { count: 0, defectIds: [] };
+      }
+      acc[rootCause].count++;
+      acc[rootCause].defectIds.push(id);
       return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<string, { count: number; defectIds: string[] }>);
 
-    const defectAreaCounts = summaries.reduce((acc, { functionalArea }) => {
-        acc[functionalArea] = (acc[functionalArea] || 0) + 1;
+    const defectAreaCounts = summaries.reduce((acc, { id, functionalArea }) => {
+        if (!acc[functionalArea]) {
+          acc[functionalArea] = { count: 0, defectIds: [] };
+        }
+        acc[functionalArea].count++;
+        acc[functionalArea].defectIds.push(id);
         return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<string, { count: number; defectIds: string[] }>);
 
     return {
-        rootCause: Object.entries(rootCauseCounts).map(([name, count]) => ({ name, count })),
-        defectArea: Object.entries(defectAreaCounts).map(([name, count]) => ({ name, count })),
+        rootCause: Object.entries(rootCauseCounts).map(([name, data]) => ({ name, ...data })),
+        defectArea: Object.entries(defectAreaCounts).map(([name, data]) => ({ name, ...data })),
     };
   }
 );

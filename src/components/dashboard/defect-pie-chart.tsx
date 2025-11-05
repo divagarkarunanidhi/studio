@@ -16,9 +16,24 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Skeleton } from "../ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription
+} from "@/components/ui/dialog";
+import { ScrollArea } from "../ui/scroll-area";
+import { Badge } from "../ui/badge";
 
+interface ChartPoint {
+  name: string;
+  count: number;
+  defectIds: string[];
+}
 interface DefectPieChartProps {
-  data: { name: string; count: number }[];
+  data: ChartPoint[];
   title: string;
   description: string;
   isLoading: boolean;
@@ -114,13 +129,47 @@ export function DefectPieChart({
         </div>
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {data.map((item, index) => (
-            <div key={item.name} className="flex items-center gap-1">
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: COLORS[index % COLORS.length] }}
-              />
-              <span>{item.name} ({item.count})</span>
-            </div>
+            <Dialog key={item.name}>
+              <DialogTrigger asChild>
+                <div className="flex items-center gap-1 cursor-pointer hover:underline">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span>
+                    {item.name} (
+                    <span className="font-bold text-foreground">
+                      {item.count}
+                    </span>
+                    )
+                  </span>
+                </div>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Defects for: {item.name}</DialogTitle>
+                  <DialogDescription>
+                    {item.count} defect(s) fall under this category.
+                  </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-72 w-full rounded-md border">
+                    <div className="p-4 flex flex-wrap gap-2">
+                        {item.defectIds.map(id => (
+                            <Badge key={id} variant="secondary">
+                                <a
+                                    href={`https://dhl2.atlassian.net/browse/${id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline"
+                                >
+                                    {id}
+                                </a>
+                            </Badge>
+                        ))}
+                    </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
           ))}
         </div>
       </CardContent>
