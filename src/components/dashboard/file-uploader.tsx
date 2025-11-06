@@ -118,19 +118,18 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
                   }
 
                   const key = header as keyof Defect | 'issue_key' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
+                  
                   // Map headers to the Defect type
-                  if(key === 'issue_key') {
+                  if (key === 'issue_key') {
                       obj['id'] = value;
-                  } else if(key === 'created') {
+                  } else if (key === 'created') {
                       obj['created_at'] = value;
                   } else if (key === 'reporter') {
                       obj['reported_by'] = value;
                   } else if (key === 'custom_field_business_domain') {
                       obj['domain'] = value;
-                  } else if (key === 'description') {
-                      obj['description'] = value;
-                  }
-                  else {
+                  } else {
+                      // This will handle 'description', 'summary', 'status', etc.
                       obj[key] = value;
                   }
                   return obj;
