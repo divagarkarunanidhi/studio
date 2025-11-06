@@ -79,8 +79,8 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                       <TooltipTrigger asChild>
                         <span className={cn(isUrgent && 'text-destructive font-semibold')}>{defect.summary}</span>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="max-w-md">{defect.summary}</p>
+                      <TooltipContent className="max-w-md max-h-96 overflow-y-auto">
+                        <p className="whitespace-pre-wrap">{defect.summary}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TableCell>
@@ -90,8 +90,8 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                         <TooltipTrigger asChild>
                           <span>{defect.description || 'null'}</span>
                         </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-md whitespace-pre-wrap">{defect.description || 'null'}</p>
+                        <TooltipContent className="max-w-md max-h-96 overflow-y-auto">
+                          <p className="whitespace-pre-wrap">{defect.description || 'null'}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
