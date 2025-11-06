@@ -7,29 +7,60 @@ import { useToast } from '@/hooks/use-toast';
 import type { Defect } from '@/lib/types';
 import { Button } from '../ui/button';
 
-const parseCsvRow = (row: string): string[] => {
-  const result: string[] = [];
-  let currentField = '';
-  let inQuotes = false;
-  for (let i = 0; i < row.length; i++) {
-    const char = row[i];
-    if (char === '"') {
-      if (inQuotes && i + 1 < row.length && row[i + 1] === '"') {
-        currentField += '"';
-        i++; // Skip next quote
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === ',' && !inQuotes) {
-      result.push(currentField.trim());
-      currentField = '';
-    } else {
-      currentField += char;
+const parseCSV = (text: string): string[][] => {
+    const result: string[][] = [];
+    let currentRow: string[] = [];
+    let currentField = '';
+    let inQuotes = false;
+    let i = 0;
+
+    while (i < text.length) {
+        const char = text[i];
+
+        if (inQuotes) {
+            if (char === '"') {
+                // Check for escaped quote
+                if (i + 1 < text.length && text[i + 1] === '"') {
+                    currentField += '"';
+                    i++; // Skip the second quote
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                currentField += char;
+            }
+        } else {
+            if (char === '"') {
+                inQuotes = true;
+            } else if (char === ',') {
+                currentRow.push(currentField);
+                currentField = '';
+            } else if (char === '\n' || char === '\r') {
+                // End of row
+                currentRow.push(currentField);
+                result.push(currentRow);
+                currentRow = [];
+                currentField = '';
+                // Handle CRLF
+                if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
+                    i++;
+                }
+            } else {
+                currentField += char;
+            }
+        }
+        i++;
     }
-  }
-  result.push(currentField.trim());
-  return result;
+
+    // Add the last field and row if the file doesn't end with a newline
+    if (currentField || currentRow.length > 0) {
+        currentRow.push(currentField);
+        result.push(currentRow);
+    }
+    
+    return result.filter(row => row.length > 1 || (row.length === 1 && row[0].trim() !== ''));
 };
+
 
 // Function to parse flexible date formats
 const parseDate = (dateString: string): Date | null => {
@@ -76,12 +107,13 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
       reader.onload = (event) => {
         try {
           const text = event.target?.result as string;
-          const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+          const rows = parseCSV(text);
+
           if (rows.length < 2) {
             throw new Error('CSV file must have a header and at least one data row.');
           }
           
-          const headers = parseCsvRow(rows[0]).map(h => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
+          const headers = rows[0].map(h => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
 
           const requiredHeaders = ['issue_key', 'summary', 'created'];
           for(const requiredHeader of requiredHeaders) {
@@ -90,10 +122,9 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
             }
           }
 
-          const data = rows.slice(1).map((row, rowIndex) => {
+          const data = rows.slice(1).map((values, rowIndex) => {
             let currentHeader = '';
             try {
-                const values = parseCsvRow(row);
                 if (values.length > headers.length) {
                     console.warn(`Row ${rowIndex + 2} has more columns than headers (expected ${headers.length}, got ${values.length}). Truncating row.`);
                     values.length = headers.length;
@@ -128,8 +159,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
                       obj['reported_by'] = value;
                   } else if (key === 'custom_field_business_domain') {
                       obj['domain'] = value;
-                  } else {
-                      // This will handle 'description', 'summary', 'status', etc.
+                  } else if (Object.keys(DefectSchema.shape).includes(key)) {
                       obj[key] = value;
                   }
                   return obj;
@@ -245,4 +275,5 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
     </div>
   );
 }
+    
     
