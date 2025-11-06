@@ -164,7 +164,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
           });
         }
       };
-      reader.readAsText(file);
+      reader.readAsText(file, 'UTF-8');
     } else {
       toast({
         variant: 'destructive',
