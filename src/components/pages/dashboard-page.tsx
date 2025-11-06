@@ -177,6 +177,7 @@ export function DashboardPage() {
 
   const attentionDefects = useMemo(() => {
     const testDataKeywords = ['test data', 'order release id', 'shipment id', 'invoice id', 'taas202'];
+    const numericTestDataRegex = /\d{7,}/;
   
     return defects
       .map(defect => {
@@ -189,7 +190,9 @@ export function DashboardPage() {
   
         const hasExpected = description.includes('expected');
         const hasActual = description.includes('actual');
-        const hasTestData = testDataKeywords.some(kw => description.includes(kw.toLowerCase()));
+        const hasKeywordTestData = testDataKeywords.some(kw => description.includes(kw));
+        const hasNumericTestData = numericTestDataRegex.test(description);
+        const hasTestData = hasKeywordTestData || hasNumericTestData;
   
         if (hasExpected && hasActual && hasTestData) {
           return null;
@@ -474,3 +477,5 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
