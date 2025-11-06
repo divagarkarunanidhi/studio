@@ -463,7 +463,7 @@ export function DashboardPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <DefectsTable defects={attentionDefects} showAll showDescription />
+                        <DefectsTable defects={attentionDefects} showAll showDescription={true} />
                     </CardContent>
                 </Card>
             )}
