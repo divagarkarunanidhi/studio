@@ -74,10 +74,9 @@ function MultiSelect({
                         variant="secondary"
                         key={item}
                         className="mr-1 mb-1"
-                        onClick={(e) => handleUnselect(e, item)}
                     >
                         {options.find(opt => opt.value === item)?.label}
-                        <button
+                        <span
                           className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -89,9 +88,11 @@ function MultiSelect({
                             e.stopPropagation();
                           }}
                           onClick={(e) => handleUnselect(e, item)}
+                          role="button"
+                          tabIndex={0}
                         >
                           <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                        </button>
+                        </span>
                     </Badge>
                 ))
             ) : (
