@@ -193,11 +193,13 @@ export function DashboardPage() {
         const hasKeywordTestData = testDataKeywords.some(kw => description.includes(kw));
         const hasNumericTestData = numericTestDataRegex.test(description);
         const hasTestData = hasKeywordTestData || hasNumericTestData;
-  
-        if (hasExpected && hasActual && hasTestData) {
-          return null;
-        }
-  
+        
+        const hasGiven = description.includes('given');
+        const hasWhen = description.includes('when');
+        const hasThen = description.includes('then');
+        const cucumberCount = [hasGiven, hasWhen, hasThen].filter(Boolean).length;
+        const hasCucumberSteps = cucumberCount >= 2;
+
         const missingInfo: string[] = [];
         if (!hasExpected) {
           missingInfo.push("Missing 'Expected'");
@@ -207,6 +209,14 @@ export function DashboardPage() {
         }
         if (!hasTestData) {
           missingInfo.push("Missing Test Data ID");
+        }
+        if (hasCucumberSteps) {
+            missingInfo.push("cucumber steps present");
+        }
+        
+        // A defect requires attention if there's any reason in missingInfo.
+        if (missingInfo.length === 0) {
+            return null;
         }
         
         return { ...defect, reasonForAttention: missingInfo.join(', ') };
@@ -477,5 +487,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
