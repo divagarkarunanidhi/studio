@@ -6,6 +6,8 @@ import { UploadCloud, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Defect } from '@/lib/types';
 import { Button } from '../ui/button';
+import { DefectSchema } from '@/lib/types';
+
 
 const parseCSV = (text: string): string[][] => {
     const result: string[][] = [];
@@ -113,7 +115,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
             throw new Error('CSV file must have a header and at least one data row.');
           }
           
-          const headers = rows[0].map(h => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
+          let headers = rows[0].map(h => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
 
           const requiredHeaders = ['issue_key', 'summary', 'created'];
           for(const requiredHeader of requiredHeaders) {
@@ -148,7 +150,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
                     value = parsedDate ? parsedDate.toISOString() : '';
                   }
 
-                  const key = header as keyof Defect | 'issue_key' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' ;
+                  const key = header as keyof Defect | 'issue_key' | 'created' | 'reporter' | 'issue_type' | 'custom_field_business_domain' | 'description' ;
                   
                   // Map headers to the Defect type
                   if (key === 'issue_key') {
@@ -159,6 +161,8 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
                       obj['reported_by'] = value;
                   } else if (key === 'custom_field_business_domain') {
                       obj['domain'] = value;
+                  } else if (key === 'description') {
+                    obj['description'] = value;
                   } else if (Object.keys(DefectSchema.shape).includes(key)) {
                       obj[key] = value;
                   }
@@ -276,4 +280,6 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: Defect
   );
 }
     
+    
+
     
