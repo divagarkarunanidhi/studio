@@ -62,7 +62,6 @@ export function DashboardPage() {
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterReasons, setFilterReasons] = useState<string[]>([]);
   
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -224,25 +223,6 @@ export function DashboardPage() {
       })
       .filter((d): d is Defect & { reasonForAttention: string } => d !== null);
   }, [defects]);
-
-  const uniqueReasons = useMemo(() => {
-    const reasons = new Set<string>();
-    attentionDefects.forEach(defect => {
-        const defectReasons = defect.reasonForAttention?.split(', ') || [];
-        defectReasons.forEach(reason => reasons.add(reason));
-    });
-    return Array.from(reasons).sort().map(r => ({ value: r, label: r }));
-  }, [attentionDefects]);
-
-  const filteredAttentionDefects = useMemo(() => {
-    if (filterReasons.length === 0) {
-        return attentionDefects;
-    }
-    return attentionDefects.filter(defect => {
-        const defectReasons = defect.reasonForAttention?.split(', ') || [];
-        return filterReasons.every(filterReason => defectReasons.includes(filterReason));
-    });
-  }, [attentionDefects, filterReasons]);
   
   useEffect(() => {
     setCurrentPage(1);
@@ -250,7 +230,6 @@ export function DashboardPage() {
         setFilterDomain('all');
         setFilterReportedBy('all');
         setFilterStatus('all');
-        setFilterReasons([]);
     }
   }, [defects]);
 
@@ -492,22 +471,15 @@ export function DashboardPage() {
                     <CardHeader>
                         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                             <div>
-                                <CardTitle>{viewTitles['required-attention']} ({filteredAttentionDefects.length})</CardTitle>
+                                <CardTitle>{viewTitles['required-attention']} ({attentionDefects.length})</CardTitle>
                                 <CardDescription>
                                     These defects have a status other than "Done" and are missing one or more of the following: "Expected" and "Actual" keywords, or a test data ID in their description.
                                 </CardDescription>
                             </div>
-                            <MultiSelect 
-                                options={uniqueReasons}
-                                selected={filterReasons}
-                                onChange={setFilterReasons}
-                                placeholder="Filter by reason..."
-                                className="w-full sm:w-72"
-                            />
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <DefectsTable defects={filteredAttentionDefects} showAll showDescription={true} />
+                        <DefectsTable defects={attentionDefects} showAll showDescription={true} />
                     </CardContent>
                 </Card>
             )}
@@ -518,5 +490,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
