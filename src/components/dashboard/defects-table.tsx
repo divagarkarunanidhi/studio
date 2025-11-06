@@ -71,7 +71,7 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                 </TableCell>
                 {showDescription && (
                   <TableCell className="text-xs text-muted-foreground max-w-sm truncate">
-                    {defect.description || ''}
+                    {defect.description || 'null'}
                   </TableCell>
                 )}
                 {showReasonColumn && (
