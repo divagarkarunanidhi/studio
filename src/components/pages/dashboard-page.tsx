@@ -48,6 +48,7 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import Image from 'next/image';
+import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
@@ -61,6 +62,7 @@ export function DashboardPage() {
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterReasons, setFilterReasons] = useState<string[]>([]);
   
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -214,7 +216,6 @@ export function DashboardPage() {
             missingInfo.push("cucumber steps present");
         }
         
-        // A defect requires attention if there's any reason in missingInfo.
         if (missingInfo.length === 0) {
             return null;
         }
@@ -223,14 +224,33 @@ export function DashboardPage() {
       })
       .filter((d): d is Defect & { reasonForAttention: string } => d !== null);
   }, [defects]);
+
+  const uniqueReasons = useMemo(() => {
+    const reasons = new Set<string>();
+    attentionDefects.forEach(defect => {
+        const defectReasons = defect.reasonForAttention?.split(', ') || [];
+        defectReasons.forEach(reason => reasons.add(reason));
+    });
+    return Array.from(reasons).sort().map(r => ({ value: r, label: r }));
+  }, [attentionDefects]);
+
+  const filteredAttentionDefects = useMemo(() => {
+    if (filterReasons.length === 0) {
+        return attentionDefects;
+    }
+    return attentionDefects.filter(defect => {
+        const defectReasons = defect.reasonForAttention?.split(', ') || [];
+        return filterReasons.every(filterReason => defectReasons.includes(filterReason));
+    });
+  }, [attentionDefects, filterReasons]);
   
   useEffect(() => {
     setCurrentPage(1);
-    // Reset filters when new data is uploaded
     if(defects.length > 0) {
         setFilterDomain('all');
         setFilterReportedBy('all');
         setFilterStatus('all');
+        setFilterReasons([]);
     }
   }, [defects]);
 
@@ -470,13 +490,24 @@ export function DashboardPage() {
             {activeView === 'required-attention' && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>{viewTitles['required-attention']} ({attentionDefects.length})</CardTitle>
-                        <CardDescription>
-                            These defects have a status other than "Done" and are missing one or more of the following: "Expected" and "Actual" keywords, or a test data ID in their description.
-                        </CardDescription>
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                            <div>
+                                <CardTitle>{viewTitles['required-attention']} ({filteredAttentionDefects.length})</CardTitle>
+                                <CardDescription>
+                                    These defects have a status other than "Done" and are missing one or more of the following: "Expected" and "Actual" keywords, or a test data ID in their description.
+                                </CardDescription>
+                            </div>
+                            <MultiSelect 
+                                options={uniqueReasons}
+                                selected={filterReasons}
+                                onChange={setFilterReasons}
+                                placeholder="Filter by reason..."
+                                className="w-full sm:w-72"
+                            />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <DefectsTable defects={attentionDefects} showAll showDescription={true} />
+                        <DefectsTable defects={filteredAttentionDefects} showAll showDescription={true} />
                     </CardContent>
                 </Card>
             )}
@@ -487,3 +518,5 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
