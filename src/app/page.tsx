@@ -34,7 +34,7 @@ export default function Home() {
         toast({
             variant: 'destructive',
             title: 'Access Denied',
-            description: 'You do not have admin rights. Logging out.',
+            description: 'You do not have the required permissions. Logging out.',
         });
         const timer = setTimeout(async () => {
             await signOut(auth);
@@ -70,9 +70,9 @@ export default function Home() {
     );
   }
 
-  if (userProfile?.role === 'admin') {
+  if (userProfile?.role === 'admin' || userProfile?.role === 'taas') {
       return (
-          <DashboardPage />
+          <DashboardPage userRole={userProfile.role} />
       );
   }
 

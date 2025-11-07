@@ -153,7 +153,11 @@ const parseDate = (dateString: string): Date | null => {
     return null;
   }
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  userRole: 'admin' | 'taas' | 'user';
+}
+
+export function DashboardPage({ userRole }: DashboardPageProps) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
@@ -519,7 +523,7 @@ export function DashboardPage() {
                 <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
             </div>
           </div>
-          {uploadTimestamp && (
+          {uploadTimestamp && userRole === 'admin' && (
             <div className="flex items-center gap-4">
                 <ClientTimestamp timestamp={uploadTimestamp} />
                 <AlertDialog>
