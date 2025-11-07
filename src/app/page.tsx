@@ -1,4 +1,3 @@
-
 'use client';
 
 import { DashboardPage } from '@/components/pages/dashboard-page';
@@ -30,20 +29,31 @@ export default function Home() {
   }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    if (userProfile?.role === 'user') {
-        toast({
-            variant: 'destructive',
-            title: 'Access Denied',
-            description: 'You do not have the required permissions. Logging out.',
-        });
-        const timer = setTimeout(async () => {
-            await signOut(auth);
-            router.push('/login');
-        }, 3000); // 3-second delay before redirect
+    // This effect handles access denial for 'user' role or if profile doesn't exist after loading.
+    if (!isProfileLoading && user) {
+        const isDenied = userProfile?.role === 'user' || !userProfile;
+        if (isDenied) {
+            const description = userProfile
+              ? 'You do not have the required permissions. Logging out.'
+              : 'Your user profile was not found. Please contact an administrator.';
 
-        return () => clearTimeout(timer);
+            toast({
+                variant: 'destructive',
+                title: 'Access Denied',
+                description: description,
+            });
+
+            const timer = setTimeout(async () => {
+                if (auth) {
+                    await signOut(auth);
+                }
+                router.push('/login');
+            }, 3000); // 3-second delay
+
+            return () => clearTimeout(timer);
+        }
     }
-  }, [userProfile, auth, router, toast]);
+  }, [userProfile, isProfileLoading, user, auth, router, toast]);
 
   if (isUserLoading || isProfileLoading || !user) {
     return (
@@ -56,7 +66,13 @@ export default function Home() {
     );
   }
 
-  if (userProfile?.role === 'user') {
+  const role = userProfile?.role;
+
+  if (role === 'admin' || role === 'taas') {
+      return <DashboardPage userRole={role} />;
+  }
+  
+  if (role === 'user' || !userProfile) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background p-4">
             <div className="flex flex-col items-center gap-4 text-center">
@@ -70,18 +86,12 @@ export default function Home() {
     );
   }
 
-  if (userProfile?.role === 'admin' || userProfile?.role === 'taas') {
-      return (
-          <DashboardPage userRole={userProfile.role} />
-      );
-  }
-
-  // Fallback for when profile is loaded but role is not admin/user, or profile doesn't exist
+  // Fallback for unexpected scenarios
   return (
     <div className="flex h-screen w-full items-center justify-center">
         <div className="flex flex-col items-center gap-4">
             <Bug className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-muted-foreground">Verifying user role...</p>
+            <p className="text-muted-foreground">Verifying session...</p>
         </div>
     </div>
   );
