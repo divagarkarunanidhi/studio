@@ -2,16 +2,20 @@
 'use client';
 
 import { DashboardPage } from '@/components/pages/dashboard-page';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Bug, ShieldX } from 'lucide-react';
 import { doc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
+  const auth = useAuth();
+  const { toast } = useToast();
 
   const userProfileRef = useMemoFirebase(
     () => (user ? doc(firestore, 'users', user.uid) : null),
@@ -24,6 +28,22 @@ export default function Home() {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
+
+  useEffect(() => {
+    if (userProfile?.role === 'user') {
+        toast({
+            variant: 'destructive',
+            title: 'Access Denied',
+            description: 'You do not have admin rights. Logging out.',
+        });
+        const timer = setTimeout(async () => {
+            await signOut(auth);
+            router.push('/login');
+        }, 3000); // 3-second delay before redirect
+
+        return () => clearTimeout(timer);
+    }
+  }, [userProfile, auth, router, toast]);
 
   if (isUserLoading || isProfileLoading || !user) {
     return (
@@ -43,7 +63,7 @@ export default function Home() {
                 <ShieldX className="h-16 w-16 text-destructive" />
                 <h1 className="text-2xl font-bold">Access Denied</h1>
                 <p className="text-muted-foreground max-w-md">
-                    You do not have the required permissions to access the TaaS BugSense AI application. Please contact your administrator if you believe this is an error.
+                    You do not have the required permissions to access this application. You will be redirected to the login page.
                 </p>
             </div>
         </div>
