@@ -51,6 +51,17 @@ import { useToast } from '@/hooks/use-toast';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, writeBatch, doc, getDocs, query } from 'firebase/firestore';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog"
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
@@ -156,7 +167,7 @@ export function DashboardPage() {
 
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
 
-  const defects = useMemo(() => defectsFromHook, [defectsFromHook]);
+  const defects = defectsFromHook;
 
   useEffect(() => {
     if(!defectsLoading && defects && defects.length > 0) {
@@ -503,10 +514,27 @@ export function DashboardPage() {
           {uploadTimestamp && (
             <div className="flex items-center gap-4">
                 <ClientTimestamp timestamp={uploadTimestamp} />
-                <Button variant="outline" onClick={handleClearData}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Load New Data
-                </Button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="outline">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Clear and Upload New
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action will permanently delete all existing defect data from the server.
+                            You will need to upload a new CSV file.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleClearData}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
           )}
         </header>
@@ -663,7 +691,5 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
 
     
