@@ -67,8 +67,8 @@ export default function Home() {
   }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    // This effect handles access denial for 'user' role.
-    if (!isProfileLoading && user && userProfile?.role === 'user') {
+    // This effect handles access denial for 'user' or 'view' roles.
+    if (!isProfileLoading && user && (userProfile?.role === 'user' || userProfile?.role === 'view')) {
         toast({
             variant: 'destructive',
             title: 'Access Denied',
@@ -108,7 +108,7 @@ export default function Home() {
       return <DashboardPage userRole={role} />;
   }
   
-  // This UI will be shown briefly before the redirect logic in useEffect kicks in for the 'user' role.
+  // This UI will be shown briefly before the redirect logic in useEffect kicks in for restricted roles.
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background p-4">
         <div className="flex flex-col items-center gap-4 text-center">
@@ -121,4 +121,3 @@ export default function Home() {
     </div>
   );
 }
-

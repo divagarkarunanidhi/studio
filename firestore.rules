@@ -16,8 +16,9 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get, write: if isOwner(userId);
+      allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /TAASBugSenseAI/{fileId} {

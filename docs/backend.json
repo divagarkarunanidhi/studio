@@ -22,7 +22,7 @@
         "role": {
           "type": "string",
           "description": "The user's role in the application.",
-          "enum": ["admin", "user", "taas"]
+          "enum": ["admin", "taas", "view"]
         }
       },
       "required": ["id", "email", "role"]
