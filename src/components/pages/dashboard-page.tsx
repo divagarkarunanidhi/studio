@@ -487,12 +487,14 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
                 All Defects
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Required Attention" isActive={activeView === 'required-attention'} onClick={() => setActiveView('required-attention')}>
-                <AlertTriangle />
-                Required Attention
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {userRole === 'admin' && (
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Required Attention" isActive={activeView === 'required-attention'} onClick={() => setActiveView('required-attention')}>
+                  <AlertTriangle />
+                  Required Attention
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
