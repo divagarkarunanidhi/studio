@@ -539,7 +539,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
             </div>
           </div>
-          {uploadTimestamp && userRole === 'admin' && (
+          {uploadTimestamp && (userRole === 'admin' || userRole === 'taas') && (
             <div className="flex items-center gap-4">
                 <ClientTimestamp timestamp={uploadTimestamp} />
                 <AlertDialog>
@@ -576,7 +576,11 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <FileUploader onDataUploaded={handleDataUploaded} />
+                {(userRole === 'admin' || userRole === 'taas') ? (
+                    <FileUploader onDataUploaded={handleDataUploaded} />
+                ) : (
+                    <p className="text-destructive">You do not have permission to upload data.</p>
+                )}
                 <div className="flex flex-col items-center gap-2">
                     <span className="text-sm text-muted-foreground">OR</span>
                     <Button onClick={handleLoadFromServer}>

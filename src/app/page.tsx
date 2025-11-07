@@ -82,25 +82,6 @@ export default function Home() {
     }
   }, [user, isProfileLoading, userProfile, toast]);
 
-  useEffect(() => {
-    if (!isProfileLoading && user && userProfile?.role === 'view') {
-        toast({
-            variant: 'destructive',
-            title: 'Access Denied',
-            description: 'You do not have the required permissions to access this page. You will be logged out.',
-        });
-        
-        const performSignOut = async () => {
-            if (auth) {
-                await signOut(auth);
-            }
-            router.push('/login');
-        };
-
-        performSignOut();
-    }
-  }, [userProfile, isProfileLoading, user, auth, router, toast]);
-
   if (isUserLoading || (user && isProfileLoading)) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
@@ -112,24 +93,8 @@ export default function Home() {
     );
   }
   
-  if (userProfile?.role === 'admin' || userProfile?.role === 'taas') {
+  if (userProfile?.role) {
       return <DashboardPage userProfile={userProfile} />;
-  }
-  
-  if (userProfile?.role === 'view') {
-    // The useEffect hook for 'view' role will handle the redirection.
-    // We show a message while that happens.
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-transparent p-4">
-            <div className="flex flex-col items-center gap-4 text-center">
-                <ShieldX className="h-16 w-16 text-destructive" />
-                <h1 className="text-2xl font-bold">Access Denied</h1>
-                <p className="text-muted-foreground max-w-md">
-                    You do not have the required permissions. Redirecting to login...
-                </p>
-            </div>
-        </div>
-      );
   }
 
   // Fallback for when the user is authenticated but has no profile or role assigned yet.
