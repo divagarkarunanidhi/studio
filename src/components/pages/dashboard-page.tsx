@@ -71,13 +71,13 @@ export function DashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
 
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
 
 
   // Fetch data from Firestore on user load
   useEffect(() => {
-    if (user && firestore) {
+    if (user && firestore && !userLoading) {
       const fetchData = async () => {
         const defectDocRef = doc(firestore, 'defects', user.uid);
         try {
@@ -85,19 +85,21 @@ export function DashboardPage() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setDefects(data.defects || []);
-            setUploadTimestamp(data.uploadedAt || new Date().toISOString());
+            setUploadTimestamp(data.uploadedAt || null);
           }
         } catch (e: any) {
-          const permissionError = new FirestorePermissionError({
-            path: defectDocRef.path,
-            operation: 'get'
-          });
-          errorEmitter.emit('permission-error', permissionError);
+          // For a read operation, a console error is sufficient if it fails.
+          console.error("Error fetching defect data:", e);
+          toast({
+            variant: "destructive",
+            title: "Could not load data",
+            description: "There was an issue fetching your saved data from the server."
+          })
         }
       };
       fetchData();
     }
-  }, [user, firestore]);
+  }, [user, firestore, userLoading, toast]);
 
   const handleDataUploaded = (data: Defect[]) => {
     const timestamp = new Date().toISOString();
@@ -111,6 +113,7 @@ export function DashboardPage() {
           uploadedAt: timestamp,
         };
         const defectDocRef = doc(firestore, 'defects', user.uid);
+        
         setDoc(defectDocRef, defectData, { merge: true })
           .then(() => {
             toast({
@@ -119,6 +122,7 @@ export function DashboardPage() {
             });
           })
           .catch((e: any) => {
+            // This is where we create and emit the contextual permission error
             const permissionError = new FirestorePermissionError({
               path: defectDocRef.path,
               operation: 'write',
@@ -134,17 +138,16 @@ export function DashboardPage() {
     setUploadTimestamp(null);
     if (user && firestore) {
         const defectDocRef = doc(firestore, 'defects', user.uid);
-        try {
-            await setDoc(defectDocRef, { defects: [], uploadedAt: null });
-        } catch (error: any) {
+        setDoc(defectDocRef, { defects: [], uploadedAt: null }, { merge: true })
+          .catch((error: any) => {
             const permissionError = new FirestorePermissionError({
               path: defectDocRef.path,
               operation: 'delete'
             });
             errorEmitter.emit('permission-error', permissionError);
-        }
+        });
     }
-    toast({ title: "Data Cleared", description: "Your defect data has been cleared." });
+    toast({ title: "Data Cleared", description: "Your local data has been cleared. New data can be uploaded." });
   };
 
   const yesterdayDefectsCount = useMemo(() => {
