@@ -164,7 +164,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
-  const userRole = userProfile.role;
+  const userRole = userProfile?.role;
 
   const defectFilesColRef = useMemoFirebase(() => 
     user ? query(collection(firestore, 'TAASBugSenseAI'), orderBy('uploadedAt', 'desc'), limit(1)) : null, 
@@ -536,7 +536,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             <SidebarTrigger className="sm:hidden"/>
             <div>
                 <h1 className="text-xl font-semibold tracking-tight">
-                    {activeView === 'dashboard' && userProfile.username ? `Welcome, ${userProfile.username}!` : viewTitles[activeView]}
+                    {activeView === 'dashboard' && userProfile?.username ? `Welcome, ${userProfile.username}!` : viewTitles[activeView]}
                 </h1>
                 <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
             </div>

@@ -73,6 +73,23 @@ export default function Home() {
   }, [user, isUserLoading, router]);
 
   useEffect(() => {
+    if (user && !isProfileLoading && !userProfile) {
+        toast({
+            variant: 'destructive',
+            title: 'User Profile Not Found',
+            description: 'Your user profile was not found. Redirecting to login.',
+        });
+        const performSignOut = async () => {
+            if (auth) {
+                await signOut(auth);
+            }
+            router.push('/login');
+        };
+        performSignOut();
+    }
+  }, [user, isProfileLoading, userProfile, auth, router, toast]);
+
+  useEffect(() => {
     if (!isProfileLoading && user && userProfile?.role === 'view') {
         toast({
             variant: 'destructive',
@@ -90,23 +107,6 @@ export default function Home() {
         performSignOut();
     }
   }, [userProfile, isProfileLoading, user, auth, router, toast]);
-  
-  useEffect(() => {
-    if (user && !isProfileLoading && !userProfile) {
-        toast({
-            variant: 'destructive',
-            title: 'User Profile Not Found',
-            description: 'Your user profile was not found. Redirecting to login.',
-        });
-        const performSignOut = async () => {
-            if (auth) {
-                await signOut(auth);
-            }
-            router.push('/login');
-        };
-        performSignOut();
-    }
-  }, [user, isProfileLoading, userProfile, auth, router, toast]);
 
   if (isUserLoading || (user && isProfileLoading)) {
     return (
@@ -119,11 +119,10 @@ export default function Home() {
     );
   }
   
+  // This case handles when auth is complete, but the Firestore profile doc doesn't exist.
+  // The useEffect above will handle the redirection logic. We render a loading
+  // state while that happens.
   if (user && !userProfile) {
-    // This case handles when auth is complete, but the Firestore profile doc doesn't exist.
-    // This can happen on first login if the doc creation fails or is delayed.
-    // The useEffect above will handle the redirection logic. We render a loading
-    // state while that happens.
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -134,13 +133,11 @@ export default function Home() {
     );
   }
 
-  const role = userProfile?.role;
-
-  if (role === 'admin' || role === 'taas') {
+  if (userProfile?.role === 'admin' || userProfile?.role === 'taas') {
       return <DashboardPage userProfile={userProfile} />;
   }
   
-  if (role === 'view') {
+  if (userProfile?.role === 'view') {
     // The useEffect hook for 'view' role will handle the redirection.
     // We show a message while that happens.
     return (
