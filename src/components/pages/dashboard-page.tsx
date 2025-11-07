@@ -30,6 +30,7 @@ import {
   Upload,
   Server,
   LogOut,
+  Users,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -65,8 +66,9 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog"
+import { UserManagementPage } from './user-management-page';
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -316,7 +318,8 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
     'resolution-time': 'Resolution Time Analysis',
     'trend-analysis': 'Trend Analysis',
     summary: 'Defect Summary',
-    'required-attention': 'Defects Requiring Attention'
+    'required-attention': 'Defects Requiring Attention',
+    'user-management': 'User Management',
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -327,7 +330,8 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
     'resolution-time': 'Analysis of the time taken to resolve defects.',
     'trend-analysis': 'Visualize the creation of defects over time.',
     summary: 'AI-powered summary of defect root cause and functional area.',
-    'required-attention': 'Defects that are missing key information and are not yet done.'
+    'required-attention': 'Defects that are missing key information and are not yet done.',
+    'user-management': 'View and manage all users in the system.',
   };
 
   const uniqueDomains = useMemo(() => {
@@ -488,12 +492,20 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             {userRole === 'admin' && (
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Required Attention" isActive={activeView === 'required-attention'} onClick={() => setActiveView('required-attention')}>
-                  <AlertTriangle />
-                  Required Attention
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <>
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="Required Attention" isActive={activeView === 'required-attention'} onClick={() => setActiveView('required-attention')}>
+                    <AlertTriangle />
+                    Required Attention
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="User Management" isActive={activeView === 'user-management'} onClick={() => setActiveView('user-management')}>
+                    <Users />
+                    User Management
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
             )}
           </SidebarMenu>
         </SidebarContent>
@@ -612,6 +624,10 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
 
             {activeView === 'resolution-time' && (
               <ResolutionTimePage defects={defects} uniqueDomains={uniqueDomains} />
+            )}
+
+            {activeView === 'user-management' && (
+              <UserManagementPage />
             )}
 
             {activeView === 'all-defects' && (
