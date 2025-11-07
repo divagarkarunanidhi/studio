@@ -28,6 +28,7 @@ import {
   PieChart,
   AlertTriangle,
   Upload,
+  Server,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -167,7 +168,22 @@ export function DashboardPage() {
 
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
 
-  const defects = defectsFromHook;
+  const defects = defectsFromHook || [];
+
+  const handleLoadFromServer = useCallback(async () => {
+    if (!user || !firestore) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Cannot connect to server.' });
+      return;
+    }
+    const defectsQuery = query(collection(firestore, 'users', user.uid, 'defects'));
+    const querySnapshot = await getDocs(defectsQuery);
+    
+    if (querySnapshot.empty) {
+        toast({ title: "No Data Found", description: "There is no data stored on the server." });
+    } else {
+        toast({ title: "Data Loaded", description: `${querySnapshot.size} records loaded from the server.` });
+    }
+  }, [user, firestore, toast]);
 
   useEffect(() => {
     if(!defectsLoading && defects && defects.length > 0) {
@@ -244,7 +260,7 @@ export function DashboardPage() {
         });
         await batch.commit();
         
-        toast({ title: 'Success!', description: `${parsedDefects.length} records loaded.` });
+        toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded.` });
         setUploadTimestamp(new Date().toISOString());
         setActiveView('dashboard');
     } catch (error) {
@@ -539,16 +555,25 @@ export function DashboardPage() {
           )}
         </header>
 
-        {defects === null || defects.length === 0 ? (
+        {defects.length === 0 ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
                 <h2 className="text-2xl font-bold">Welcome!</h2>
                 <p className="mt-2 text-muted-foreground">
-                  To get started, please upload a CSV file containing your defect data.
+                  To get started, please upload a CSV file or load existing data from the server.
                 </p>
               </div>
-              <FileUploader onDataUploaded={handleDataUploaded} />
+              <div className="flex items-center gap-4">
+                <FileUploader onDataUploaded={handleDataUploaded} />
+                <div className="flex flex-col items-center gap-2">
+                    <span className="text-sm text-muted-foreground">OR</span>
+                    <Button onClick={handleLoadFromServer}>
+                        <Server className="mr-2 h-4 w-4" />
+                        Load from Server
+                    </Button>
+                </div>
+              </div>
             </div>
           </main>
         ) : (
@@ -691,5 +716,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
