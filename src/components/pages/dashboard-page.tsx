@@ -48,7 +48,7 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import { useUser, useAuth } from '@/firebase';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -128,7 +128,7 @@ export function DashboardPage() {
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
       console.error("Error during Google sign-in:", error);
       const errorMessage = error.message || "Could not sign in with Google.";
@@ -564,5 +564,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
