@@ -48,7 +48,7 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import { useUser, useAuth } from '@/firebase';
-import { GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -69,29 +69,9 @@ export function DashboardPage() {
   
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [isVerifying, setIsVerifying] = useState(true);
   const { user, loading: userLoading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
-
-  useEffect(() => {
-    async function checkRedirect() {
-      try {
-        await getRedirectResult(auth);
-        // The onAuthStateChanged listener in useUser will handle the user state update.
-      } catch (error: any) {
-        console.error("Error during redirect result processing:", error);
-        toast({
-          variant: "destructive",
-          title: "Sign-in Failed",
-          description: error.message || "An unexpected error occurred during sign-in.",
-        });
-      } finally {
-        setIsVerifying(false);
-      }
-    }
-    checkRedirect();
-  }, [auth]);
 
   useEffect(() => {
     if (user && firestore) {
@@ -103,7 +83,7 @@ export function DashboardPage() {
           setUploadTimestamp(data.uploadedAt || null);
         }
       });
-    } else if (!userLoading) { // Prevent clearing state while auth is loading
+    } else if (!userLoading) { 
       setDefects([]);
       setUploadTimestamp(null);
     }
@@ -123,7 +103,6 @@ export function DashboardPage() {
         toast({ variant: "destructive", title: "Error", description: "Could not save data to the server." });
       }
     } else {
-        // Fallback for non-logged in users (though UI should prevent this)
         console.warn("User not logged in. Data not saved to server.");
         toast({ variant: "destructive", title: "Not Signed In", description: "Please sign in to save your data." });
     }
@@ -148,10 +127,11 @@ export function DashboardPage() {
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
+      // We use signInWithRedirect which navigates the user to the Google sign-in page.
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      console.error("Error during Google sign-in:", error);
-      const errorMessage = error.message || "Could not sign in with Google.";
+      console.error("Error during Google sign-in redirect:", error);
+      const errorMessage = error.message || "Could not start sign-in with Google.";
       toast({ 
         variant: "destructive", 
         title: "Sign-in Failed", 
@@ -295,14 +275,17 @@ export function DashboardPage() {
     }
   }, [defects]);
 
-  if (userLoading || isVerifying) {
+  if (userLoading) {
+    // This state is now handled by the AuthHandler in FirebaseClientProvider,
+    // but we keep a minimal loader here as a fallback.
     return (
         <div className="flex h-screen items-center justify-center">
-            <p>Authenticating...</p>
+            <p>Loading Dashboard...</p>
         </div>
     );
   }
 
+  // If the user is not logged in after the initial check, show the sign-in page.
   if (!user) {
     return (
         <div className="flex h-screen items-center justify-center bg-background">
@@ -321,7 +304,7 @@ export function DashboardPage() {
     );
   }
 
-
+  // From here, we assume the user is logged in.
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
 
   const paginatedDefects = useMemo(() => {
