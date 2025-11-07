@@ -1,3 +1,4 @@
+
 'use client';
 
 import { DashboardPage } from '@/components/pages/dashboard-page';
@@ -34,33 +35,34 @@ export default function Home() {
         const isDenied = userProfile?.role === 'user' || !userProfile;
         if (isDenied) {
             const description = userProfile
-              ? 'You do not have the required permissions. Logging out.'
+              ? 'You do not have the required permissions to access this page.'
               : 'Your user profile was not found. Please contact an administrator.';
 
             toast({
                 variant: 'destructive',
                 title: 'Access Denied',
-                description: description,
+                description: `${description} You will be logged out.`,
             });
-
-            const timer = setTimeout(async () => {
+            
+            // Immediately sign out and redirect
+            const performSignOut = async () => {
                 if (auth) {
                     await signOut(auth);
                 }
                 router.push('/login');
-            }, 3000); // 3-second delay
+            };
 
-            return () => clearTimeout(timer);
+            performSignOut();
         }
     }
   }, [userProfile, isProfileLoading, user, auth, router, toast]);
 
-  if (isUserLoading || isProfileLoading || !user) {
+  if (isUserLoading || isProfileLoading || !user || !userProfile) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
                 <Bug className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-muted-foreground">Loading Defect Insights...</p>
+                <p className="text-muted-foreground">Verifying user role...</p>
             </div>
         </div>
     );
@@ -72,26 +74,15 @@ export default function Home() {
       return <DashboardPage userRole={role} />;
   }
   
-  if (role === 'user' || !userProfile) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center bg-background p-4">
-            <div className="flex flex-col items-center gap-4 text-center">
-                <ShieldX className="h-16 w-16 text-destructive" />
-                <h1 className="text-2xl font-bold">Access Denied</h1>
-                <p className="text-muted-foreground max-w-md">
-                    You do not have the required permissions to access this application. You will be redirected to the login page.
-                </p>
-            </div>
-        </div>
-    );
-  }
-
-  // Fallback for unexpected scenarios
+  // This UI will be shown briefly before the redirect logic in useEffect kicks in.
   return (
-    <div className="flex h-screen w-full items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-            <Bug className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-muted-foreground">Verifying session...</p>
+    <div className="flex h-screen w-full items-center justify-center bg-background p-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+            <ShieldX className="h-16 w-16 text-destructive" />
+            <h1 className="text-2xl font-bold">Access Denied</h1>
+            <p className="text-muted-foreground max-w-md">
+                You do not have the required permissions. Redirecting to login...
+            </p>
         </div>
     </div>
   );
