@@ -129,9 +129,14 @@ export function DashboardPage() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error during Google sign-in:", error);
-      toast({ variant: "destructive", title: "Sign-in Failed", description: "Could not sign in with Google." });
+      const errorMessage = error.message || "Could not sign in with Google.";
+      toast({ 
+        variant: "destructive", 
+        title: "Sign-in Failed", 
+        description: `Error: ${errorMessage}` 
+      });
     }
   };
 
@@ -559,3 +564,5 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
