@@ -95,9 +95,7 @@ const parseCSV = (text: string): string[][] => {
           currentField += char;
         }
       } else {
-        if (char === '"') {
-          inQuotes = true;
-        } else if (char === ',') {
+        if (char === ',') {
           currentRow.push(currentField);
           currentField = '';
         } else if (char === '\n' || char === '\r') {
@@ -493,21 +491,21 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 All Defects
               </SidebarMenuButton>
             </SidebarMenuItem>
+            {(userRole === 'admin' || userRole === 'taas') && (
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Required Attention" isActive={activeView === 'required-attention'} onClick={() => setActiveView('required-attention')}>
+                  <AlertTriangle />
+                  Required Attention
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
             {userRole === 'admin' && (
-              <>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Required Attention" isActive={activeView === 'required-attention'} onClick={() => setActiveView('required-attention')}>
-                    <AlertTriangle />
-                    Required Attention
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="User Management" isActive={activeView === 'user-management'} onClick={() => setActiveView('user-management')}>
-                    <Users />
-                    User Management
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </>
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="User Management" isActive={activeView === 'user-management'} onClick={() => setActiveView('user-management')}>
+                  <Users />
+                  User Management
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             )}
           </SidebarMenu>
         </SidebarContent>
