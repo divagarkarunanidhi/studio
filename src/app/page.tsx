@@ -5,10 +5,47 @@ import { DashboardPage } from '@/components/pages/dashboard-page';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Bug, ShieldX } from 'lucide-react';
+import { Bug, ShieldX, LogOut } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+
+function WelcomePage() {
+  const auth = useAuth();
+  
+  const handleLogout = async () => {
+    if (auth) {
+      await signOut(auth);
+    }
+  };
+
+  return (
+    <div className="flex h-screen w-full items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Welcome!</CardTitle>
+          <CardDescription>
+            Your account is authenticated, but your user profile is not yet set up.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">
+            Please contact an administrator to have a role assigned to your account.
+            Without a role, you will not be able to access the application.
+          </p>
+        </CardContent>
+        <CardFooter>
+          <Button variant="outline" onClick={handleLogout} className="w-full">
+            <LogOut className="mr-2 h-4 w-4" />
+            Log Out
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
+  )
+}
 
 export default function Home() {
   const { user, isUserLoading } = useUser();
@@ -30,34 +67,27 @@ export default function Home() {
   }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    // This effect handles access denial for 'user' role or if profile doesn't exist after loading.
-    if (!isProfileLoading && user) {
-        const isDenied = userProfile?.role === 'user' || !userProfile;
-        if (isDenied) {
-            const description = userProfile
-              ? 'You do not have the required permissions to access this page.'
-              : 'Your user profile was not found. Please contact an administrator.';
+    // This effect handles access denial for 'user' role.
+    if (!isProfileLoading && user && userProfile?.role === 'user') {
+        toast({
+            variant: 'destructive',
+            title: 'Access Denied',
+            description: 'You do not have the required permissions to access this page. You will be logged out.',
+        });
+        
+        // Immediately sign out and redirect
+        const performSignOut = async () => {
+            if (auth) {
+                await signOut(auth);
+            }
+            router.push('/login');
+        };
 
-            toast({
-                variant: 'destructive',
-                title: 'Access Denied',
-                description: `${description} You will be logged out.`,
-            });
-            
-            // Immediately sign out and redirect
-            const performSignOut = async () => {
-                if (auth) {
-                    await signOut(auth);
-                }
-                router.push('/login');
-            };
-
-            performSignOut();
-        }
+        performSignOut();
     }
   }, [userProfile, isProfileLoading, user, auth, router, toast]);
 
-  if (isUserLoading || isProfileLoading || !user || !userProfile) {
+  if (isUserLoading || isProfileLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -67,6 +97,10 @@ export default function Home() {
         </div>
     );
   }
+  
+  if (user && !userProfile) {
+    return <WelcomePage />;
+  }
 
   const role = userProfile?.role;
 
@@ -74,7 +108,7 @@ export default function Home() {
       return <DashboardPage userRole={role} />;
   }
   
-  // This UI will be shown briefly before the redirect logic in useEffect kicks in.
+  // This UI will be shown briefly before the redirect logic in useEffect kicks in for the 'user' role.
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background p-4">
         <div className="flex flex-col items-center gap-4 text-center">
@@ -87,3 +121,4 @@ export default function Home() {
     </div>
   );
 }
+
