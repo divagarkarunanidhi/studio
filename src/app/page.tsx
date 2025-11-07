@@ -90,6 +90,23 @@ export default function Home() {
         performSignOut();
     }
   }, [userProfile, isProfileLoading, user, auth, router, toast]);
+  
+  useEffect(() => {
+    if (user && !isProfileLoading && !userProfile) {
+        toast({
+            variant: 'destructive',
+            title: 'User Profile Not Found',
+            description: 'Your user profile was not found. Redirecting to login.',
+        });
+        const performSignOut = async () => {
+            if (auth) {
+                await signOut(auth);
+            }
+            router.push('/login');
+        };
+        performSignOut();
+    }
+  }, [user, isProfileLoading, userProfile, auth, router, toast]);
 
   if (isUserLoading || (user && isProfileLoading)) {
     return (
@@ -105,21 +122,8 @@ export default function Home() {
   if (user && !userProfile) {
     // This case handles when auth is complete, but the Firestore profile doc doesn't exist.
     // This can happen on first login if the doc creation fails or is delayed.
-    toast({
-        variant: 'destructive',
-        title: 'User Profile Not Found',
-        description: 'Your user profile was not found. Please contact an administrator or sign up again.',
-    });
-    
-    const performSignOut = async () => {
-        if (auth) {
-            await signOut(auth);
-        }
-        router.push('/login');
-    };
-    performSignOut();
-    
-    // Render a loading state while redirecting
+    // The useEffect above will handle the redirection logic. We render a loading
+    // state while that happens.
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -136,15 +140,22 @@ export default function Home() {
       return <DashboardPage userProfile={userProfile} />;
   }
   
-  return (
-    <div className="flex h-screen w-full items-center justify-center bg-background p-4">
-        <div className="flex flex-col items-center gap-4 text-center">
-            <ShieldX className="h-16 w-16 text-destructive" />
-            <h1 className="text-2xl font-bold">Access Denied</h1>
-            <p className="text-muted-foreground max-w-md">
-                You do not have the required permissions. Redirecting to login...
-            </p>
+  if (role === 'view') {
+    // The useEffect hook for 'view' role will handle the redirection.
+    // We show a message while that happens.
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background p-4">
+            <div className="flex flex-col items-center gap-4 text-center">
+                <ShieldX className="h-16 w-16 text-destructive" />
+                <h1 className="text-2xl font-bold">Access Denied</h1>
+                <p className="text-muted-foreground max-w-md">
+                    You do not have the required permissions. Redirecting to login...
+                </p>
+            </div>
         </div>
-    </div>
-  );
+      );
+  }
+
+  // Fallback for when the user is authenticated but has no profile or role assigned yet.
+  return <WelcomePage />;
 }
