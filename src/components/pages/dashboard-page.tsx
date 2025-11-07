@@ -48,6 +48,9 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase/auth/use-user';
+import { doc, setDoc, getDoc, Firestore } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
@@ -66,22 +69,67 @@ export function DashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
 
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-  const handleDataUploaded = (data: Defect[]) => {
+
+  // Fetch data from Firestore on user load
+  useEffect(() => {
+    if (user && firestore) {
+      const fetchData = async () => {
+        const defectDocRef = doc(firestore, 'defects', user.uid);
+        const docSnap = await getDoc(defectDocRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setDefects(data.defects || []);
+          setUploadTimestamp(data.uploadedAt || new Date().toISOString());
+        }
+      };
+      fetchData();
+    }
+  }, [user, firestore]);
+
+  const handleDataUploaded = async (data: Defect[]) => {
     const timestamp = new Date().toISOString();
     setDefects(data);
     setUploadTimestamp(timestamp);
     setActiveView('dashboard');
-    toast({
-        title: "Data Loaded",
-        description: "Your defect data has been loaded into the browser.",
-      });
+    
+    if (user && firestore) {
+        const defectData = {
+          defects: data,
+          uploadedAt: timestamp,
+        };
+        const defectDocRef = doc(firestore, 'defects', user.uid);
+        try {
+            await setDoc(defectDocRef, defectData, { merge: true });
+            toast({
+                title: "Data Saved!",
+                description: "Your defect data has been securely saved to the server.",
+            });
+        } catch (error) {
+            console.error("Error saving data to Firestore:", error);
+            toast({
+                variant: 'destructive',
+                title: "Save Failed",
+                description: "Could not save your data to the server. Working with local data instead.",
+            });
+        }
+    }
   };
 
-  const handleClearData = () => {
+  const handleClearData = async () => {
     setDefects([]);
     setUploadTimestamp(null);
-    toast({ title: "Data Cleared", description: "Your defect data has been cleared from the browser." });
+    if (user && firestore) {
+        const defectDocRef = doc(firestore, 'defects', user.uid);
+        try {
+            await setDoc(defectDocRef, { defects: [], uploadedAt: null });
+        } catch (error) {
+            console.error("Error clearing data in Firestore:", error);
+        }
+    }
+    toast({ title: "Data Cleared", description: "Your defect data has been cleared." });
   };
 
   const yesterdayDefectsCount = useMemo(() => {
@@ -219,7 +267,6 @@ export function DashboardPage() {
   }, [defects]);
 
 
-  // From here, we assume the user is logged in.
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
 
   const paginatedDefects = useMemo(() => {
