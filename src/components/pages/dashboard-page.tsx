@@ -161,7 +161,9 @@ export function DashboardPage() {
   );
   const { data: defectFiles, isLoading: defectsLoading } = useCollection<{uploadedAt: string, defects: Defect[]}>(defectFilesColRef);
   
-  const [defects, setDefects] = useState<Defect[]>([]);
+  const defects = useMemo(() => defectFiles?.[0]?.defects ?? [], [defectFiles]);
+  const uploadTimestamp = useMemo(() => defectFiles?.[0]?.uploadedAt ?? null, [defectFiles]);
+
   const [activeView, setActiveView] = useState<View>('dashboard');
   
   const [filterDomain, setFilterDomain] = useState<string>('all');
@@ -171,38 +173,32 @@ export function DashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
 
-  const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
   const [showUploader, setShowUploader] = useState(false);
 
   useEffect(() => {
-    if (defectFiles && defectFiles.length > 0 && defectFiles[0].defects) {
-      setDefects(defectFiles[0].defects);
-      setUploadTimestamp(defectFiles[0].uploadedAt);
-      setShowUploader(false);
-    } else if (!defectsLoading && (!defectFiles || defectFiles.length === 0)) {
-        setDefects([]);
-        setUploadTimestamp(null);
+    if (!defectsLoading && (!defectFiles || defectFiles.length === 0)) {
         setShowUploader(true);
+    } else if (!defectsLoading && defectFiles && defectFiles.length > 0) {
+        setShowUploader(false);
     }
   }, [defectFiles, defectsLoading]);
-
 
   const handleLoadFromServer = useCallback(async () => {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Error', description: 'Cannot connect to server.' });
       return;
     }
+    // The useCollection hook already loads the data. This button is for user feedback.
     const defectsQuery = query(collection(firestore, 'users', user.uid, 'defect_files'), orderBy('uploadedAt', 'desc'), limit(1));
     const querySnapshot = await getDocs(defectsQuery);
     
     if (querySnapshot.empty) {
         toast({ title: "No Data Found", description: "There is no data stored on the server." });
+        setShowUploader(true); // Stay on the uploader view
     } else {
         const latestFile = querySnapshot.docs[0].data();
-        setDefects(latestFile.defects || []);
-        setUploadTimestamp(latestFile.uploadedAt);
-        setShowUploader(false);
         toast({ title: "Data Loaded", description: `${(latestFile.defects || []).length} records loaded from the server.` });
+        setShowUploader(false); // Switch to dashboard view
     }
   }, [user, firestore, toast]);
 
@@ -264,8 +260,6 @@ export function DashboardPage() {
         
         toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded in a new file.` });
         
-        setDefects(parsedDefects);
-        setUploadTimestamp(fileDoc.uploadedAt);
         setShowUploader(false);
     } catch (error) {
         console.error('Error during defect upload:', error);
@@ -540,7 +534,7 @@ export function DashboardPage() {
           )}
         </header>
 
-        {(showUploader || (defects && defects.length === 0 && !defectsLoading)) ? (
+        {(showUploader || (defects.length === 0 && !defectsLoading)) ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
