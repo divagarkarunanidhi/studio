@@ -143,7 +143,7 @@ export function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const defectsColRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'defects') : null, [firestore, user]);
-  const { data: defects, isLoading: defectsLoading } = useCollection<Defect>(defectsColRef);
+  const { data: defectsFromHook, isLoading: defectsLoading } = useCollection<Defect>(defectsColRef);
 
   const [activeView, setActiveView] = useState<View>('dashboard');
   
@@ -156,21 +156,12 @@ export function DashboardPage() {
 
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
 
+  const defects = useMemo(() => defectsFromHook || [], [defectsFromHook]);
+
   useEffect(() => {
-    if(defects && defects.length > 0 && !defectsLoading) {
-        const latestDefect = defects.reduce((latest, current) => {
-            try {
-                const latestDate = latest ? parseISO(latest.created_at) : new Date(0);
-                const currentDate = parseISO(current.created_at);
-                return currentDate > latestDate ? current : latest;
-            } catch {
-                return latest;
-            }
-        }, null as Defect | null);
-        if(latestDefect) {
-            setUploadTimestamp(new Date().toISOString());
-        }
-    } else if (defects && defects.length === 0) {
+    if(!defectsLoading && defects.length > 0) {
+        setUploadTimestamp(new Date().toISOString());
+    } else if (!defectsLoading && defects.length === 0) {
         setUploadTimestamp(null);
     }
   }, [defects, defectsLoading]);
@@ -660,3 +651,5 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
