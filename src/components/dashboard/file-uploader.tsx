@@ -5,9 +5,8 @@ import React, { useState, useCallback } from 'react';
 import { UploadCloud, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '../ui/button';
-import { uploadDefects } from '@/app/actions';
 
-export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: { count: number; timestamp?: string }) => void; }) {
+export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: string) => void; }) {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
@@ -17,18 +16,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: { coun
       reader.onload = async (event) => {
         try {
           const text = event.target?.result as string;
-          
-          const result = await uploadDefects(text);
-
-          if (result.success) {
-            toast({
-              title: 'Success!',
-              description: `${result.count} records loaded from ${file.name}.`,
-            });
-            onDataUploaded({count: result.count, timestamp: result.timestamp});
-          } else {
-            throw new Error(result.error);
-          }
+          onDataUploaded(text);
         } catch (error) {
           toast({
             variant: 'destructive',

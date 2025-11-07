@@ -1,162 +1,21 @@
-/**
- * @fileoverview Firestore Security Rules for the Defect Insights Dashboard.
- *
- * Core Philosophy:
- * This ruleset enforces a user-ownership model for defects, domains, reporters, and assignees,
- * where users can create, read, update, and delete their own data. Public read access is allowed for
- * defects, but only the uploader can modify or delete them. This promotes collaboration while
- * maintaining data integrity and security. The user collection is secured for the owner.
- *
- * Data Structure:
- * - /users/{userId}: Stores user-specific data.
- * - /defects/{defectId}: Stores defect information, including an `uploaderId` field for ownership.
- * - /domains/{domainId}: Stores domain information.
- * - /reporters/{reporterId}: Stores reporter information.
- * - /assignees/{assigneeId}: Stores assignee information.
- *
- * Key Security Decisions:
- * - Users can only manage their own user data.
- * - Defects are publicly readable, but only the uploader can modify them.
- * - Domains, reporters, and assignees are only manageable by their owner.
- * - Data validation is minimal for rapid prototyping, focusing on authorization.
- *
- * Denormalization for Authorization:
- * - The `defects` collection includes an `uploaderId` field to track ownership. This allows for efficient
- *   authorization checks without requiring additional reads.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * @description Checks if the user is signed in.
-     * @path N/A (Helper Function)
-     * @allow N/A (Helper Function)
-     * @deny N/A (Helper Function)
-     * @principle Verifies user authentication.
-     */
+    
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user is the owner of the document.
-     * @path N/A (Helper Function)
-     * @allow N/A (Helper Function)
-     * @deny N/A (Helper Function)
-     * @principle Enforces document ownership.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Checks if the authenticated user is the uploader of the defect.
-     * @path N/A (Helper Function)
-     * @allow N/A (Helper Function)
-     * @deny N/A (Helper Function)
-     * @principle Enforces defect ownership based on uploaderId.
-     */
-    function isDefectUploader(uploaderId) {
-        return isSignedIn() && request.auth.uid == uploaderId;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the existing owner of the document.
-     * @path N/A (Helper Function)
-     * @allow N/A (Helper Function)
-     * @deny N/A (Helper Function)
-     * @principle Enforces document ownership and existence for updates/deletes.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-
-    /**
-     * @description Manages user-specific data.
-     * @path /users/{userId}
-     * @allow (create) User with UID 'user_abc' creates their own profile.
-     * @allow (get, list, update, delete) User with UID 'user_abc' accesses their own profile.
-     * @deny (create) User with UID 'user_abc' tries to create a profile for 'user_xyz'.
-     * @deny (get, list, update, delete) User with UID 'user_abc' tries to access 'user_xyz' profile.
-     * @principle Restricts access to a user's own data tree.
-     */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
-    /**
-     * @description Manages defect data.
-     * @path /defects/{defectId}
-     * @allow (get, list) Any user can read defect data.
-     * @allow (create) User with UID 'user_abc' creates a defect with uploaderId 'user_abc'.
-     * @allow (update, delete) User with UID 'user_abc' updates/deletes a defect with uploaderId 'user_abc'.
-     * @deny (create) User with UID 'user_abc' creates a defect with uploaderId 'user_xyz'.
-     * @deny (update, delete) User with UID 'user_abc' tries to update/delete a defect with uploaderId 'user_xyz'.
-     * @principle Allows public read access but restricts write access to the uploader.
-     */
-    match /defects/{defectId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn() && request.resource.data.reporterId != null;
-      allow update: if isSignedIn() && isDefectUploader(resource.data.reporterId) && resource != null;
-      allow delete: if isSignedIn() && isDefectUploader(resource.data.reporterId) && resource != null;
-    }
-
-    /**
-     * @description Manages domain data.
-     * @path /domains/{domainId}
-     * @allow (create) User with UID 'user_abc' creates a domain.
-     * @allow (get, list, update, delete) User with UID 'user_abc' accesses/modifies their own domain.
-     * @deny (create) User with UID 'user_abc' tries to create a domain for 'user_xyz'.
-     * @deny (get, list, update, delete) User with UID 'user_abc' tries to access 'user_xyz' domain.
-     * @principle Restricts access to a user's own domain data.
-     */
-    match /domains/{domainId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Manages reporter data.
-     * @path /reporters/{reporterId}
-     * @allow (create) User with UID 'user_abc' creates a reporter.
-     * @allow (get, list, update, delete) User with UID 'user_abc' accesses/modifies their own reporter.
-     * @deny (create) User with UID 'user_abc' tries to create a reporter for 'user_xyz'.
-     * @deny (get, list, update, delete) User with UID 'user_abc' tries to access 'user_xyz' reporter.
-     * @principle Restricts access to a user's own reporter data.
-     */
-    match /reporters/{reporterId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Manages assignee data.
-     * @path /assignees/{assigneeId}
-     * @allow (create) User with UID 'user_abc' creates an assignee.
-     * @allow (get, list, update, delete) User with UID 'user_abc' accesses/modifies their own assignee.
-     * @deny (create) User with UID 'user_abc' tries to create an assignee for 'user_xyz'.
-     * @deny (get, list, update, delete) User with UID 'user_abc' tries to access 'user_xyz' assignee.
-     * @principle Restricts access to a user's own assignee data.
-     */
-    match /assignees/{assigneeId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+    match /users/{userId}/defects/{defectId} {
+      allow read, create, update, delete: if isOwner(userId);
     }
   }
 }

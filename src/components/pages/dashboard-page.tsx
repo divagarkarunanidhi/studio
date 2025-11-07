@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Defect } from '@/lib/types';
 import {
   SidebarProvider,
@@ -48,22 +48,104 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { clearDefects, getDefects } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, writeBatch, doc, getDocs, query, limit } from 'firebase/firestore';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
 const RECORDS_PER_PAGE = 50;
 
-interface DashboardPageProps {
-    initialDefects: Defect[];
-    initialTimestamp: string | null;
-}
+const parseCSV = (text: string): string[][] => {
+    const result: string[][] = [];
+    let currentRow: string[] = [];
+    let currentField = '';
+    let inQuotes = false;
+    let i = 0;
+  
+    while (i < text.length) {
+      const char = text[i];
+  
+      if (inQuotes) {
+        if (char === '"') {
+          if (i + 1 < text.length && text[i + 1] === '"') {
+            currentField += '"';
+            i++; // Skip the second quote
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          currentField += char;
+        }
+      } else {
+        if (char === '"') {
+          inQuotes = true;
+        } else if (char === ',') {
+          currentRow.push(currentField);
+          currentField = '';
+        } else if (char === '\n' || char === '\r') {
+          currentRow.push(currentField);
+          result.push(currentRow);
+          currentRow = [];
+          currentField = '';
+          if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
+            i++;
+          }
+        } else {
+          currentField += char;
+        }
+      }
+      i++;
+    }
+  
+    if (currentField || currentRow.length > 0) {
+      currentRow.push(currentField);
+      result.push(currentRow);
+    }
+  
+    return result.filter(
+      (row) => row.length > 1 || (row.length === 1 && row[0].trim() !== '')
+    );
+};
 
-export function DashboardPage({ initialDefects, initialTimestamp }: DashboardPageProps) {
-  const [defects, setDefects] = useState<Defect[]>(initialDefects);
-  const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(initialTimestamp);
+const parseDate = (dateString: string): Date | null => {
+    if (!dateString) return null;
+    let date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+    const parts = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\s+([AP]M)/);
+    if (parts) {
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const year = parseInt(parts[3], 10);
+      let hour = parseInt(parts[4], 10);
+      const minute = parseInt(parts[5], 10);
+      const second = parseInt(parts[6], 10);
+      const ampm = parts[7];
+  
+      if (ampm === 'PM' && hour < 12) {
+        hour += 12;
+      }
+      if (ampm === 'AM' && hour === 12) {
+        hour = 0;
+      }
+      date = new Date(year, month, day, hour, minute, second);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+  
+    return null;
+  }
+
+export function DashboardPage() {
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const defectsColRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'defects') : null, [firestore, user]);
+  const { data: defects = [], isLoading: defectsLoading } = useCollection<Defect>(defectsColRef);
+
   const [activeView, setActiveView] = useState<View>('dashboard');
   
   const [filterDomain, setFilterDomain] = useState<string>('all');
@@ -74,26 +156,116 @@ export function DashboardPage({ initialDefects, initialTimestamp }: DashboardPag
   const { toast } = useToast();
   const router = useRouter();
 
+  const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
 
-  const handleDataUploaded = async ({ timestamp }: { count: number; timestamp?: string }) => {
-    const { defects: newDefects, timestamp: newTimestamp } = await getDefects();
-    setDefects(newDefects);
-    if (newTimestamp) {
-        setUploadTimestamp(newTimestamp);
+  useEffect(() => {
+    if(defects.length > 0 && !defectsLoading) {
+        const latestDefect = defects.reduce((latest, current) => {
+            try {
+                const latestDate = latest ? parseISO(latest.created_at) : new Date(0);
+                const currentDate = parseISO(current.created_at);
+                return currentDate > latestDate ? current : latest;
+            } catch {
+                return latest;
+            }
+        }, null as Defect | null);
+        if(latestDefect) {
+            setUploadTimestamp(new Date().toISOString());
+        }
+    } else if (defects.length === 0) {
+        setUploadTimestamp(null);
     }
-    setActiveView('dashboard');
-  };
+  }, [defects, defectsLoading]);
+
+  const handleDataUploaded = useCallback(async (csvText: string) => {
+    if (!user || !firestore) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'User not authenticated. Cannot upload data.'
+        });
+        return;
+    }
+    try {
+        const rows = parseCSV(csvText);
+        if (rows.length < 2) throw new Error('CSV must have a header and at least one data row.');
+
+        let headers = rows[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
+        const requiredHeaders = ['issue_key', 'summary', 'created'];
+        for (const requiredHeader of requiredHeaders) {
+            if (!headers.includes(requiredHeader)) throw new Error(`CSV must include headers: ${requiredHeaders.join(', ')}. Missing: "${requiredHeader}"`);
+        }
+
+        const parsedDefects = rows.slice(1).map((values, rowIndex) => {
+            let currentHeader = '';
+            try {
+                const defectObj: any = headers.reduce((obj, header, index) => {
+                    currentHeader = header;
+                    let value = values[index] || '';
+
+                    if (header === 'created' || header === 'updated') {
+                        const parsedDate = parseDate(value);
+                        if (!parsedDate && header === 'created') throw new Error(`Invalid date in '${header}'.`);
+                        value = parsedDate ? parsedDate.toISOString() : '';
+                    }
+                    const keyMap = { 'issue_key': 'id', 'created': 'created_at', 'reporter': 'reported_by', 'custom_field_business_domain': 'domain' };
+                    const mappedKey = keyMap[header] || header;
+
+                    obj[mappedKey] = value;
+                    return obj;
+                }, {} as any);
+                
+                if (!defectObj.id || !defectObj.summary || !defectObj.created_at) return null;
+                
+                return { ...defectObj, uploaderId: user.uid };
+            } catch (cellError: any) {
+                throw new Error(`Error in row ${rowIndex + 2} at "${currentHeader}": ${cellError.message}`);
+            }
+        }).filter((d): d is Defect => d !== null);
+
+        if (parsedDefects.length === 0) throw new Error('No valid defect data found.');
+        
+        const batch = writeBatch(firestore);
+        parsedDefects.forEach(defect => {
+            const docRef = doc(firestore, 'users', user.uid, 'defects', defect.id);
+            batch.set(docRef, defect);
+        });
+        await batch.commit();
+        
+        toast({ title: 'Success!', description: `${parsedDefects.length} records loaded.` });
+        setUploadTimestamp(new Date().toISOString());
+        setActiveView('dashboard');
+    } catch (error) {
+        console.error('Error during defect upload:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Error processing file',
+            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+    }
+  }, [user, firestore, toast]);
 
   const handleClearData = async () => {
-    const result = await clearDefects();
-    if(result.success) {
-        setDefects([]);
+    if (!user || !firestore) return;
+    
+    const defectsQuery = query(collection(firestore, 'users', user.uid, 'defects'));
+    const querySnapshot = await getDocs(defectsQuery);
+    
+    if(querySnapshot.empty) {
         setUploadTimestamp(null);
-        toast({ title: "Data Cleared", description: "Your data has been cleared from the server." });
-        router.refresh();
-    } else {
-        toast({ variant: 'destructive', title: "Error", description: result.error });
+        toast({ title: "No Data to Clear", description: "There is no data to clear." });
+        return;
     }
+
+    const batch = writeBatch(firestore);
+    querySnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    setUploadTimestamp(null);
+    toast({ title: "Data Cleared", description: "Your data has been cleared." });
+    setActiveView('dashboard');
   };
 
   const yesterdayDefectsCount = useMemo(() => {
@@ -220,12 +392,6 @@ export function DashboardPage({ initialDefects, initialTimestamp }: DashboardPag
       })
       .filter((d): d is Defect & { reasonForAttention: string } => d !== null);
   }, [defects]);
-  
-  useEffect(() => {
-    setDefects(initialDefects);
-    setUploadTimestamp(initialTimestamp);
-  }, [initialDefects, initialTimestamp]);
-
 
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
 
@@ -235,6 +401,16 @@ export function DashboardPage({ initialDefects, initialTimestamp }: DashboardPag
     return filteredDefects.slice(startIndex, endIndex);
   }, [filteredDefects, currentPage]);
 
+  if (isUserLoading || (user && defectsLoading)) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <Bug className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-muted-foreground">Loading Defect Insights...</p>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <SidebarProvider>

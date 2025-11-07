@@ -1,231 +1,67 @@
 {
   "entities": {
+    "User": {
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        }
+      },
+      "required": ["id"]
+    },
     "Defect": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Defect",
       "type": "object",
-      "description": "Represents a defect identified in the system.",
+      "description": "Represents a defect uploaded by a user.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Defect entity."
-        },
-        "title": {
-          "type": "string",
-          "description": "Title or short description of the defect."
-        },
-        "description": {
-          "type": "string",
-          "description": "Detailed explanation of the defect."
-        },
-        "reportedDate": {
-          "type": "string",
-          "description": "Date when the defect was reported.",
-          "format": "date-time"
-        },
-        "status": {
-          "type": "string",
-          "description": "Current status of the defect (e.g., 'To-Do', 'In Progress', 'Ready for Testing', 'Resolved')."
-        },
-        "priority": {
-          "type": "string",
-          "description": "Priority of the defect (e.g., 'High', 'Medium', 'Low')."
-        },
-        "severity": {
-          "type": "string",
-          "description": "Severity of the defect (e.g., 'Critical', 'Major', 'Minor')."
-        },
-        "domainId": {
-          "type": "string",
-          "description": "Reference to Domain. (Relationship: Domain 1:N Defect)"
-        },
-        "reporterId": {
-          "type": "string",
-          "description": "Reference to Reporter. (Relationship: Reporter 1:N Defect)"
-        },
-        "assigneeId": {
-          "type": "string",
-          "description": "Reference to Assignee. (Relationship: Assignee 1:N Defect)"
-        }
+        "id": { "type": "string" },
+        "summary": { "type": "string" },
+        "description": { "type": "string" },
+        "domain": { "type": "string" },
+        "status": { "type": "string" },
+        "reported_by": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated": { "type": "string", "format": "date-time" },
+        "severity": { "type": "string" },
+        "priority": { "type": "string" },
+        "uploaderId": { "type": "string" }
       },
-      "required": [
-        "id",
-        "title",
-        "description",
-        "reportedDate",
-        "status",
-        "priority",
-        "severity",
-        "domainId",
-        "reporterId"
-      ]
-    },
-    "Domain": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Domain",
-      "type": "object",
-      "description": "Represents a specific domain to which a defect belongs.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Domain entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the domain (e.g., 'Frontend', 'Backend', 'Database')."
-        },
-        "description": {
-          "type": "string",
-          "description": "Description of the domain."
-        }
-      },
-      "required": [
-        "id",
-        "name"
-      ]
-    },
-    "Reporter": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Reporter",
-      "type": "object",
-      "description": "Represents a person who reported a defect.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Reporter entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the reporter."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the reporter.",
-          "format": "email"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "email"
-      ]
-    },
-    "Assignee": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Assignee",
-      "type": "object",
-      "description": "Represents a person to whom a defect is assigned for resolution.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Assignee entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the assignee."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the assignee.",
-          "format": "email"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "email"
-      ]
+      "required": ["id", "summary", "created_at", "uploaderId"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["anonymous"]
   },
   "firestore": {
     "structure": [
       {
         "path": "/users/{userId}",
         "definition": {
-          "entityName": "user",
+          "entityName": "User",
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user-specific data. (Placeholder for future expansion).",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            }
-          ]
+          "description": "Stores user-specific data.",
+          "params": [{ "name": "userId", "description": "The unique identifier for the user." }]
         }
       },
       {
-        "path": "/defects/{defectId}",
+        "path": "/users/{userId}/defects/{defectId}",
         "definition": {
           "entityName": "Defect",
           "schema": {
             "$ref": "#/backend/entities/Defect"
           },
-          "description": "Stores defect information uploaded from CSV files. Includes denormalized 'uploaderId' for authorization.",
+          "description": "Stores defects uploaded by a specific user.",
           "params": [
-            {
-              "name": "defectId",
-              "description": "The unique identifier for the defect."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/domains/{domainId}",
-        "definition": {
-          "entityName": "Domain",
-          "schema": {
-            "$ref": "#/backend/entities/Domain"
-          },
-          "description": "Stores information about defect domains.",
-          "params": [
-            {
-              "name": "domainId",
-              "description": "The unique identifier for the domain."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/reporters/{reporterId}",
-        "definition": {
-          "entityName": "Reporter",
-          "schema": {
-            "$ref": "#/backend/entities/Reporter"
-          },
-          "description": "Stores information about defect reporters.",
-          "params": [
-            {
-              "name": "reporterId",
-              "description": "The unique identifier for the reporter."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/assignees/{assigneeId}",
-        "definition": {
-          "entityName": "Assignee",
-          "schema": {
-            "$ref": "#/backend/entities/Assignee"
-          },
-          "description": "Stores information about defect assignees.",
-          "params": [
-            {
-              "name": "assigneeId",
-              "description": "The unique identifier for the assignee."
-            }
+            { "name": "userId", "description": "The user's unique ID." },
+            { "name": "defectId", "description": "The defect's unique ID." }
           ]
         }
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to support the 'Defect Insights Dashboard' application, focusing on efficient querying, clear authorization, and scalability. The structure adheres to Authorization Independence by denormalizing data where necessary and employs structural segregation to maintain a homogeneous security posture within each collection. Here's a detailed explanation:\n\n1.  **Users Collection (`/users/{userId}`):** Stores user-specific data.  While user details aren't explicitly defined in the entities, this structure allows for future expansion (profile information, preferences, etc.) within the application. No role information is stored in the `users` collection, adhering to the DBAC principle.\n\n2.  **Defects Collection (`/defects/{defectId}`):** This is the primary data storage for defect information uploaded from CSV files.  Since access to all defects isn't restricted to specific users and is a central part of the dashboard, it is stored at the top level. To ensure Authorization Independence, we'll likely need to include some basic user information that uploaded the CSV file.\n\n3. **Domains Collection (`/domains/{domainId}`):** Stores information about defect domains. This collection allows for easy categorization of defects based on domain.\n\n4. **Reporters Collection (`/reporters/{reporterId}`):** Stores information about defect reporters.\n\n5. **Assignees Collection (`/assignees/{assigneeId}`):** Stores information about defect assignees.\n\n**Authorization Independence (CRITICAL):** To achieve Authorization Independence, the `/defects/{defectId}` collection will include a denormalized `uploaderId` field containing the `userId` of the user who uploaded the CSV file from which the defect was extracted. Security rules can then grant read/write access based on `request.auth.uid == resource.data.uploaderId`.\n\n**QAPs Support (Rules are not Filters):** The structure supports secure `list` operations by segregating data with similar access requirements into the same collection (e.g., all defects are stored in `/defects`). For more granular access control, consider adding role-based access control using a `members` map within each `defect` document, where `members: {uid1: "
+    ]
   }
 }
