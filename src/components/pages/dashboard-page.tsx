@@ -33,7 +33,7 @@ import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
 import { DefectsTable } from '../dashboard/defects-table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
-import { isSameDay, subDays, parseISO, format } from 'date-fns';
+import { isSameDay, subDays, parseISO } from 'date-fns';
 import { AnalysisPage } from './analysis-page';
 import { PredictionPage } from './prediction-page';
 import { ResolutionTimePage } from './resolution-time-page';
@@ -50,6 +50,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { clearDefects, getDefects } from '@/app/actions';
 import { useRouter } from 'next/navigation';
+import { ClientTimestamp } from '../dashboard/client-timestamp';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
@@ -75,13 +76,12 @@ export function DashboardPage({ initialDefects, initialTimestamp }: DashboardPag
 
 
   const handleDataUploaded = async ({ timestamp }: { count: number; timestamp?: string }) => {
-    if (timestamp) {
-        setUploadTimestamp(timestamp);
-    }
-    const { defects: newDefects } = await getDefects();
+    const { defects: newDefects, timestamp: newTimestamp } = await getDefects();
     setDefects(newDefects);
+    if (newTimestamp) {
+        setUploadTimestamp(newTimestamp);
+    }
     setActiveView('dashboard');
-    router.refresh();
   };
 
   const handleClearData = async () => {
@@ -320,10 +320,7 @@ export function DashboardPage({ initialDefects, initialTimestamp }: DashboardPag
           </div>
           {uploadTimestamp && (
             <div className="flex items-center gap-4">
-                <div className="text-xs text-muted-foreground text-right">
-                    Data as of: <br />
-                    {format(parseISO(uploadTimestamp), "MMM d, yyyy 'at' h:mm a")}
-                </div>
+                <ClientTimestamp timestamp={uploadTimestamp} />
                 <Button variant="outline" onClick={handleClearData}>
                     <Upload className="mr-2 h-4 w-4" />
                     Load New Data
