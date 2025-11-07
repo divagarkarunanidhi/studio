@@ -83,11 +83,11 @@ export function DashboardPage() {
           setUploadTimestamp(data.uploadedAt || null);
         }
       });
-    } else {
+    } else if (!userLoading) { // Prevent clearing state while auth is loading
       setDefects([]);
       setUploadTimestamp(null);
     }
-  }, [user, firestore]);
+  }, [user, firestore, userLoading]);
 
   const handleDataUploaded = async (data: Defect[]) => {
     const timestamp = new Date().toISOString();
@@ -278,7 +278,7 @@ export function DashboardPage() {
   if (userLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
-            <p>Loading...</p>
+            <p>Authenticating...</p>
         </div>
     );
   }
@@ -564,3 +564,5 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
