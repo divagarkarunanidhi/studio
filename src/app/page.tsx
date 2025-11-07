@@ -22,7 +22,7 @@ function WelcomePage() {
   };
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-background p-4">
+    <div className="flex h-screen w-full items-center justify-center bg-transparent p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Welcome!</CardTitle>
@@ -77,17 +77,10 @@ export default function Home() {
         toast({
             variant: 'destructive',
             title: 'User Profile Not Found',
-            description: 'Your user profile was not found. Redirecting to login.',
+            description: 'Please contact an administrator to assign you a role.',
         });
-        const performSignOut = async () => {
-            if (auth) {
-                await signOut(auth);
-            }
-            router.push('/login');
-        };
-        performSignOut();
     }
-  }, [user, isProfileLoading, userProfile, auth, router, toast]);
+  }, [user, isProfileLoading, userProfile, toast]);
 
   useEffect(() => {
     if (!isProfileLoading && user && userProfile?.role === 'view') {
@@ -119,20 +112,6 @@ export default function Home() {
     );
   }
   
-  // This case handles when auth is complete, but the Firestore profile doc doesn't exist.
-  // The useEffect above will handle the redirection logic. We render a loading
-  // state while that happens.
-  if (user && !userProfile) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-                <Bug className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-muted-foreground">Redirecting to login...</p>
-            </div>
-        </div>
-    );
-  }
-
   if (userProfile?.role === 'admin' || userProfile?.role === 'taas') {
       return <DashboardPage userProfile={userProfile} />;
   }
@@ -141,7 +120,7 @@ export default function Home() {
     // The useEffect hook for 'view' role will handle the redirection.
     // We show a message while that happens.
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background p-4">
+        <div className="flex h-screen w-full items-center justify-center bg-transparent p-4">
             <div className="flex flex-col items-center gap-4 text-center">
                 <ShieldX className="h-16 w-16 text-destructive" />
                 <h1 className="text-2xl font-bold">Access Denied</h1>
