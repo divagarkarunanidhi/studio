@@ -18,7 +18,6 @@ import {
 import {
   Bug,
   CalendarClock,
-  Github,
   LayoutDashboard,
   TestTube,
   FileHeart,
@@ -511,14 +510,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         </SidebarContent>
         <SidebarFooter>
            <SidebarMenu>
-             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="View on GitHub">
-                <a href="https://github.com" target="_blank">
-                  <Github />
-                  Source Code
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
             <SidebarMenuItem>
                 <SidebarMenuButton onClick={handleLogout} tooltip="Log Out">
                     <LogOut/>
