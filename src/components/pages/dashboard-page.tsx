@@ -48,15 +48,21 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { clearDefects } from '@/app/actions';
+import { useRouter } from 'next/navigation';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
 const RECORDS_PER_PAGE = 50;
 
+interface DashboardPageProps {
+    initialDefects: Defect[];
+    initialTimestamp: string | null;
+}
 
-export function DashboardPage() {
-  const [defects, setDefects] = useState<Defect[]>([]);
-  const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
+export function DashboardPage({ initialDefects, initialTimestamp }: DashboardPageProps) {
+  const [defects, setDefects] = useState<Defect[]>(initialDefects);
+  const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(initialTimestamp);
   const [activeView, setActiveView] = useState<View>('dashboard');
   
   const [filterDomain, setFilterDomain] = useState<string>('all');
@@ -65,19 +71,26 @@ export function DashboardPage() {
   
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
+  const router = useRouter();
 
 
-  const handleDataUploaded = (data: Defect[]) => {
-    const timestamp = new Date().toISOString();
-    setDefects(data);
-    setUploadTimestamp(timestamp);
+  const handleDataUploaded = ({ timestamp }: { count: number; timestamp?: string }) => {
+    if (timestamp) {
+        setUploadTimestamp(timestamp);
+    }
     setActiveView('dashboard');
   };
 
   const handleClearData = async () => {
-    setDefects([]);
-    setUploadTimestamp(null);
-    toast({ title: "Data Cleared", description: "Your local data has been cleared. New data can be uploaded." });
+    const result = await clearDefects();
+    if(result.success) {
+        setDefects([]);
+        setUploadTimestamp(null);
+        toast({ title: "Data Cleared", description: "Your data has been cleared from the server." });
+        router.refresh();
+    } else {
+        toast({ variant: 'destructive', title: "Error", description: result.error });
+    }
   };
 
   const yesterdayDefectsCount = useMemo(() => {
@@ -207,12 +220,10 @@ export function DashboardPage() {
   
   useEffect(() => {
     setCurrentPage(1);
-    if(defects.length > 0) {
-        setFilterDomain('all');
-        setFilterReportedBy('all');
-        setFilterStatus('all');
-    }
-  }, [defects]);
+    setFilterDomain('all');
+    setFilterReportedBy('all');
+    setFilterStatus('all');
+  }, [totalDefects]);
 
 
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
@@ -309,7 +320,7 @@ export function DashboardPage() {
           {uploadTimestamp && (
             <div className="flex items-center gap-4">
                 <div className="text-xs text-muted-foreground text-right">
-                    Last updated: <br />
+                    Data as of: <br />
                     {format(parseISO(uploadTimestamp), "MMM d, yyyy 'at' h:mm a")}
                 </div>
                 <Button variant="outline" onClick={handleClearData}>
