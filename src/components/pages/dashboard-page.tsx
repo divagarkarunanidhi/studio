@@ -168,7 +168,7 @@ export function DashboardPage() {
 
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
 
-  const defects = defectsFromHook || [];
+  const defects = defectsFromHook;
 
   const handleLoadFromServer = useCallback(async () => {
     if (!user || !firestore) {
@@ -182,8 +182,21 @@ export function DashboardPage() {
         toast({ title: "No Data Found", description: "There is no data stored on the server." });
     } else {
         toast({ title: "Data Loaded", description: `${querySnapshot.size} records loaded from the server.` });
+        if(defectsFromHook && defectsFromHook.length > 0) {
+            const latestCreation = defectsFromHook.reduce((latest, d) => {
+                try {
+                    const current = parseISO(d.created_at);
+                    return current > latest ? current : latest;
+                } catch {
+                    return latest;
+                }
+            }, new Date(0));
+            if(latestCreation.getTime() > 0) {
+                setUploadTimestamp(latestCreation.toISOString());
+            }
+        }
     }
-  }, [user, firestore, toast]);
+  }, [user, firestore, toast, defectsFromHook]);
 
   useEffect(() => {
     if(!defectsLoading && defects && defects.length > 0) {
@@ -256,7 +269,7 @@ export function DashboardPage() {
         const batch = writeBatch(firestore);
         parsedDefects.forEach(defect => {
             const docRef = doc(firestore, 'users', user.uid, 'defects', defect.id);
-            batch.set(docRef, defect);
+            batch.set(docRef, defect, { merge: true });
         });
         await batch.commit();
         
@@ -273,27 +286,11 @@ export function DashboardPage() {
     }
   }, [user, firestore, toast]);
 
-  const handleClearData = async () => {
-    if (!user || !firestore) return;
-    
-    const defectsQuery = query(collection(firestore, 'users', user.uid, 'defects'));
-    const querySnapshot = await getDocs(defectsQuery);
-    
-    if(querySnapshot.empty) {
-        setUploadTimestamp(null);
-        toast({ title: "No Data to Clear", description: "There is no data to clear." });
-        return;
-    }
-
-    const batch = writeBatch(firestore);
-    querySnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-    });
-    await batch.commit();
-
+  const handleClearData = () => {
+    // This function now only resets the UI to show the uploader.
+    // It does NOT delete data from Firestore.
     setUploadTimestamp(null);
-    toast({ title: "Data Cleared", description: "All defect data has been cleared. You can now upload a new file." });
-    setActiveView('dashboard');
+    toast({ title: "Ready for New Upload", description: "You can now upload a new CSV file." });
   };
 
   const yesterdayDefectsCount = useMemo(() => {
@@ -534,15 +531,14 @@ export function DashboardPage() {
                     <AlertDialogTrigger asChild>
                         <Button variant="outline">
                             <Upload className="mr-2 h-4 w-4" />
-                            Clear and Upload New
+                            Upload New
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Ready to upload a new file?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action will permanently delete all existing defect data from the server.
-                            You will need to upload a new CSV file.
+                            This will take you to the file uploader. The existing data on the server will not be deleted. Uploading a new file will merge with or overwrite existing records.
                         </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -555,7 +551,7 @@ export function DashboardPage() {
           )}
         </header>
 
-        {defects.length === 0 ? (
+        {(!defects || defects.length === 0 || !uploadTimestamp) ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
@@ -716,3 +712,4 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
