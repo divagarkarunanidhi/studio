@@ -26,10 +26,30 @@
         "created_at": { "type": "string", "format": "date-time" },
         "updated": { "type": "string", "format": "date-time" },
         "severity": { "type": "string" },
-        "priority": { "type": "string" },
-        "uploaderId": { "type": "string" }
+        "priority": { "type": "string" }
       },
-      "required": ["id", "summary", "created_at", "uploaderId"]
+      "required": ["id", "summary", "created_at"]
+    },
+    "DefectFile": {
+      "title": "Defect File",
+      "type": "object",
+      "description": "Represents an uploaded CSV file containing multiple defects.",
+      "properties": {
+        "uploadedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "defects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/backend/entities/Defect"
+          }
+        },
+        "uploaderId": {
+          "type": "string"
+        }
+      },
+      "required": ["uploadedAt", "defects", "uploaderId"]
     }
   },
   "auth": {
@@ -49,16 +69,16 @@
         }
       },
       {
-        "path": "/users/{userId}/defects/{defectId}",
+        "path": "/users/{userId}/defect_files/{fileId}",
         "definition": {
-          "entityName": "Defect",
+          "entityName": "DefectFile",
           "schema": {
-            "$ref": "#/backend/entities/Defect"
+            "$ref": "#/backend/entities/DefectFile"
           },
-          "description": "Stores defects uploaded by a specific user.",
+          "description": "Stores uploaded defect files for a specific user.",
           "params": [
             { "name": "userId", "description": "The user's unique ID." },
-            { "name": "defectId", "description": "The defect's unique ID." }
+            { "name": "fileId", "description": "The unique ID for the uploaded file." }
           ]
         }
       }

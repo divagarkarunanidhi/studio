@@ -51,7 +51,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, writeBatch, doc, getDocs, query } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -154,9 +154,14 @@ const parseDate = (dateString: string): Date | null => {
 export function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const defectsColRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'defects') : null, [firestore, user]);
-  const { data: defectsFromHook, isLoading: defectsLoading } = useCollection<Defect>(defectsColRef);
 
+  const defectFilesColRef = useMemoFirebase(() => 
+    user ? query(collection(firestore, 'users', user.uid, 'defect_files'), orderBy('uploadedAt', 'desc'), limit(1)) : null, 
+    [firestore, user]
+  );
+  const { data: defectFiles, isLoading: defectsLoading } = useCollection<{uploadedAt: string, defects: Defect[]}>(defectFilesColRef);
+  
+  const [defects, setDefects] = useState<Defect[]>([]);
   const [activeView, setActiveView] = useState<View>('dashboard');
   
   const [filterDomain, setFilterDomain] = useState<string>('all');
@@ -169,58 +174,37 @@ export function DashboardPage() {
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
   const [showUploader, setShowUploader] = useState(false);
 
-  const defects = defectsFromHook;
+  useEffect(() => {
+    if (defectFiles && defectFiles.length > 0 && defectFiles[0].defects) {
+      setDefects(defectFiles[0].defects);
+      setUploadTimestamp(defectFiles[0].uploadedAt);
+      setShowUploader(false);
+    } else if (!defectsLoading && (!defectFiles || defectFiles.length === 0)) {
+        setDefects([]);
+        setUploadTimestamp(null);
+        setShowUploader(true);
+    }
+  }, [defectFiles, defectsLoading]);
+
 
   const handleLoadFromServer = useCallback(async () => {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Error', description: 'Cannot connect to server.' });
       return;
     }
-    const defectsQuery = query(collection(firestore, 'users', user.uid, 'defects'));
+    const defectsQuery = query(collection(firestore, 'users', user.uid, 'defect_files'), orderBy('uploadedAt', 'desc'), limit(1));
     const querySnapshot = await getDocs(defectsQuery);
     
     if (querySnapshot.empty) {
         toast({ title: "No Data Found", description: "There is no data stored on the server." });
     } else {
-        toast({ title: "Data Loaded", description: `${querySnapshot.size} records loaded from the server.` });
-        if(defectsFromHook && defectsFromHook.length > 0) {
-            const latestCreation = defectsFromHook.reduce((latest, d) => {
-                try {
-                    const current = parseISO(d.created_at);
-                    return current > latest ? current : latest;
-                } catch {
-                    return latest;
-                }
-            }, new Date(0));
-            if(latestCreation.getTime() > 0) {
-                setUploadTimestamp(latestCreation.toISOString());
-            }
-        }
+        const latestFile = querySnapshot.docs[0].data();
+        setDefects(latestFile.defects || []);
+        setUploadTimestamp(latestFile.uploadedAt);
         setShowUploader(false);
+        toast({ title: "Data Loaded", description: `${(latestFile.defects || []).length} records loaded from the server.` });
     }
-  }, [user, firestore, toast, defectsFromHook]);
-
-  useEffect(() => {
-    if(!defectsLoading && defects && defects.length > 0) {
-        if(!uploadTimestamp) { // Set timestamp only if not already set by an upload
-            const latestCreation = defects.reduce((latest, d) => {
-                try {
-                    const current = parseISO(d.created_at);
-                    return current > latest ? current : latest;
-                } catch {
-                    return latest;
-                }
-            }, new Date(0));
-            if(latestCreation.getTime() > 0) {
-                setUploadTimestamp(latestCreation.toISOString());
-            }
-        }
-        setShowUploader(false);
-    } else if (!defectsLoading && (!defects || defects.length === 0)) {
-        setUploadTimestamp(null);
-        setShowUploader(true);
-    }
-  }, [defects, defectsLoading, uploadTimestamp]);
+  }, [user, firestore, toast]);
 
   const handleDataUploaded = useCallback(async (csvText: string) => {
     if (!user || !firestore) {
@@ -262,7 +246,7 @@ export function DashboardPage() {
                 
                 if (!defectObj.id || !defectObj.summary || !defectObj.created_at) return null;
                 
-                return { ...defectObj, uploaderId: user.uid };
+                return defectObj;
             } catch (cellError: any) {
                 throw new Error(`Error in row ${rowIndex + 2} at "${currentHeader}": ${cellError.message}`);
             }
@@ -270,16 +254,18 @@ export function DashboardPage() {
 
         if (parsedDefects.length === 0) throw new Error('No valid defect data found.');
         
-        const batch = writeBatch(firestore);
-        parsedDefects.forEach(defect => {
-            const docRef = doc(firestore, 'users', user.uid, 'defects', defect.id);
-            batch.set(docRef, defect, { merge: true });
-        });
-        await batch.commit();
+        const fileDoc = {
+          defects: parsedDefects,
+          uploadedAt: new Date().toISOString(),
+          uploaderId: user.uid,
+        };
+
+        const docRef = await addDoc(collection(firestore, 'users', user.uid, 'defect_files'), fileDoc);
         
-        toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded.` });
-        setUploadTimestamp(new Date().toISOString());
-        setActiveView('dashboard');
+        toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded in a new file.` });
+        
+        setDefects(parsedDefects);
+        setUploadTimestamp(fileDoc.uploadedAt);
         setShowUploader(false);
     } catch (error) {
         console.error('Error during defect upload:', error);
@@ -292,8 +278,6 @@ export function DashboardPage() {
   }, [user, firestore, toast]);
 
   const handleClearData = () => {
-    // This function now only resets the UI to show the uploader.
-    // It does NOT delete data from Firestore.
     setShowUploader(true);
     toast({ title: "Ready for New Upload", description: "You can now upload a new CSV file." });
   };
@@ -543,7 +527,7 @@ export function DashboardPage() {
                         <AlertDialogHeader>
                         <AlertDialogTitle>Ready to upload a new file?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will take you to the file uploader. The existing data on the server will not be deleted. Uploading a new file will merge with or overwrite existing records.
+                            This will take you to the file uploader. Uploading a new file will create a new record on the server.
                         </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -556,7 +540,7 @@ export function DashboardPage() {
           )}
         </header>
 
-        {(showUploader || !defects || defects.length === 0) ? (
+        {(showUploader || (defects && defects.length === 0 && !defectsLoading)) ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
