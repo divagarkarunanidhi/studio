@@ -43,7 +43,7 @@ function MultiSelect({
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
 
-  const handleUnselect = (e: React.MouseEvent, item: string) => {
+  const handleUnselect = (e: React.MouseEvent | React.KeyboardEvent, item: string) => {
     e.preventDefault();
     e.stopPropagation();
     onChange(selected.filter((i) => i !== item));
@@ -80,7 +80,7 @@ function MultiSelect({
                           className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
-                              handleUnselect(e as any, item);
+                              handleUnselect(e, item);
                             }
                           }}
                           onMouseDown={(e) => {
