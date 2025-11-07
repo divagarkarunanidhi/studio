@@ -11,8 +11,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow get, write: if isOwner(userId);
+      allow list: if isAdmin();
     }
 
     match /TAASBugSenseAI/{fileId} {
