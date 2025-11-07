@@ -56,7 +56,7 @@ export default function LoginPage() {
       await setDoc(doc(firestore, 'users', user.uid), {
         username: username,
         email: user.email,
-        role: 'user', // Default role
+        role: 'view', // Default role
       });
 
       toast({ title: 'Account Created!', description: 'You have been signed in.' });
