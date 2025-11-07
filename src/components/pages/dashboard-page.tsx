@@ -167,6 +167,7 @@ export function DashboardPage() {
   const { toast } = useToast();
 
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
+  const [showUploader, setShowUploader] = useState(false);
 
   const defects = defectsFromHook;
 
@@ -195,6 +196,7 @@ export function DashboardPage() {
                 setUploadTimestamp(latestCreation.toISOString());
             }
         }
+        setShowUploader(false);
     }
   }, [user, firestore, toast, defectsFromHook]);
 
@@ -213,8 +215,10 @@ export function DashboardPage() {
                 setUploadTimestamp(latestCreation.toISOString());
             }
         }
+        setShowUploader(false);
     } else if (!defectsLoading && (!defects || defects.length === 0)) {
         setUploadTimestamp(null);
+        setShowUploader(true);
     }
   }, [defects, defectsLoading, uploadTimestamp]);
 
@@ -276,6 +280,7 @@ export function DashboardPage() {
         toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded.` });
         setUploadTimestamp(new Date().toISOString());
         setActiveView('dashboard');
+        setShowUploader(false);
     } catch (error) {
         console.error('Error during defect upload:', error);
         toast({
@@ -289,7 +294,7 @@ export function DashboardPage() {
   const handleClearData = () => {
     // This function now only resets the UI to show the uploader.
     // It does NOT delete data from Firestore.
-    setUploadTimestamp(null);
+    setShowUploader(true);
     toast({ title: "Ready for New Upload", description: "You can now upload a new CSV file." });
   };
 
@@ -551,7 +556,7 @@ export function DashboardPage() {
           )}
         </header>
 
-        {(!defects || defects.length === 0 || !uploadTimestamp) ? (
+        {(showUploader || !defects || defects.length === 0) ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
@@ -712,4 +717,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
