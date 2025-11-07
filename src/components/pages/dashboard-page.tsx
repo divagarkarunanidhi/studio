@@ -67,6 +67,7 @@ import {
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog"
 import { UserManagementPage } from './user-management-page';
+import type { UserProfile } from '@/app/page';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management';
 
@@ -156,13 +157,14 @@ const parseDate = (dateString: string): Date | null => {
   }
 
 interface DashboardPageProps {
-  userRole: 'admin' | 'taas' | 'user';
+  userProfile: UserProfile;
 }
 
-export function DashboardPage({ userRole }: DashboardPageProps) {
+export function DashboardPage({ userProfile }: DashboardPageProps) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
+  const userRole = userProfile.role;
 
   const defectFilesColRef = useMemoFirebase(() => 
     user ? query(collection(firestore, 'TAASBugSenseAI'), orderBy('uploadedAt', 'desc'), limit(1)) : null, 
@@ -533,7 +535,9 @@ export function DashboardPage({ userRole }: DashboardPageProps) {
           <div className="flex items-center gap-4">
             <SidebarTrigger className="sm:hidden"/>
             <div>
-                <h1 className="text-xl font-semibold tracking-tight">{viewTitles[activeView]}</h1>
+                <h1 className="text-xl font-semibold tracking-tight">
+                    {activeView === 'dashboard' && userProfile.username ? `Welcome, ${userProfile.username}!` : viewTitles[activeView]}
+                </h1>
                 <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
             </div>
           </div>

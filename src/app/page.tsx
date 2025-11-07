@@ -47,6 +47,12 @@ function WelcomePage() {
   )
 }
 
+export interface UserProfile {
+  username: string;
+  email: string;
+  role: 'admin' | 'taas' | 'view';
+}
+
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -58,7 +64,7 @@ export default function Home() {
     () => (user ? doc(firestore, 'users', user.uid) : null),
     [firestore, user]
   );
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{ role: string }>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -67,15 +73,13 @@ export default function Home() {
   }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    // This effect handles access denial for 'user' or 'view' roles.
-    if (!isProfileLoading && user && (userProfile?.role === 'user' || userProfile?.role === 'view')) {
+    if (!isProfileLoading && user && userProfile?.role === 'view') {
         toast({
             variant: 'destructive',
             title: 'Access Denied',
             description: 'You do not have the required permissions to access this page. You will be logged out.',
         });
         
-        // Immediately sign out and redirect
         const performSignOut = async () => {
             if (auth) {
                 await signOut(auth);
@@ -87,7 +91,7 @@ export default function Home() {
     }
   }, [userProfile, isProfileLoading, user, auth, router, toast]);
 
-  if (isUserLoading || isProfileLoading) {
+  if (isUserLoading || (user && isProfileLoading)) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -99,16 +103,39 @@ export default function Home() {
   }
   
   if (user && !userProfile) {
-    return <WelcomePage />;
+    // This case handles when auth is complete, but the Firestore profile doc doesn't exist.
+    // This can happen on first login if the doc creation fails or is delayed.
+    toast({
+        variant: 'destructive',
+        title: 'User Profile Not Found',
+        description: 'Your user profile was not found. Please contact an administrator or sign up again.',
+    });
+    
+    const performSignOut = async () => {
+        if (auth) {
+            await signOut(auth);
+        }
+        router.push('/login');
+    };
+    performSignOut();
+    
+    // Render a loading state while redirecting
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <Bug className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-muted-foreground">Redirecting to login...</p>
+            </div>
+        </div>
+    );
   }
 
   const role = userProfile?.role;
 
   if (role === 'admin' || role === 'taas') {
-      return <DashboardPage userRole={role} />;
+      return <DashboardPage userProfile={userProfile} />;
   }
   
-  // This UI will be shown briefly before the redirect logic in useEffect kicks in for restricted roles.
   return (
     <div className="flex h-screen w-full items-center justify-center bg-background p-4">
         <div className="flex flex-col items-center gap-4 text-center">
