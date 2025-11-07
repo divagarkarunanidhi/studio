@@ -48,7 +48,7 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { clearDefects } from '@/app/actions';
+import { clearDefects, getDefects } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
@@ -74,11 +74,14 @@ export function DashboardPage({ initialDefects, initialTimestamp }: DashboardPag
   const router = useRouter();
 
 
-  const handleDataUploaded = ({ timestamp }: { count: number; timestamp?: string }) => {
+  const handleDataUploaded = async ({ timestamp }: { count: number; timestamp?: string }) => {
     if (timestamp) {
         setUploadTimestamp(timestamp);
     }
+    const { defects: newDefects } = await getDefects();
+    setDefects(newDefects);
     setActiveView('dashboard');
+    router.refresh();
   };
 
   const handleClearData = async () => {
@@ -219,11 +222,9 @@ export function DashboardPage({ initialDefects, initialTimestamp }: DashboardPag
   }, [defects]);
   
   useEffect(() => {
-    setCurrentPage(1);
-    setFilterDomain('all');
-    setFilterReportedBy('all');
-    setFilterStatus('all');
-  }, [totalDefects]);
+    setDefects(initialDefects);
+    setUploadTimestamp(initialTimestamp);
+  }, [initialDefects, initialTimestamp]);
 
 
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);

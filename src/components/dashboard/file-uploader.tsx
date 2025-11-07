@@ -6,13 +6,10 @@ import { UploadCloud, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '../ui/button';
 import { uploadDefects } from '@/app/actions';
-import { useRouter } from 'next/navigation';
-
 
 export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: { count: number; timestamp?: string }) => void; }) {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
   const handleFile = useCallback(async (file: File) => {
     if (file && file.type === 'text/csv') {
@@ -29,7 +26,6 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: { coun
               description: `${result.count} records loaded from ${file.name}.`,
             });
             onDataUploaded({count: result.count, timestamp: result.timestamp});
-            router.refresh(); // Refresh the page to show the new data
           } else {
             throw new Error(result.error);
           }
@@ -49,7 +45,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: { coun
         description: 'Please upload a valid .csv file.',
       });
     }
-  }, [onDataUploaded, toast, router]);
+  }, [onDataUploaded, toast]);
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
