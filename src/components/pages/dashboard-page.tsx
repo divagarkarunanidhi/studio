@@ -47,11 +47,7 @@ import {
     SelectTrigger,
     SelectValue,
   } from '@/components/ui/select';
-import { useUser, useAuth } from '@/firebase';
-import { GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
@@ -68,78 +64,25 @@ export function DashboardPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   
   const [currentPage, setCurrentPage] = useState(1);
+  const { toast } = useToast();
 
-  const { user, loading: userLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
 
-  useEffect(() => {
-    if (user && firestore) {
-      const docRef = doc(firestore, 'defects', user.uid);
-      getDoc(docRef).then((docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setDefects(data.defects || []);
-          setUploadTimestamp(data.uploadedAt || null);
-        }
-      });
-    } else if (!userLoading) { 
-      setDefects([]);
-      setUploadTimestamp(null);
-    }
-  }, [user, firestore, userLoading]);
-
-  const handleDataUploaded = async (data: Defect[]) => {
+  const handleDataUploaded = (data: Defect[]) => {
     const timestamp = new Date().toISOString();
-    if (user && firestore) {
-      try {
-        const docRef = doc(firestore, 'defects', user.uid);
-        await setDoc(docRef, { defects: data, uploadedAt: timestamp });
-        setDefects(data);
-        setUploadTimestamp(timestamp);
-        toast({ title: "Success", description: "Defect data saved to your account." });
-      } catch (error) {
-        console.error("Error saving data to Firestore:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not save data to the server." });
-      }
-    } else {
-        console.warn("User not logged in. Data not saved to server.");
-        toast({ variant: "destructive", title: "Not Signed In", description: "Please sign in to save your data." });
-    }
+    setDefects(data);
+    setUploadTimestamp(timestamp);
     setActiveView('dashboard');
-  };
-
-  const handleClearData = async () => {
-    if(user && firestore) {
-        try {
-            const docRef = doc(firestore, 'defects', user.uid);
-            await setDoc(docRef, { defects: [], uploadedAt: null });
-            setDefects([]);
-            setUploadTimestamp(null);
-            toast({ title: "Data Cleared", description: "Your stored defect data has been cleared." });
-        } catch (error) {
-            console.error("Error clearing data in Firestore:", error);
-            toast({ variant: "destructive", title: "Error", description: "Could not clear data on the server." });
-        }
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      // We use signInWithRedirect which navigates the user to the Google sign-in page.
-      await signInWithRedirect(auth, provider);
-    } catch (error: any) {
-      console.error("Error during Google sign-in redirect:", error);
-      const errorMessage = error.message || "Could not start sign-in with Google.";
-      toast({ 
-        variant: "destructive", 
-        title: "Sign-in Failed", 
-        description: `Error: ${errorMessage}` 
+    toast({
+        title: "Data Loaded",
+        description: "Your defect data has been loaded into the browser.",
       });
-    }
   };
 
+  const handleClearData = () => {
+    setDefects([]);
+    setUploadTimestamp(null);
+    toast({ title: "Data Cleared", description: "Your defect data has been cleared from the browser." });
+  };
 
   const yesterdayDefectsCount = useMemo(() => {
     if (defects.length === 0) return 0;
@@ -275,34 +218,6 @@ export function DashboardPage() {
     }
   }, [defects]);
 
-  if (userLoading) {
-    // This state is now handled by the AuthHandler in FirebaseClientProvider,
-    // but we keep a minimal loader here as a fallback.
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <p>Loading Dashboard...</p>
-        </div>
-    );
-  }
-
-  // If the user is not logged in after the initial check, show the sign-in page.
-  if (!user) {
-    return (
-        <div className="flex h-screen items-center justify-center bg-background">
-            <Card className="w-full max-w-sm">
-                <CardHeader className="text-center">
-                    <CardTitle>Welcome to BugSense AI</CardTitle>
-                    <CardDescription>Sign in to continue to your dashboard</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button className="w-full" onClick={handleGoogleSignIn}>
-                        Sign in with Google
-                    </Button>
-                </CardContent>
-            </Card>
-        </div>
-    );
-  }
 
   // From here, we assume the user is logged in.
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
@@ -376,11 +291,6 @@ export function DashboardPage() {
         </SidebarContent>
         <SidebarFooter>
            <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => auth.signOut()}>
-                Sign Out
-              </SidebarMenuButton>
-            </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="View on GitHub">
                 <a href="https://github.com" target="_blank">
