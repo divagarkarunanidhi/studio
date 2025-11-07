@@ -156,15 +156,27 @@ export function DashboardPage() {
 
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
 
-  const defects = useMemo(() => defectsFromHook || [], [defectsFromHook]);
+  const defects = useMemo(() => defectsFromHook, [defectsFromHook]);
 
   useEffect(() => {
-    if(!defectsLoading && defects.length > 0) {
-        setUploadTimestamp(new Date().toISOString());
-    } else if (!defectsLoading && defects.length === 0) {
+    if(!defectsLoading && defects && defects.length > 0) {
+        if(!uploadTimestamp) { // Set timestamp only if not already set by an upload
+            const latestCreation = defects.reduce((latest, d) => {
+                try {
+                    const current = parseISO(d.created_at);
+                    return current > latest ? current : latest;
+                } catch {
+                    return latest;
+                }
+            }, new Date(0));
+            if(latestCreation.getTime() > 0) {
+                setUploadTimestamp(latestCreation.toISOString());
+            }
+        }
+    } else if (!defectsLoading && (!defects || defects.length === 0)) {
         setUploadTimestamp(null);
     }
-  }, [defects, defectsLoading]);
+  }, [defects, defectsLoading, uploadTimestamp]);
 
   const handleDataUploaded = useCallback(async (csvText: string) => {
     if (!user || !firestore) {
@@ -253,7 +265,7 @@ export function DashboardPage() {
     await batch.commit();
 
     setUploadTimestamp(null);
-    toast({ title: "Data Cleared", description: "All defect data has been cleared." });
+    toast({ title: "Data Cleared", description: "All defect data has been cleared. You can now upload a new file." });
     setActiveView('dashboard');
   };
 
@@ -499,7 +511,7 @@ export function DashboardPage() {
           )}
         </header>
 
-        {defects === null ? null : defects.length === 0 ? (
+        {defects === null || defects.length === 0 ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
@@ -651,5 +663,7 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
+
+    
 
     
