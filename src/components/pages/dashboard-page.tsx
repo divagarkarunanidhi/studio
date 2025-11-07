@@ -29,6 +29,7 @@ import {
   AlertTriangle,
   Upload,
   Server,
+  LogOut,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -50,8 +51,9 @@ import {
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from '@/firebase';
 import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -154,6 +156,7 @@ const parseDate = (dateString: string): Date | null => {
 export function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const auth = useAuth();
 
   const defectFilesColRef = useMemoFirebase(() => 
     user ? query(collection(firestore, 'TAASBugSenseAI'), orderBy('uploadedAt', 'desc'), limit(1)) : null, 
@@ -273,6 +276,10 @@ export function DashboardPage() {
   const handleClearData = () => {
     setShowUploader(true);
     toast({ title: "Ready for New Upload", description: "You can now upload a new CSV file." });
+  };
+  
+  const handleLogout = async () => {
+    await signOut(auth);
   };
 
   const yesterdayDefectsCount = useMemo(() => {
@@ -413,7 +420,7 @@ export function DashboardPage() {
     return filteredDefects.slice(startIndex, endIndex);
   }, [filteredDefects, currentPage]);
 
-  if (isUserLoading || defectsLoading) {
+  if (isUserLoading || (defectsLoading && !defectFiles)) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -494,6 +501,12 @@ export function DashboardPage() {
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleLogout} tooltip="Log Out">
+                    <LogOut/>
+                    Log Out
+                </SidebarMenuButton>
+            </SidebarMenuItem>
            </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
@@ -513,7 +526,7 @@ export function DashboardPage() {
                     <AlertDialogTrigger asChild>
                         <Button variant="outline">
                             <Upload className="mr-2 h-4 w-4" />
-                            Upload New
+                            Upload New Data
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -533,7 +546,7 @@ export function DashboardPage() {
           )}
         </header>
 
-        {(showUploader || (defects.length === 0 && !defectsLoading)) ? (
+        {(showUploader || defects.length === 0) ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">

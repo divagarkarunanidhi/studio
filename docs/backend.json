@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -7,10 +8,24 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the user."
+          "description": "Unique identifier for the user (Firebase Auth UID)."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role in the application.",
+          "enum": ["admin", "user"]
         }
       },
-      "required": ["id"]
+      "required": ["id", "email", "role"]
     },
     "Defect": {
       "title": "Defect",
@@ -53,7 +68,7 @@
     }
   },
   "auth": {
-    "providers": ["anonymous"]
+    "providers": ["emailpassword"]
   },
   "firestore": {
     "structure": [
@@ -64,8 +79,8 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user-specific data.",
-          "params": [{ "name": "userId", "description": "The unique identifier for the user." }]
+          "description": "Stores user-specific data, like roles and preferences.",
+          "params": [{ "name": "userId", "description": "The unique identifier for the user, matching their Firebase Auth UID." }]
         }
       },
       {

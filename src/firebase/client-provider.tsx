@@ -1,9 +1,9 @@
+
 'use client';
 
 import React, { useMemo, type ReactNode, useEffect, useState } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
-import { getAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { Bug } from 'lucide-react';
 
 interface FirebaseClientProviderProps {
@@ -17,20 +17,14 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   }, []); 
 
   useEffect(() => {
-    const auth = getAuth(firebaseServices.firebaseApp);
-    const unsubscribe = onAuthStateChanged(auth, user => {
-        if (user) {
-            setIsLoading(false);
-        } else {
-            signInAnonymously(auth).catch(error => {
-                console.error("Anonymous sign in failed", error);
-                setIsLoading(false);
-            });
-        }
+    // With email/password auth, we don't need to auto-sign-in anonymously.
+    // The auth state will be handled by the onAuthStateChanged in the provider.
+    const unsubscribe = firebaseServices.auth.onAuthStateChanged(user => {
+        setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [firebaseServices.firebaseApp]);
+  }, [firebaseServices.auth]);
 
   if(isLoading) {
     return (
