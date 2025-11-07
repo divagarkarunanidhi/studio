@@ -52,8 +52,8 @@ import {
 import Image from 'next/image';
 import { useUser } from '@/firebase/auth/use-user';
 import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { useAuth } from '@/firebase';
-import { collection, doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
+import { useAuth, useFirestore } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
@@ -92,7 +92,7 @@ function LoginPage() {
 
 export function DashboardPage() {
   const { user, loading: userLoading } = useUser();
-  const db = getFirestore();
+  const db = useFirestore();
 
   const [defects, setDefects] = useState<Defect[]>([]);
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
@@ -313,7 +313,33 @@ export function DashboardPage() {
   }, [filteredDefects, currentPage]);
 
 
-  if (userLoading || (!user && !userLoading)) {
+  if (userLoading) {
+    return (
+        <SidebarProvider>
+            <Sidebar>
+                <SidebarHeader>
+                    <div className="flex items-center gap-2 p-2">
+                        <h1 className="text-lg font-semibold">TaaS BugSense AI</h1>
+                    </div>
+                </SidebarHeader>
+            </Sidebar>
+            <SidebarInset>
+                 <header className="sticky top-0 z-10 flex h-auto min-h-14 flex-col items-start justify-center gap-2 border-b bg-background/95 p-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h1 className="text-xl font-semibold tracking-tight">Loading...</h1>
+                        </div>
+                    </div>
+                 </header>
+                <main className="flex flex-1 flex-col items-center justify-center p-4">
+                    <p>Loading...</p>
+                </main>
+            </SidebarInset>
+        </SidebarProvider>
+    )
+  }
+
+  if (!user) {
     return (
         <SidebarProvider>
             <Sidebar>
@@ -331,10 +357,10 @@ export function DashboardPage() {
                         </div>
                     </div>
                  </header>
-                {userLoading ? <p>Loading...</p> : <LoginPage />}
+                <LoginPage />
             </SidebarInset>
         </SidebarProvider>
-    )
+    );
   }
 
   return (
