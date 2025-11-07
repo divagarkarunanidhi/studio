@@ -28,8 +28,6 @@ import {
   PieChart,
   AlertTriangle,
   Upload,
-  LogIn,
-  LogOut
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -49,55 +47,16 @@ import {
     SelectTrigger,
     SelectValue,
   } from '@/components/ui/select';
-import Image from 'next/image';
-import { useUser } from '@/firebase/auth/use-user';
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { useAuth, useFirestore } from '@/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
 const RECORDS_PER_PAGE = 50;
 
-function LoginPage() {
-    const auth = useAuth();
-    const handleLogin = async () => {
-        const provider = new GoogleAuthProvider();
-        if (auth) {
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                console.error("Error signing in with Google", error);
-            }
-        }
-    };
-
-    return (
-        <main className="flex flex-1 flex-col items-center justify-center p-4">
-            <div className="flex flex-col items-center justify-center gap-4 text-center">
-                <div className="rounded-lg bg-card p-6 shadow-sm">
-                    <h2 className="text-2xl font-bold">Welcome!</h2>
-                    <p className="mt-2 text-muted-foreground">
-                        Sign in to manage your defect data.
-                    </p>
-                </div>
-                <Button onClick={handleLogin}>
-                    <LogIn className="mr-2 h-4 w-4" /> Sign in with Google
-                </Button>
-            </div>
-        </main>
-    );
-}
 
 export function DashboardPage() {
-  const { user, loading: userLoading } = useUser();
-  const db = useFirestore();
-
   const [defects, setDefects] = useState<Defect[]>([]);
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('dashboard');
-  const [isLoadingData, setIsLoadingData] = useState(true);
   
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
@@ -105,69 +64,18 @@ export function DashboardPage() {
   
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch data from Firestore on user load
-  useEffect(() => {
-    if (user && db) {
-      setIsLoadingData(true);
-      const defectsDocRef = doc(db, 'defects', user.uid);
-      getDoc(defectsDocRef).then(docSnap => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setDefects(data.defects || []);
-          setUploadTimestamp(data.uploadedAt || null);
-        } else {
-            setDefects([]);
-            setUploadTimestamp(null);
-        }
-        setIsLoadingData(false);
-      }).catch(error => {
-        console.error("Error fetching defects from Firestore:", error);
-        setIsLoadingData(false);
-      });
-    } else if (!user && !userLoading) {
-      // Clear data if user logs out
-      setDefects([]);
-      setUploadTimestamp(null);
-      setIsLoadingData(false);
-    }
-  }, [user, db, userLoading]);
-
-
-  const handleDataUploaded = async (data: Defect[]) => {
-    if (!user || !db) {
-        console.error("User not authenticated or DB not initialized");
-        return;
-    }
+  const handleDataUploaded = (data: Defect[]) => {
     const timestamp = new Date().toISOString();
-    const defectsDocRef = doc(db, 'defects', user.uid);
-    try {
-        await setDoc(defectsDocRef, { defects: data, uploadedAt: timestamp });
-        setDefects(data);
-        setUploadTimestamp(timestamp);
-        setActiveView('dashboard');
-    } catch (error) {
-        console.error("Failed to save data to Firestore", error);
-    }
+    setDefects(data);
+    setUploadTimestamp(timestamp);
+    setActiveView('dashboard');
   };
 
-  const handleClearData = async () => {
-    if (!user || !db) return;
-    const defectsDocRef = doc(db, 'defects', user.uid);
-    try {
-        await setDoc(defectsDocRef, { defects: [], uploadedAt: null });
-        setDefects([]);
-        setUploadTimestamp(null);
-    } catch (error) {
-        console.error("Failed to clear data in Firestore", error);
-    }
+  const handleClearData = () => {
+    setDefects([]);
+    setUploadTimestamp(null);
   };
 
-  const auth = useAuth();
-  const handleLogout = async () => {
-      if (auth) {
-          await signOut(auth);
-      }
-  };
 
   const yesterdayDefectsCount = useMemo(() => {
     if (defects.length === 0) return 0;
@@ -313,56 +221,6 @@ export function DashboardPage() {
   }, [filteredDefects, currentPage]);
 
 
-  if (userLoading) {
-    return (
-        <SidebarProvider>
-            <Sidebar>
-                <SidebarHeader>
-                    <div className="flex items-center gap-2 p-2">
-                        <h1 className="text-lg font-semibold">TaaS BugSense AI</h1>
-                    </div>
-                </SidebarHeader>
-            </Sidebar>
-            <SidebarInset>
-                 <header className="sticky top-0 z-10 flex h-auto min-h-14 flex-col items-start justify-center gap-2 border-b bg-background/95 p-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                    <div className="flex items-center gap-4">
-                        <div>
-                            <h1 className="text-xl font-semibold tracking-tight">Loading...</h1>
-                        </div>
-                    </div>
-                 </header>
-                <main className="flex flex-1 flex-col items-center justify-center p-4">
-                    <p>Loading...</p>
-                </main>
-            </SidebarInset>
-        </SidebarProvider>
-    )
-  }
-
-  if (!user) {
-    return (
-        <SidebarProvider>
-            <Sidebar>
-                <SidebarHeader>
-                    <div className="flex items-center gap-2 p-2">
-                        <h1 className="text-lg font-semibold">TaaS BugSense AI</h1>
-                    </div>
-                </SidebarHeader>
-            </Sidebar>
-            <SidebarInset>
-                 <header className="sticky top-0 z-10 flex h-auto min-h-14 flex-col items-start justify-center gap-2 border-b bg-background/95 p-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                    <div className="flex items-center gap-4">
-                        <div>
-                            <h1 className="text-xl font-semibold tracking-tight">Welcome</h1>
-                        </div>
-                    </div>
-                 </header>
-                <LoginPage />
-            </SidebarInset>
-        </SidebarProvider>
-    );
-  }
-
   return (
     <SidebarProvider>
       <Sidebar>
@@ -426,12 +284,6 @@ export function DashboardPage() {
         <SidebarFooter>
            <SidebarMenu>
              <SidebarMenuItem>
-                <SidebarMenuButton onClick={handleLogout}>
-                    <LogOut/>
-                    Sign Out
-                </SidebarMenuButton>
-             </SidebarMenuItem>
-             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="View on GitHub">
                 <a href="https://github.com" target="_blank">
                   <Github />
@@ -465,7 +317,7 @@ export function DashboardPage() {
           )}
         </header>
 
-        {defects.length === 0 && !isLoadingData ? (
+        {defects.length === 0 ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
@@ -617,5 +469,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
