@@ -49,8 +49,10 @@ import {
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase/auth/use-user';
-import { doc, setDoc, getDoc, Firestore } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
@@ -78,18 +80,26 @@ export function DashboardPage() {
     if (user && firestore) {
       const fetchData = async () => {
         const defectDocRef = doc(firestore, 'defects', user.uid);
-        const docSnap = await getDoc(defectDocRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setDefects(data.defects || []);
-          setUploadTimestamp(data.uploadedAt || new Date().toISOString());
+        try {
+          const docSnap = await getDoc(defectDocRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setDefects(data.defects || []);
+            setUploadTimestamp(data.uploadedAt || new Date().toISOString());
+          }
+        } catch (e: any) {
+          const permissionError = new FirestorePermissionError({
+            path: defectDocRef.path,
+            operation: 'get'
+          });
+          errorEmitter.emit('permission-error', permissionError);
         }
       };
       fetchData();
     }
   }, [user, firestore]);
 
-  const handleDataUploaded = async (data: Defect[]) => {
+  const handleDataUploaded = (data: Defect[]) => {
     const timestamp = new Date().toISOString();
     setDefects(data);
     setUploadTimestamp(timestamp);
@@ -101,20 +111,21 @@ export function DashboardPage() {
           uploadedAt: timestamp,
         };
         const defectDocRef = doc(firestore, 'defects', user.uid);
-        try {
-            await setDoc(defectDocRef, defectData, { merge: true });
+        setDoc(defectDocRef, defectData, { merge: true })
+          .then(() => {
             toast({
                 title: "Data Saved!",
                 description: "Your defect data has been securely saved to the server.",
             });
-        } catch (error) {
-            console.error("Error saving data to Firestore:", error);
-            toast({
-                variant: 'destructive',
-                title: "Save Failed",
-                description: "Could not save your data to the server. Working with local data instead.",
+          })
+          .catch((e: any) => {
+            const permissionError = new FirestorePermissionError({
+              path: defectDocRef.path,
+              operation: 'write',
+              requestResourceData: defectData
             });
-        }
+            errorEmitter.emit('permission-error', permissionError);
+          });
     }
   };
 
@@ -125,8 +136,12 @@ export function DashboardPage() {
         const defectDocRef = doc(firestore, 'defects', user.uid);
         try {
             await setDoc(defectDocRef, { defects: [], uploadedAt: null });
-        } catch (error) {
-            console.error("Error clearing data in Firestore:", error);
+        } catch (error: any) {
+            const permissionError = new FirestorePermissionError({
+              path: defectDocRef.path,
+              operation: 'delete'
+            });
+            errorEmitter.emit('permission-error', permissionError);
         }
     }
     toast({ title: "Data Cleared", description: "Your defect data has been cleared." });
