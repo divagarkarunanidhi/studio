@@ -143,7 +143,7 @@ export function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const defectsColRef = useMemoFirebase(() => user ? collection(firestore, 'users', user.uid, 'defects') : null, [firestore, user]);
-  const { data: defects = [], isLoading: defectsLoading } = useCollection<Defect>(defectsColRef);
+  const { data: defects, isLoading: defectsLoading } = useCollection<Defect>(defectsColRef);
 
   const [activeView, setActiveView] = useState<View>('dashboard');
   
@@ -508,7 +508,7 @@ export function DashboardPage() {
           )}
         </header>
 
-        {defects.length === 0 ? (
+        {defects === null ? null : defects.length === 0 ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
