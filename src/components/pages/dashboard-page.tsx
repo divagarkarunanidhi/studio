@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import type { Defect } from '@/lib/types';
@@ -48,7 +48,7 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import { useUser, useAuth } from '@/firebase';
-import { GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { toast } from '@/hooks/use-toast';
@@ -69,9 +69,29 @@ export function DashboardPage() {
   
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [isVerifying, setIsVerifying] = useState(true);
   const { user, loading: userLoading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
+
+  useEffect(() => {
+    async function checkRedirect() {
+      try {
+        await getRedirectResult(auth);
+        // The onAuthStateChanged listener in useUser will handle the user state update.
+      } catch (error: any) {
+        console.error("Error during redirect result processing:", error);
+        toast({
+          variant: "destructive",
+          title: "Sign-in Failed",
+          description: error.message || "An unexpected error occurred during sign-in.",
+        });
+      } finally {
+        setIsVerifying(false);
+      }
+    }
+    checkRedirect();
+  }, [auth]);
 
   useEffect(() => {
     if (user && firestore) {
@@ -275,7 +295,7 @@ export function DashboardPage() {
     }
   }, [defects]);
 
-  if (userLoading) {
+  if (userLoading || isVerifying) {
     return (
         <div className="flex h-screen items-center justify-center">
             <p>Authenticating...</p>
@@ -564,5 +584,3 @@ export function DashboardPage() {
     </SidebarProvider>
   );
 }
-
-    
