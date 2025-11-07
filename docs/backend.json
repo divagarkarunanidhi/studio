@@ -69,15 +69,14 @@
         }
       },
       {
-        "path": "/users/{userId}/defect_files/{fileId}",
+        "path": "/TAASBugSenseAI/{fileId}",
         "definition": {
           "entityName": "DefectFile",
           "schema": {
             "$ref": "#/backend/entities/DefectFile"
           },
-          "description": "Stores uploaded defect files for a specific user.",
+          "description": "Stores uploaded defect files.",
           "params": [
-            { "name": "userId", "description": "The user's unique ID." },
             { "name": "fileId", "description": "The unique ID for the uploaded file." }
           ]
         }

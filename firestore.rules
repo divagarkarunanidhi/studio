@@ -14,8 +14,8 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    match /users/{userId}/defect_files/{fileId} {
-      allow read, create, update, delete: if isOwner(userId);
+    match /TAASBugSenseAI/{fileId} {
+      allow read, create, update, delete: if isSignedIn();
     }
   }
 }

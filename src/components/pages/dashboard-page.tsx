@@ -156,7 +156,7 @@ export function DashboardPage() {
   const firestore = useFirestore();
 
   const defectFilesColRef = useMemoFirebase(() => 
-    user ? query(collection(firestore, 'users', user.uid, 'defect_files'), orderBy('uploadedAt', 'desc'), limit(1)) : null, 
+    user ? query(collection(firestore, 'TAASBugSenseAI'), orderBy('uploadedAt', 'desc'), limit(1)) : null, 
     [firestore, user]
   );
   const { data: defectFiles, isLoading: defectsLoading } = useCollection<{uploadedAt: string, defects: Defect[]}>(defectFilesColRef);
@@ -188,17 +188,16 @@ export function DashboardPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Cannot connect to server.' });
       return;
     }
-    // The useCollection hook already loads the data. This button is for user feedback.
-    const defectsQuery = query(collection(firestore, 'users', user.uid, 'defect_files'), orderBy('uploadedAt', 'desc'), limit(1));
+    const defectsQuery = query(collection(firestore, 'TAASBugSenseAI'), orderBy('uploadedAt', 'desc'), limit(1));
     const querySnapshot = await getDocs(defectsQuery);
     
     if (querySnapshot.empty) {
         toast({ title: "No Data Found", description: "There is no data stored on the server." });
-        setShowUploader(true); // Stay on the uploader view
+        setShowUploader(true);
     } else {
         const latestFile = querySnapshot.docs[0].data();
         toast({ title: "Data Loaded", description: `${(latestFile.defects || []).length} records loaded from the server.` });
-        setShowUploader(false); // Switch to dashboard view
+        setShowUploader(false);
     }
   }, [user, firestore, toast]);
 
@@ -256,7 +255,7 @@ export function DashboardPage() {
           uploaderId: user.uid,
         };
 
-        const docRef = await addDoc(collection(firestore, 'users', user.uid, 'defect_files'), fileDoc);
+        const docRef = await addDoc(collection(firestore, 'TAASBugSenseAI'), fileDoc);
         
         toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded in a new file.` });
         
