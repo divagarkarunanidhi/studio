@@ -48,10 +48,9 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, writeBatch, doc, getDocs, query, limit } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, writeBatch, doc, getDocs, query } from 'firebase/firestore';
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention';
 
@@ -154,12 +153,11 @@ export function DashboardPage() {
   
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
-  const router = useRouter();
 
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
 
   useEffect(() => {
-    if(defects.length > 0 && !defectsLoading) {
+    if(defects && defects.length > 0 && !defectsLoading) {
         const latestDefect = defects.reduce((latest, current) => {
             try {
                 const latestDate = latest ? parseISO(latest.created_at) : new Date(0);
@@ -172,7 +170,7 @@ export function DashboardPage() {
         if(latestDefect) {
             setUploadTimestamp(new Date().toISOString());
         }
-    } else if (defects.length === 0) {
+    } else if (defects && defects.length === 0) {
         setUploadTimestamp(null);
     }
   }, [defects, defectsLoading]);
@@ -264,12 +262,12 @@ export function DashboardPage() {
     await batch.commit();
 
     setUploadTimestamp(null);
-    toast({ title: "Data Cleared", description: "Your data has been cleared." });
+    toast({ title: "Data Cleared", description: "All defect data has been cleared." });
     setActiveView('dashboard');
   };
 
   const yesterdayDefectsCount = useMemo(() => {
-    if (defects.length === 0) return 0;
+    if (!defects || defects.length === 0) return 0;
     const yesterday = subDays(new Date(), 1);
     return defects.filter(defect => {
       try {
@@ -281,14 +279,14 @@ export function DashboardPage() {
   }, [defects]);
 
   const readyForTestingCount = useMemo(() => {
-    if (defects.length === 0) return 0;
+    if (!defects || defects.length === 0) return 0;
     return defects.filter(
       defect => defect.status && defect.status.toLowerCase() === 'ready for testing'
     ).length;
   }, [defects]);
   
 
-  const totalDefects = useMemo(() => defects.length, [defects]);
+  const totalDefects = useMemo(() => defects?.length || 0, [defects]);
 
   const viewTitles: Record<View, string> = {
     dashboard: 'Dashboard',
@@ -313,6 +311,7 @@ export function DashboardPage() {
   };
 
   const uniqueDomains = useMemo(() => {
+    if (!defects) return [];
     const domains = new Set<string>();
     defects.forEach(defect => {
       if (defect.domain) domains.add(defect.domain);
@@ -321,6 +320,7 @@ export function DashboardPage() {
   }, [defects]);
 
   const uniqueReporters = useMemo(() => {
+    if (!defects) return [];
     const reporters = new Set<string>();
     defects.forEach(defect => {
       if (defect.reported_by) reporters.add(defect.reported_by);
@@ -329,6 +329,7 @@ export function DashboardPage() {
     }, [defects]);
 
     const uniqueStatuses = useMemo(() => {
+    if (!defects) return [];
     const statuses = new Set<string>();
     defects.forEach(defect => {
         if (defect.status) statuses.add(defect.status);
@@ -337,6 +338,7 @@ export function DashboardPage() {
     }, [defects]);
 
   const filteredDefects = useMemo(() => {
+    if (!defects) return [];
     return defects.filter(defect => {
         const domainMatch = filterDomain === 'all' || defect.domain === filterDomain;
         const reporterMatch = filterReportedBy === 'all' || defect.reported_by === filterReportedBy;
@@ -346,6 +348,7 @@ export function DashboardPage() {
   }, [defects, filterDomain, filterReportedBy, filterStatus]);
 
   const attentionDefects = useMemo(() => {
+    if (!defects) return [];
     const testDataKeywords = ['test data', 'order release id', 'shipment id', 'invoice id', 'taas202'];
     const numericTestDataRegex = /\d{7,}/;
   
@@ -401,7 +404,7 @@ export function DashboardPage() {
     return filteredDefects.slice(startIndex, endIndex);
   }, [filteredDefects, currentPage]);
 
-  if (isUserLoading || (user && defectsLoading)) {
+  if (isUserLoading || defectsLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
