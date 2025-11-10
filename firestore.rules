@@ -19,7 +19,8 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       // Allow users to create their own profile, and allow admins to perform any write.
-      allow write: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update, delete: if isAdmin();
     }
 
     match /TAASBugSenseAI/{fileId} {

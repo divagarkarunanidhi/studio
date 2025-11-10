@@ -49,7 +49,7 @@ function WelcomePage() {
 export interface UserProfile {
   username: string;
   email: string;
-  role: 'admin' | 'taas' | 'view';
+  role: 'admin' | 'taas' | 'view' | 'newuser';
 }
 
 export default function Home() {
@@ -80,7 +80,7 @@ export default function Home() {
     );
   }
   
-  if (userProfile?.role) {
+  if (userProfile?.role && (userProfile.role === 'admin' || userProfile.role === 'taas' || userProfile.role === 'view')) {
       return <DashboardPage userProfile={userProfile} />;
   }
 

@@ -22,10 +22,10 @@ interface UserProfile {
     id: string;
     username: string;
     email: string;
-    role: 'admin' | 'taas' | 'view';
+    role: 'admin' | 'taas' | 'view' | 'newuser';
 }
 
-const ROLES: UserProfile['role'][] = ['admin', 'taas', 'view'];
+const ROLES: UserProfile['role'][] = ['admin', 'taas', 'view', 'newuser'];
 
 function RoleSelector({ user }: { user: WithId<UserProfile> }) {
     const firestore = useFirestore();
