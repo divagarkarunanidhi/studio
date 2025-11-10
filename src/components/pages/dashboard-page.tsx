@@ -51,8 +51,7 @@ import {
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from '@/firebase';
-import { collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import {
     AlertDialog,
@@ -159,18 +158,12 @@ interface DashboardPageProps {
 
 export function DashboardPage({ userProfile }: DashboardPageProps) {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
   const auth = useAuth();
   const userRole = userProfile?.role;
-
-  const defectFilesColRef = useMemoFirebase(() => 
-    user ? query(collection(firestore, 'TAASBugSenseAI'), orderBy('uploadedAt', 'desc'), limit(1)) : null, 
-    [firestore, user]
-  );
-  const { data: defectFiles, isLoading: defectsLoading } = useCollection<{uploadedAt: string, defects: Defect[]}>(defectFilesColRef);
   
-  const defects = useMemo(() => defectFiles?.[0]?.defects ?? [], [defectFiles]);
-  const uploadTimestamp = useMemo(() => defectFiles?.[0]?.uploadedAt ?? null, [defectFiles]);
+  const [defects, setDefects] = useState<Defect[]>([]);
+  const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
+  const [defectsLoading, setDefectsLoading] = useState(true);
 
   const [activeView, setActiveView] = useState<View>('dashboard');
   
@@ -183,34 +176,40 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const [showUploader, setShowUploader] = useState(false);
 
-  useEffect(() => {
-    if (!defectsLoading && (!defectFiles || defectFiles.length === 0)) {
-        setShowUploader(true);
-    } else if (!defectsLoading && defectFiles && defectFiles.length > 0) {
-        setShowUploader(false);
-    }
-  }, [defectFiles, defectsLoading]);
-
   const handleLoadFromServer = useCallback(async () => {
-    if (!user || !firestore) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Cannot connect to server.' });
-      return;
-    }
-    const defectsQuery = query(collection(firestore, 'TAASBugSenseAI'), orderBy('uploadedAt', 'desc'), limit(1));
-    const querySnapshot = await getDocs(defectsQuery);
-    
-    if (querySnapshot.empty) {
-        toast({ title: "No Data Found", description: "There is no data stored on the server." });
-        setShowUploader(true);
-    } else {
-        const latestFile = querySnapshot.docs[0].data();
-        toast({ title: "Data Loaded", description: `${(latestFile.defects || []).length} records loaded from the server.` });
+    setDefectsLoading(true);
+    try {
+      const response = await fetch('/api/defects/latest');
+      if (!response.ok) {
+        throw new Error('Failed to fetch data from server.');
+      }
+      const data = await response.json();
+      if (data && data.defects) {
+        setDefects(data.defects);
+        setUploadTimestamp(data.uploadedAt);
+        toast({ title: "Data Loaded", description: `${data.defects.length} records loaded from the server.` });
         setShowUploader(false);
+      } else {
+        toast({ title: "No Data Found", description: "There is no data stored on the server." });
+        setDefects([]);
+        setUploadTimestamp(null);
+        setShowUploader(true);
+      }
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not load data from server.' });
+      console.error(error);
+    } finally {
+      setDefectsLoading(false);
     }
-  }, [user, firestore, toast]);
+  }, [toast]);
+  
+  useEffect(() => {
+    handleLoadFromServer();
+  }, [handleLoadFromServer]);
+
 
   const handleDataUploaded = useCallback(async (csvText: string) => {
-    if (!user || !firestore) {
+    if (!user) {
         toast({
             variant: 'destructive',
             title: 'Error',
@@ -257,16 +256,22 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
         if (parsedDefects.length === 0) throw new Error('No valid defect data found.');
         
-        const fileDoc = {
-          defects: parsedDefects,
-          uploadedAt: new Date().toISOString(),
-          uploaderId: user.uid,
-        };
+        const response = await fetch('/api/defects/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                defects: parsedDefects,
+                uploaderId: user.uid,
+            }),
+        });
 
-        const docRef = await addDoc(collection(firestore, 'TAASBugSenseAI'), fileDoc);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to upload data to the server.');
+        }
         
         toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded in a new file.` });
-        
+        await handleLoadFromServer(); // Reload data to show the new file
         setShowUploader(false);
     } catch (error) {
         console.error('Error during defect upload:', error);
@@ -276,10 +281,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             description: error instanceof Error ? error.message : 'An unknown error occurred.',
         });
     }
-  }, [user, firestore, toast]);
+  }, [user, toast, handleLoadFromServer]);
 
   const handleClearData = () => {
     setShowUploader(true);
+    setDefects([]);
+    setUploadTimestamp(null);
     toast({ title: "Ready for New Upload", description: "You can now upload a new CSV file." });
   };
   
@@ -427,7 +434,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     return filteredDefects.slice(startIndex, endIndex);
   }, [filteredDefects, currentPage]);
 
-  if (isUserLoading || (defectsLoading && !defectFiles)) {
+  if (isUserLoading || defectsLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
