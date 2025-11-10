@@ -5,10 +5,9 @@ import { DashboardPage } from '@/components/pages/dashboard-page';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Bug, ShieldX, LogOut } from 'lucide-react';
+import { Bug, LogOut } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
-import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 
@@ -57,8 +56,6 @@ export default function Home() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
-  const auth = useAuth();
-  const { toast } = useToast();
 
   const userProfileRef = useMemoFirebase(
     () => (user ? doc(firestore, 'users', user.uid) : null),
@@ -88,5 +85,18 @@ export default function Home() {
   }
 
   // Fallback for when the user is authenticated but has no profile or role assigned yet.
-  return <WelcomePage />;
+  // Only show this if a user is actually logged in.
+  if (user) {
+    return <WelcomePage />;
+  }
+
+  // Otherwise, we are likely logging out or in an intermediate state, so show loading.
+  return (
+    <div className="flex h-screen w-full items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+            <Bug className="h-12 w-12 animate-spin text-primary" />
+            <p className="text-muted-foreground">Redirecting...</p>
+        </div>
+    </div>
+  );
 }
