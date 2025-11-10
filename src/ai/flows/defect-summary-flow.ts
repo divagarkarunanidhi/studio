@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to summarize defects into categories for visualization.
@@ -68,12 +69,28 @@ const defectSummaryFlow = ai.defineFlow(
       return acc;
     }, {} as Record<string, { count: number; defectIds: string[] }>);
 
-    const defectAreaCounts = summaries.reduce((acc, { id, functionalArea }) => {
-        if (!acc[functionalArea]) {
-          acc[functionalArea] = { count: 0, defectIds: [] };
+    const normalizeFunctionalArea = (area: string): string => {
+        const lowerArea = area.toLowerCase().trim();
+        if (lowerArea.includes('ship')) {
+            return 'Shipment';
         }
-        acc[functionalArea].count++;
-        acc[functionalArea].defectIds.push(id);
+        if (lowerArea.includes('order')) {
+            return 'Order Management';
+        }
+        // Capitalize the first letter of each word for consistency
+        return area
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+    };
+
+    const defectAreaCounts = summaries.reduce((acc, { id, functionalArea }) => {
+        const normalizedArea = normalizeFunctionalArea(functionalArea);
+        if (!acc[normalizedArea]) {
+          acc[normalizedArea] = { count: 0, defectIds: [] };
+        }
+        acc[normalizedArea].count++;
+        acc[normalizedArea].defectIds.push(id);
         return acc;
     }, {} as Record<string, { count: number; defectIds: string[] }>);
 
