@@ -77,80 +77,116 @@ const parseCSV = (text: string): string[][] => {
     let currentField = '';
     let inQuotes = false;
     let i = 0;
-  
-    while (i < text.length) {
-      const char = text[i];
-  
-      if (inQuotes) {
-        if (char === '"') {
-          if (i + 1 < text.length && text[i + 1] === '"') {
-            currentField += '"';
-            i++; // Skip the second quote
-          } else {
-            inQuotes = false;
-          }
+
+    // Normalize line endings
+    const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    while (i < normalizedText.length) {
+        const char = normalizedText[i];
+
+        if (inQuotes) {
+            if (char === '"') {
+                // Check for escaped quote
+                if (i + 1 < normalizedText.length && normalizedText[i + 1] === '"') {
+                    currentField += '"';
+                    i++; // Skip the second quote
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                currentField += char;
+            }
         } else {
-          currentField += char;
+            if (char === ',') {
+                currentRow.push(currentField);
+                currentField = '';
+            } else if (char === '\n') {
+                currentRow.push(currentField);
+                result.push(currentRow);
+                currentRow = [];
+                currentField = '';
+            } else if (char === '"' && currentField === '') {
+                inQuotes = true;
+            } else {
+                currentField += char;
+            }
         }
-      } else {
-        if (char === ',') {
-          currentRow.push(currentField);
-          currentField = '';
-        } else if (char === '\n' || char === '\r') {
-          currentRow.push(currentField);
-          result.push(currentRow);
-          currentRow = [];
-          currentField = '';
-          if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
-            i++;
-          }
-        } else {
-          currentField += char;
-        }
-      }
-      i++;
+        i++;
     }
-  
+
+    // Add the last field and row if the text doesn't end with a newline
     if (currentField || currentRow.length > 0) {
-      currentRow.push(currentField);
-      result.push(currentRow);
+        currentRow.push(currentField);
+        result.push(currentRow);
     }
-  
-    return result.filter(
-      (row) => row.length > 1 || (row.length === 1 && row[0].trim() !== '')
-    );
+    
+    // Filter out completely empty rows
+    return result.filter(row => row.some(field => field.trim() !== ''));
 };
+
 
 const parseDate = (dateString: string): Date | null => {
     if (!dateString) return null;
+  
+    // Attempt 1: Standard ISO format (and others recognized by new Date())
     let date = new Date(dateString);
     if (!isNaN(date.getTime())) {
       return date;
     }
-    const parts = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})\s+([AP]M)/);
-    if (parts) {
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      const year = parseInt(parts[3], 10);
-      let hour = parseInt(parts[4], 10);
-      const minute = parseInt(parts[5], 10);
-      const second = parseInt(parts[6], 10);
-      const ampm = parts[7];
   
-      if (ampm === 'PM' && hour < 12) {
-        hour += 12;
-      }
-      if (ampm === 'AM' && hour === 12) {
-        hour = 0;
-      }
-      date = new Date(year, month, day, hour, minute, second);
-      if (!isNaN(date.getTime())) {
-        return date;
-      }
+    // Attempt 2: Jira/Excel format 'DD/MMM/YY h:mm a' e.g., "30/May/24 5:20 PM"
+    const jiraFormat = dateString.match(/(\d{1,2})\/(\w{3})\/(\d{2,4})\s+(\d{1,2}):(\d{2})\s+([AP]M)/);
+    if (jiraFormat) {
+        const day = parseInt(jiraFormat[1], 10);
+        const monthStr = jiraFormat[2];
+        const yearPart = parseInt(jiraFormat[3], 10);
+        const hourPart = parseInt(jiraFormat[4], 10);
+        const minute = parseInt(jiraFormat[5], 10);
+        const ampm = jiraFormat[6];
+        
+        const year = yearPart < 100 ? 2000 + yearPart : yearPart;
+        const monthMap: { [key: string]: number } = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+        const month = monthMap[monthStr];
+
+        let hour = hourPart;
+        if (ampm === 'PM' && hour < 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+        
+        date = new Date(Date.UTC(year, month, day, hour, minute));
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
     }
-  
-    return null;
-  }
+
+    // Attempt 3: Format 'M/D/YYYY H:mm' e.g., "5/30/2024 17:20"
+    const simpleFormat = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
+    if (simpleFormat) {
+        const month = parseInt(simpleFormat[1], 10) - 1;
+        const day = parseInt(simpleFormat[2], 10);
+        const year = parseInt(simpleFormat[3], 10);
+        const hour = parseInt(simpleFormat[4], 10);
+        const minute = parseInt(simpleFormat[5], 10);
+        
+        date = new Date(year, month, day, hour, minute);
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+    }
+
+    // Final attempt with just the date part if time fails
+    try {
+        const dateOnly = dateString.split(' ')[0];
+        date = new Date(dateOnly);
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+    } catch(e) {
+        // ignore
+    }
+
+    console.warn(`Could not parse date: "${dateString}"`);
+    return null; // Return null if all attempts fail
+}
 
 interface DashboardPageProps {
   userProfile: UserProfile;
@@ -224,24 +260,39 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         let headers = rows[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
         const requiredHeaders = ['issue_key', 'summary', 'created'];
         for (const requiredHeader of requiredHeaders) {
-            if (!headers.includes(requiredHeader)) throw new Error(`CSV must include headers: ${requiredHeaders.join(', ')}. Missing: "${requiredHeader}"`);
+            if (!headers.includes(requiredHeader) && !headers.includes(requiredHeader.replace('_', ''))) {
+                 throw new Error(`CSV must include headers: ${requiredHeaders.join(', ')}. Missing a valid "Issue Key", "Summary", or "Created" column.`);
+            }
         }
+        
+        // Normalize headers
+        const headerMap: { [key:string]: string } = {};
+        const normalizedHeaders = headers.map(h => {
+            const keyMap: { [key:string]: string } = { 'issue_key': 'id', 'created': 'created_at', 'reporter': 'reported_by', 'custom_field_(business_domain)': 'domain', 'issue_id': 'id' };
+            const normalized = h.replace(/\s+/g, '_');
+            const mappedKey = keyMap[normalized] || normalized;
+            headerMap[h] = mappedKey;
+            return mappedKey;
+        });
+
 
         const parsedDefects = rows.slice(1).map((values, rowIndex) => {
             let currentHeader = '';
             try {
-                const defectObj: any = headers.reduce((obj, header, index) => {
+                const defectObj: any = rows[0].reduce((obj, header, index) => {
                     currentHeader = header;
+                    const mappedKey = headerMap[header];
                     let value = values[index] || '';
 
-                    if (header === 'created' || header === 'updated') {
+                    if (mappedKey === 'created_at' || mappedKey === 'updated') {
                         const parsedDate = parseDate(value);
-                        if (!parsedDate && header === 'created') throw new Error(`Invalid date in '${header}'.`);
+                        // For 'created_at', a valid date is mandatory.
+                        if (!parsedDate && mappedKey === 'created_at') {
+                            throw new Error(`Invalid or un-parseable date format in '${header}'.`);
+                        }
                         value = parsedDate ? parsedDate.toISOString() : '';
                     }
-                    const keyMap = { 'issue_key': 'id', 'created': 'created_at', 'reporter': 'reported_by', 'custom_field_business_domain': 'domain' };
-                    const mappedKey = keyMap[header] || header;
-
+                    
                     obj[mappedKey] = value;
                     return obj;
                 }, {} as any);
@@ -250,11 +301,18 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 
                 return defectObj;
             } catch (cellError: any) {
-                throw new Error(`Error in row ${rowIndex + 2} at "${currentHeader}": ${cellError.message}`);
+                console.error(`Error in row ${rowIndex + 2} at "${currentHeader}": ${cellError.message}`);
+                toast({
+                    variant: 'destructive',
+                    title: `CSV Parsing Error`,
+                    description: `Error in row ${rowIndex + 2} for column "${currentHeader}": ${cellError.message}`,
+                });
+                // Propagate the error to stop the whole process
+                throw new Error(`Parsing failed at row ${rowIndex + 2}.`);
             }
         }).filter((d): d is Defect => d !== null);
 
-        if (parsedDefects.length === 0) throw new Error('No valid defect data found.');
+        if (parsedDefects.length === 0) throw new Error('No valid defect data found after parsing.');
         
         const response = await fetch('/api/defects/upload', {
             method: 'POST',
@@ -630,7 +688,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               <ResolutionTimePage defects={defects} uniqueDomains={uniqueDomains} />
             )}
 
-            {activeView === 'user-management' && (
+            {activeView === 'user-management' && userRole === 'admin' && (
               <UserManagementPage />
             )}
 
@@ -733,3 +791,5 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
+
+    
