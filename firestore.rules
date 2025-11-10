@@ -12,9 +12,8 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Check for the admin role on the custom claims of the auth token
-      // This avoids a recursive get() call that causes permission errors.
-      return isSignedIn() && request.auth.token.role == 'admin';
+      // Check for the admin role on the user's document in Firestore.
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     match /users/{userId} {
