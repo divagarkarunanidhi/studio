@@ -238,6 +238,9 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
       }
       const data = await response.json();
       if (data && data.defects) {
+        if (defects.length === 0) { // Only show toast if there was no data before
+          toast({ title: "Data Loaded", description: `${data.defects.length} records loaded from server.` });
+        }
         setDefects(data.defects);
         setUploadTimestamp(data.uploadedAt);
         setShowUploader(false);
@@ -253,7 +256,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     } finally {
       setDefectsLoading(false);
     }
-  }, [toast]);
+  }, [toast, defects.length]);
   
   useEffect(() => {
     handleLoadFromServer();
@@ -276,12 +279,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         const originalHeaders = rows[0].map(h => h.trim());
         const lowerCaseHeaders = originalHeaders.map(h => h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
         
-        const hasIssueKey = lowerCaseHeaders.includes('issue_key') || lowerCaseHeaders.includes('issue_id');
+        const hasIssueKey = lowerCaseHeaders.includes('issue_key');
         const hasSummary = lowerCaseHeaders.includes('summary');
         const hasCreated = lowerCaseHeaders.includes('created');
 
         const missingHeaders = [];
-        if (!hasIssueKey) missingHeaders.push('Issue Key/ID');
+        if (!hasIssueKey) missingHeaders.push('Issue Key');
         if (!hasSummary) missingHeaders.push('Summary');
         if (!hasCreated) missingHeaders.push('Created');
 
@@ -291,8 +294,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         
         const headerMap: { [key:string]: string } = {};
         const keyMap: { [key:string]: string } = { 
-            'issue key': 'id', 
-            'issue id': 'id',
+            'issue key': 'id',
             'created': 'created_at', 
             'reporter': 'reported_by', 
             'custom field (business domain)': 'domain',
@@ -813,6 +815,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
+
+    
 
     
 
