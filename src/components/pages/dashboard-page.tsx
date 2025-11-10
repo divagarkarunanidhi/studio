@@ -238,9 +238,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
       }
       const data = await response.json();
       if (data && data.defects) {
+        const hadDataBefore = defects.length > 0;
         setDefects(data.defects);
         setUploadTimestamp(data.uploadedAt);
-        toast({ title: "Data Loaded", description: `${data.defects.length} records loaded from the server.` });
+        if (!hadDataBefore) {
+          toast({ title: "Data Loaded", description: `${data.defects.length} records loaded from the server.` });
+        }
         setShowUploader(false);
       } else {
         toast({ title: "No Data Found", description: "There is no data stored on the server." });
@@ -254,7 +257,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     } finally {
       setDefectsLoading(false);
     }
-  }, [toast]);
+  }, [toast, defects.length]);
   
   useEffect(() => {
     handleLoadFromServer();
