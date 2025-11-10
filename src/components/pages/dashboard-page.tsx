@@ -244,7 +244,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         setShowUploader(false);
       } else {
         if (defects.length === 0) {
-            toast({ title: "No Data Found", description: "There is no data stored on the server." });
+            toast({ title: "No Data Found", description: "There is no data stored on the server. Please upload a file." });
         }
         setDefects([]);
         setUploadTimestamp(null);
@@ -620,7 +620,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
             </div>
           </div>
-          {uploadTimestamp && (userRole === 'admin' || userRole === 'taas') && !showUploader && (
+          {uploadTimestamp && userRole === 'admin' && !showUploader && (
             <div className="flex items-center gap-4">
                 <ClientTimestamp timestamp={uploadTimestamp} />
                 <AlertDialog>
@@ -657,7 +657,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                {(userRole === 'admin' || userRole === 'taas') ? (
+                {(userRole === 'admin') ? (
                     <FileUploader onDataUploaded={handleDataUploaded} />
                 ) : (
                     <p className="text-destructive">You do not have permission to upload data.</p>
