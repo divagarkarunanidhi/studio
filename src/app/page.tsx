@@ -72,23 +72,6 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
 
-  useEffect(() => {
-    // This effect should only run when the loading states have settled.
-    // It checks for the final state after all loading is done.
-    const allLoadingComplete = !isUserLoading && !isProfileLoading;
-
-    if (allLoadingComplete && user && !userProfile) {
-      toast({
-        variant: 'destructive',
-        title: 'User Profile Not Found',
-        description: 'Please contact an administrator to assign you a role.',
-      });
-    }
-    // We only want this effect to re-run when the loading states change.
-    // user and userProfile are checked inside the effect.
-  }, [isUserLoading, isProfileLoading, user, userProfile, toast]);
-
-
   if (isUserLoading || (user && isProfileLoading)) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
