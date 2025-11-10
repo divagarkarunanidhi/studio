@@ -238,9 +238,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
       }
       const data = await response.json();
       if (data && data.defects) {
-        if (defects.length === 0) { // Only show toast if there was no data before
-          toast({ title: "Data Loaded", description: `${data.defects.length} records loaded from server.` });
-        }
         setDefects(data.defects);
         setUploadTimestamp(data.uploadedAt);
         setShowUploader(false);
@@ -256,7 +253,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     } finally {
       setDefectsLoading(false);
     }
-  }, [toast, defects.length]);
+  }, [toast]);
   
   useEffect(() => {
     handleLoadFromServer();
@@ -277,14 +274,14 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         if (rows.length < 2) throw new Error('CSV must have a header and at least one data row.');
 
         const originalHeaders = rows[0].map(h => h.trim());
-        const lowerCaseHeaders = originalHeaders.map(h => h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
         
-        const hasIssueKey = lowerCaseHeaders.includes('issue_key');
+        const lowerCaseHeaders = originalHeaders.map(h => h.toLowerCase());
+        const hasIssueKey = lowerCaseHeaders.includes('issue key');
         const hasSummary = lowerCaseHeaders.includes('summary');
         const hasCreated = lowerCaseHeaders.includes('created');
 
         const missingHeaders = [];
-        if (!hasIssueKey) missingHeaders.push('Issue Key');
+        if (!hasIssueKey) missingHeaders.push('Issue key');
         if (!hasSummary) missingHeaders.push('Summary');
         if (!hasCreated) missingHeaders.push('Created');
 
@@ -303,7 +300,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         originalHeaders.forEach(header => {
             const cleanHeader = header.toLowerCase().replace(/\s+/g, ' ').trim();
             const normalized = cleanHeader.replace(/[^a-z0-9]+/g, '_');
-            headerMap[header] = keyMap[cleanHeader] || keyMap[normalized] || normalized;
+            headerMap[header] = keyMap[cleanHeader] || normalized;
         });
 
 
@@ -815,6 +812,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
+
+    
 
     
 
