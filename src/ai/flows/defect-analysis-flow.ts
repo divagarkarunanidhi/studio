@@ -55,7 +55,7 @@ const defectAnalysisFlow = ai.defineFlow(
     inputSchema: z.object({ defects: z.array(DefectSchema) }),
     outputSchema: DefectAnalysisOutputSchema,
     config: {
-      temperature: 0.2, // Lower temperature for more deterministic and factual analysis
+      temperature: 0.0, // Lower temperature for more deterministic and factual analysis
     }
   },
   async ({ defects }) => {
