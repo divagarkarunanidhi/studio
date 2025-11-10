@@ -138,45 +138,17 @@ The following diagram illustrates the high-level architecture and data flow of t
 
 ---
 
-## 5. Implementation Details
+## 5. Data Privacy and Storage
 
-### 5.1. Data Ingestion and Parsing
+This application is designed with data privacy as a priority. Here’s how your data is handled:
 
-The data pipeline begins with the user uploading a CSV file.
+- **Private Storage:** When you upload a CSV file, the defect data is stored in your project's private **Firestore database**. This data is protected by Firebase's security rules, and it is not accessible to anyone outside of your project.
 
-- **`FileUploader` Component (`src/components/dashboard/file-uploader.tsx`):**
-  - This component provides the UI for dragging and dropping or selecting a CSV file.
-  - The core logic resides in the `handleFile` function, which uses the browser's `FileReader` API to read the file as text.
-  - A custom CSV parser, `parseCsvRow`, is implemented to handle complex CSV formats, including headers and data fields that are enclosed in double quotes. This allows it to correctly process data exported from tools like Jira.
-  - During parsing, it maps the columns from the CSV file (e.g., "Issue id", "Summary", "Created", "Issue Type") to the fields of the `Defect` type defined in `src/lib/types.ts`.
-  - After successfully parsing the file, it calls the `onDataUploaded` callback to lift the state up to the main `DashboardPage` component.
+- **Data Usage for Genkit:** The defect data is used **only** for the features within this application, such as running the AI-powered analysis flows. 
+    - The data is sent to Google's AI models to generate insights for you.
+    - Per Google's policy, your data is **not** used to train their models or for any other purpose. It is only used to provide you with a response.
+    - You can verify this in the comments within the `src/ai/genkit.ts` file.
 
-### 5.2. Dashboard and Visualization
+- **No Data Sharing:** The defect data you upload is **not** shared with Google or any third party for any other purpose, such as improving services or for advertising.
 
-Once the data is loaded, it is displayed on an interactive dashboard.
-
-- **`DashboardPage` Component (`src/components/pages/dashboard-page.tsx`):**
-  - This is the main stateful component that holds the array of `Defect` objects.
-  - It manages the active view (`dashboard`, `all-defects`, `analysis`, etc.) and renders the appropriate content based on user selection from the sidebar.
-  - It calculates summary statistics (e.g., total defects, high-severity defects) using `useMemo` for performance. These stats are passed to `StatCard` components.
-
-- **Key Dashboard Widgets:**
-  - **`StatCard`:** A simple component to display a single metric with a title and an icon.
-  - **`GroupedDefectsChart`:** A bar chart that visualizes the number of defects grouped by a selected category (e.g., Severity, Priority, Status). It uses `Recharts` for rendering and allows the user to change the grouping category via a dropdown.
-  - **`DefectsTable`:** A table that displays a list of defects. It includes features like sorting by creation date and highlighting urgent issues.
-
-### 5.3. AI-Powered Defect Analysis
-
-This is the core intelligent feature of the application, providing qualitative insights from the raw defect data.
-
-- **`AnalysisPage` Component (`src/components/pages/analysis-page.tsx`):**
-  - This component is displayed when the "Defect Analysis" menu item is selected.
-  - When the component mounts (or when the user clicks "Re-run Analysis"), it calls the `analyzeDefects` server function.
-  - It manages the loading and error states for the analysis process and displays the results in separate cards.
-
-- **Genkit Flow (`src/ai/flows/defect-analysis-flow.ts`):**
-  - This file defines the logic for interacting with the AI model.
-  - **`DefectAnalysisOutputSchema`:** A Zod schema defines the expected JSON output from the AI model. This ensures the response is structured and includes `defectCause`, `defectSuggestions`, and `defectSource`.
-  - **`analysisPrompt`:** A prompt template is defined using `ai.definePrompt`. It instructs the AI model to act as an expert QA analyst. The prompt provides clear instructions on what to analyze and what format to return the analysis in. The defect data is passed into the prompt as a JSON string.
-  - **`defectAnalysisFlow`:** The main Genkit flow, defined with `ai.defineFlow`. It takes the array of defects, converts it to a JSON string, and passes it to the `analysisPrompt`. It then awaits the model's response and returns the structured output.
-  - The `'use server';` directive at the top of the file allows this function to be securely called from the client-side `AnalysisPage` component.
+- **Distinction from Google Analytics:** The messages you may see regarding "data sharing" and "personalized advertising" are related to **Google Analytics**, which is a separate service that collects anonymous usage data (e.g., button clicks, page views) to help understand how users interact with the app. This does **not** include your defect data. The collection of Analytics data is a standard part of Firebase projects and can be configured or disabled in your project's settings.

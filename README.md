@@ -96,3 +96,18 @@ This is the core intelligent feature of the application, providing qualitative i
   - **`analysisPrompt`:** A prompt template is defined using `ai.definePrompt`. It instructs the AI model to act as an expert QA analyst. The prompt provides clear instructions on what to analyze and what format to return the analysis in. The defect data is passed into the prompt as a JSON string.
   - **`defectAnalysisFlow`:** The main Genkit flow, defined with `ai.defineFlow`. It takes the array of defects, converts it to a JSON string, and passes it to the `analysisPrompt`. It then awaits the model's response and returns the structured output.
   - The `'use server';` directive at the top of the file allows this function to be securely called from the client-side `AnalysisPage` component.
+
+## 5. Data Privacy and Storage
+
+This application is designed with data privacy as a priority. Here’s how your data is handled:
+
+- **Private Storage:** When you upload a CSV file, the defect data is stored in your project's private **Firestore database**. This data is protected by Firebase's security rules, and it is not accessible to anyone outside of your project.
+
+- **Data Usage for Genkit:** The defect data is used **only** for the features within this application, such as running the AI-powered analysis flows. 
+    - The data is sent to Google's AI models to generate insights for you.
+    - Per Google's policy, your data is **not** used to train their models or for any other purpose. It is only used to provide you with a response.
+    - You can verify this in the comments within the `src/ai/genkit.ts` file.
+
+- **No Data Sharing:** The defect data you upload is **not** shared with Google or any third party for any other purpose, such as improving services or for advertising.
+
+- **Distinction from Google Analytics:** The messages you may see regarding "data sharing" and "personalized advertising" are related to **Google Analytics**, which is a separate service that collects anonymous usage data (e.g., button clicks, page views) to help understand how users interact with the app. This does **not** include your defect data. The collection of Analytics data is a standard part of Firebase projects and can be configured or disabled in your project's settings.
