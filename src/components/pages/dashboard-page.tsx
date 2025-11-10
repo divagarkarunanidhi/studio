@@ -276,13 +276,11 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         const originalHeaders = rows[0].map(h => h.trim());
         const lowerCaseHeaders = originalHeaders.map(h => h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
         
-        const requiredHeaders = ['issue_key', 'summary', 'created'];
-        const missingHeaders = [];
-        
         const hasIssueKey = lowerCaseHeaders.includes('issue_key') || lowerCaseHeaders.includes('issue_id');
         const hasSummary = lowerCaseHeaders.includes('summary');
         const hasCreated = lowerCaseHeaders.includes('created');
 
+        const missingHeaders = [];
         if (!hasIssueKey) missingHeaders.push('Issue Key/ID');
         if (!hasSummary) missingHeaders.push('Summary');
         if (!hasCreated) missingHeaders.push('Created');
@@ -293,16 +291,16 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         
         const headerMap: { [key:string]: string } = {};
         const keyMap: { [key:string]: string } = { 
-            'issue_key': 'id', 
+            'issue key': 'id', 
             'issue id': 'id',
             'created': 'created_at', 
             'reporter': 'reported_by', 
-            'custom_field_(business_domain)': 'domain',
+            'custom field (business domain)': 'domain',
         };
 
         originalHeaders.forEach(header => {
             const cleanHeader = header.toLowerCase().replace(/\s+/g, ' ').trim();
-            const normalized = header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+            const normalized = header.toLowerCase().replace(/[^a-zA-Z0-9_()]/g, '').replace(/_+/g, '_');
             headerMap[header] = keyMap[cleanHeader] || keyMap[normalized] || normalized;
         });
 
@@ -332,12 +330,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 return defectObj;
             } catch (cellError: any) {
                 console.error(`Error in row ${rowIndex + 2} at "${currentHeader}": ${cellError.message}`);
-                toast({
-                    variant: 'destructive',
-                    title: `CSV Parsing Error`,
-                    description: `Error in row ${rowIndex + 2} for column "${currentHeader}": ${cellError.message}`,
-                });
-                throw new Error(`Parsing failed at row ${rowIndex + 2}.`);
+                throw new Error(`Parsing failed at row ${rowIndex + 2} for column "${currentHeader}": ${cellError.message}`);
             }
         }).filter((d): d is Defect => d !== null);
 
@@ -820,6 +813,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
+
+    
 
     
 
