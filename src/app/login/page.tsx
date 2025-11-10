@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Bug } from 'lucide-react';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -43,6 +44,14 @@ export default function LoginPage() {
   }, [user, isUserLoading, router]);
 
   const handleSignUp = async () => {
+    if (!username) {
+        toast({
+            variant: 'destructive',
+            title: 'Sign Up Failed',
+            description: 'Please enter a username.',
+        });
+        return;
+    }
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -52,12 +61,14 @@ export default function LoginPage() {
       );
       const user = userCredential.user;
 
-      // Create user profile in Firestore
-      await setDoc(doc(firestore, 'users', user.uid), {
+      // Create user profile in Firestore without blocking
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userProfile = {
         username: username,
         email: user.email,
         role: 'view', // Default role
-      });
+      };
+      setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
 
       toast({ title: 'Account Created!', description: 'You have been signed in.' });
       router.push('/');

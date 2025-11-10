@@ -68,7 +68,13 @@
     }
   },
   "auth": {
-    "providers": ["emailpassword"]
+    "providers": ["emailpassword"],
+    "customClaims": {
+      "role": {
+        "type": "string",
+        "enum": ["admin", "taas", "view"]
+      }
+    }
   },
   "firestore": {
     "structure": [
