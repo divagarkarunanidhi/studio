@@ -10,7 +10,9 @@ if (!process.env.MONGODB_DB_NAME) {
 
 const uri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB_NAME;
-const options = {};
+const options = {
+    tlsAllowInvalidCertificates: true,
+};
 
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
