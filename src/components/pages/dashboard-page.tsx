@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -242,7 +243,9 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         setUploadTimestamp(data.uploadedAt);
         setShowUploader(false);
       } else {
-        toast({ title: "No Data Found", description: "There is no data stored on the server." });
+        if (defects.length === 0) {
+            toast({ title: "No Data Found", description: "There is no data stored on the server." });
+        }
         setDefects([]);
         setUploadTimestamp(null);
         setShowUploader(true);
@@ -253,7 +256,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     } finally {
       setDefectsLoading(false);
     }
-  }, [toast]);
+  }, [toast, defects.length]);
   
   useEffect(() => {
     handleLoadFromServer();
@@ -299,8 +302,17 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
         originalHeaders.forEach(header => {
             const cleanHeader = header.toLowerCase().replace(/\s+/g, ' ').trim();
-            const normalized = cleanHeader.replace(/[^a-z0-9]+/g, '_');
-            headerMap[header] = keyMap[cleanHeader] || normalized;
+            const mappedKey = keyMap[cleanHeader];
+            if (mappedKey) {
+                headerMap[header] = mappedKey;
+            } else {
+                // Only map 'issue id' if 'issue key' is not the primary id
+                if (cleanHeader === 'issue id' && !headerMap.hasOwnProperty('Issue key') && !headerMap.hasOwnProperty('issue key')) {
+                     headerMap[header] = 'id';
+                } else {
+                    headerMap[header] = cleanHeader.replace(/[^a-z0-9]+/g, '_');
+                }
+            }
         });
 
 
