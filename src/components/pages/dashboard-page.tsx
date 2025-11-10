@@ -233,7 +233,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     try {
       const response = await fetch('/api/defects/latest');
       if (!response.ok) {
-        throw new Error('Failed to fetch data from server.');
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Failed to fetch data from server.');
       }
       const data = await response.json();
       if (data && data.defects) {
@@ -247,8 +248,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         setUploadTimestamp(null);
         setShowUploader(true);
       }
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not load data from server.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error Loading Data', description: error.message });
       console.error(error);
     } finally {
       setDefectsLoading(false);
@@ -300,7 +301,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
         originalHeaders.forEach(header => {
             const cleanHeader = header.toLowerCase().replace(/\s+/g, ' ').trim();
-            const normalized = header.toLowerCase().replace(/[^a-zA-Z0-9_()]/g, '').replace(/_+/g, '_');
+            const normalized = cleanHeader.replace(/[^a-z0-9]+/g, '_');
             headerMap[header] = keyMap[cleanHeader] || keyMap[normalized] || normalized;
         });
 
@@ -347,18 +348,18 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to upload data to the server.');
+            throw new Error(errorData.details || 'Failed to upload data to the server.');
         }
         
         toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded in a new file.` });
         await handleLoadFromServer(); // Reload data to show the new file
         setShowUploader(false);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error during defect upload:', error);
         toast({
             variant: 'destructive',
             title: 'Error processing file',
-            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+            description: error.message || 'An unknown error occurred.',
         });
     }
   }, [user, toast, handleLoadFromServer]);

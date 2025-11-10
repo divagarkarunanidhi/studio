@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   } catch (e: any) {
     console.error("Failed to upload defects:", e);
     return NextResponse.json(
-      { error: "Failed to upload defects.", details: e.message },
+      { error: "Failed to upload defects.", details: e.toString() },
       { status: 500 }
     );
   }

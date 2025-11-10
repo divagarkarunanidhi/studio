@@ -24,7 +24,7 @@ export async function GET() {
   } catch (e: any) {
     console.error("Failed to fetch latest defects:", e);
     return NextResponse.json(
-      { error: "Failed to fetch latest defects.", details: e.message },
+      { error: "Failed to fetch latest defects.", details: e.toString() },
       { status: 500 }
     );
   }
