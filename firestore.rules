@@ -12,16 +12,14 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Check for the admin role on the user's document in Firestore.
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     match /users/{userId} {
-      // Admins can get any user doc, others can only get their own.
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
-      // Only admins can create, update, or delete user profile documents.
-      allow write: if isAdmin();
+      // Allow users to create their own profile, and allow admins to perform any write.
+      allow write: if isOwner(userId) || isAdmin();
     }
 
     match /TAASBugSenseAI/{fileId} {
