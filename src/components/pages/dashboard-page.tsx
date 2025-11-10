@@ -306,12 +306,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             if (mappedKey) {
                 headerMap[header] = mappedKey;
             } else {
-                // Only map 'issue id' if 'issue key' is not the primary id
-                if (cleanHeader === 'issue id' && !headerMap.hasOwnProperty('Issue key') && !headerMap.hasOwnProperty('issue key')) {
-                     headerMap[header] = 'id';
-                } else {
-                    headerMap[header] = cleanHeader.replace(/[^a-z0-9]+/g, '_');
-                }
+                headerMap[header] = cleanHeader.replace(/[^a-z0-9]+/g, '_');
             }
         });
 
@@ -376,9 +371,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const handleClearData = () => {
     setShowUploader(true);
-    setDefects([]);
-    setUploadTimestamp(null);
-    toast({ title: "Ready for New Upload", description: "You can now upload a new CSV file." });
   };
   
   const handleLogout = async () => {
@@ -628,7 +620,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
             </div>
           </div>
-          {uploadTimestamp && (userRole === 'admin' || userRole === 'taas') && (
+          {uploadTimestamp && (userRole === 'admin' || userRole === 'taas') && !showUploader && (
             <div className="flex items-center gap-4">
                 <ClientTimestamp timestamp={uploadTimestamp} />
                 <AlertDialog>
@@ -655,13 +647,13 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
           )}
         </header>
 
-        {(showUploader || defects.length === 0) ? (
+        {showUploader ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
-                <h2 className="text-2xl font-bold">Welcome!</h2>
+                <h2 className="text-2xl font-bold">Upload Data</h2>
                 <p className="mt-2 text-muted-foreground">
-                  To get started, please upload a CSV file or load existing data from the server.
+                  To get started, please upload a CSV file or load the latest data from the server.
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -670,7 +662,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 ) : (
                     <p className="text-destructive">You do not have permission to upload data.</p>
                 )}
-                <div className="flex flex-col items-center gap-2">
+                 <div className="flex flex-col items-center gap-2">
                     <span className="text-sm text-muted-foreground">OR</span>
                     <Button onClick={handleLoadFromServer}>
                         <Server className="mr-2 h-4 w-4" />
