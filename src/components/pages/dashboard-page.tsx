@@ -135,18 +135,18 @@ const parseDate = (dateString: string): Date | null => {
     }
   
     // Attempt 2: Jira/Excel format 'DD/MMM/YY h:mm a' e.g., "30/May/24 5:20 PM"
-    const jiraFormat = dateString.match(/(\d{1,2})\/(\w{3})\/(\d{2,4})\s+(\d{1,2}):(\d{2})\s+([AP]M)/);
+    const jiraFormat = dateString.match(/(\d{1,2})\/(\w{3})\/(\d{2,4})\s+(\d{1,2}):(\d{2})\s+([AP]M)/i);
     if (jiraFormat) {
         const day = parseInt(jiraFormat[1], 10);
         const monthStr = jiraFormat[2];
         const yearPart = parseInt(jiraFormat[3], 10);
         const hourPart = parseInt(jiraFormat[4], 10);
         const minute = parseInt(jiraFormat[5], 10);
-        const ampm = jiraFormat[6];
+        const ampm = jiraFormat[6].toUpperCase();
         
         const year = yearPart < 100 ? 2000 + yearPart : yearPart;
-        const monthMap: { [key: string]: number } = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
-        const month = monthMap[monthStr];
+        const monthMap: { [key: string]: number } = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+        const month = monthMap[monthStr.toUpperCase()];
 
         let hour = hourPart;
         if (ampm === 'PM' && hour < 12) hour += 12;
@@ -172,6 +172,22 @@ const parseDate = (dateString: string): Date | null => {
             return date;
         }
     }
+    
+     // Attempt 4: Format DD.MM.YYYY HH:mm:ss
+    const dotFormat = dateString.match(/(\d{2})\.(\d{2})\.(\d{4})\s(\d{2}):(\d{2}):(\d{2})/);
+    if (dotFormat) {
+        const day = parseInt(dotFormat[1], 10);
+        const month = parseInt(dotFormat[2], 10) - 1;
+        const year = parseInt(dotFormat[3], 10);
+        const hour = parseInt(dotFormat[4], 10);
+        const minute = parseInt(dotFormat[5], 10);
+        const second = parseInt(dotFormat[6], 10);
+        date = new Date(year, month, day, hour, minute, second);
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+    }
+
 
     // Final attempt with just the date part if time fails
     try {
@@ -257,36 +273,50 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         const rows = parseCSV(csvText);
         if (rows.length < 2) throw new Error('CSV must have a header and at least one data row.');
 
-        let headers = rows[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
+        const originalHeaders = rows[0].map(h => h.trim());
+        const lowerCaseHeaders = originalHeaders.map(h => h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
+        
         const requiredHeaders = ['issue_key', 'summary', 'created'];
-        for (const requiredHeader of requiredHeaders) {
-            if (!headers.includes(requiredHeader) && !headers.includes(requiredHeader.replace('_', ''))) {
-                 throw new Error(`CSV must include headers: ${requiredHeaders.join(', ')}. Missing a valid "Issue Key", "Summary", or "Created" column.`);
-            }
+        const missingHeaders = [];
+        
+        const hasIssueKey = lowerCaseHeaders.includes('issue_key') || lowerCaseHeaders.includes('issue_id');
+        const hasSummary = lowerCaseHeaders.includes('summary');
+        const hasCreated = lowerCaseHeaders.includes('created');
+
+        if (!hasIssueKey) missingHeaders.push('Issue Key/ID');
+        if (!hasSummary) missingHeaders.push('Summary');
+        if (!hasCreated) missingHeaders.push('Created');
+
+        if (missingHeaders.length > 0) {
+            throw new Error(`CSV must include headers: ${missingHeaders.join(', ')}.`);
         }
         
-        // Normalize headers
         const headerMap: { [key:string]: string } = {};
-        const normalizedHeaders = headers.map(h => {
-            const keyMap: { [key:string]: string } = { 'issue_key': 'id', 'created': 'created_at', 'reporter': 'reported_by', 'custom_field_(business_domain)': 'domain', 'issue_id': 'id' };
-            const normalized = h.replace(/\s+/g, '_');
-            const mappedKey = keyMap[normalized] || normalized;
-            headerMap[h] = mappedKey;
-            return mappedKey;
+        const keyMap: { [key:string]: string } = { 
+            'issue_key': 'id', 
+            'issue id': 'id',
+            'created': 'created_at', 
+            'reporter': 'reported_by', 
+            'custom_field_(business_domain)': 'domain',
+        };
+
+        originalHeaders.forEach(header => {
+            const cleanHeader = header.toLowerCase().replace(/\s+/g, ' ').trim();
+            const normalized = header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+            headerMap[header] = keyMap[cleanHeader] || keyMap[normalized] || normalized;
         });
 
 
         const parsedDefects = rows.slice(1).map((values, rowIndex) => {
             let currentHeader = '';
             try {
-                const defectObj: any = rows[0].reduce((obj, header, index) => {
+                const defectObj: any = originalHeaders.reduce((obj, header, index) => {
                     currentHeader = header;
                     const mappedKey = headerMap[header];
                     let value = values[index] || '';
 
                     if (mappedKey === 'created_at' || mappedKey === 'updated') {
                         const parsedDate = parseDate(value);
-                        // For 'created_at', a valid date is mandatory.
                         if (!parsedDate && mappedKey === 'created_at') {
                             throw new Error(`Invalid or un-parseable date format in '${header}'.`);
                         }
@@ -307,7 +337,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                     title: `CSV Parsing Error`,
                     description: `Error in row ${rowIndex + 2} for column "${currentHeader}": ${cellError.message}`,
                 });
-                // Propagate the error to stop the whole process
                 throw new Error(`Parsing failed at row ${rowIndex + 2}.`);
             }
         }).filter((d): d is Defect => d !== null);
@@ -791,5 +820,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
+
+    
 
     
