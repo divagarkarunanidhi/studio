@@ -73,21 +73,18 @@ export default function Home() {
   }, [user, isUserLoading, router]);
 
   useEffect(() => {
-    // This effect handles showing a toast if a user is logged in but has no profile.
-    // It will only run when the loading states are false.
-    if (isUserLoading || isProfileLoading) {
-        return; // Wait until everything is loaded
-    }
+    const isDoneLoading = !isUserLoading && !isProfileLoading;
+    const isLoggedInWithoutProfile = user && !userProfile;
 
-    // If there's a logged-in user but no profile, show the toast.
-    if (user && !userProfile) {
-        toast({
-            variant: 'destructive',
-            title: 'User Profile Not Found',
-            description: 'Please contact an administrator to assign you a role.',
-        });
+    if (isDoneLoading && isLoggedInWithoutProfile) {
+      toast({
+        variant: 'destructive',
+        title: 'User Profile Not Found',
+        description: 'Please contact an administrator to assign you a role.',
+      });
     }
   }, [user, userProfile, isUserLoading, isProfileLoading, toast]);
+
 
   if (isUserLoading || (user && isProfileLoading)) {
     return (
