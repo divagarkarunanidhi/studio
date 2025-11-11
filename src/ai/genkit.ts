@@ -10,7 +10,7 @@ export const ai = genkit({
       // https://policies.google.com/privacy
     }),
   ],
-  model: 'googleai/gemini-2.0-flash-lite-001',
+  model: 'googleai/gemini-2.5-flash',
 
   // Telemetry data (traces, metrics) is stored in your own Google Cloud project
   // for observability and is not used by Google for any other purpose.
