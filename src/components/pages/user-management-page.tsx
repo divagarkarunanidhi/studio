@@ -17,6 +17,12 @@ import {
   } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
 import type { WithId } from "@/firebase/firestore/use-collection";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface UserProfile {
     id: string;
@@ -61,15 +67,21 @@ function RoleSelector({ user }: { user: WithId<UserProfile> }) {
             <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Select role" />
             </SelectTrigger>
-            <SelectContent className="w-[380px]">
-                {ROLES.map(role => (
-                    <SelectItem key={role} value={role}>
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium">{role.charAt(0).toUpperCase() + role.slice(1)}</span>
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">- {ROLE_DESCRIPTIONS[role]}</span>
-                        </div>
-                    </SelectItem>
-                ))}
+            <SelectContent>
+                <TooltipProvider>
+                    {ROLES.map(role => (
+                        <Tooltip key={role} delayDuration={300}>
+                            <TooltipTrigger asChild>
+                                <SelectItem value={role}>
+                                    {role.charAt(0).toUpperCase() + role.slice(1)}
+                                </SelectItem>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" align="start">
+                                <p>{ROLE_DESCRIPTIONS[role]}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ))}
+                </TooltipProvider>
             </SelectContent>
         </Select>
     )
@@ -101,8 +113,8 @@ export function UserManagementPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Username</TableHead>
-                                <TableHead>Role</TableHead>
                                 <TableHead>Email</TableHead>
+                                <TableHead>Role</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -110,18 +122,18 @@ export function UserManagementPage() {
                                 Array.from({ length: 3 }).map((_, i) => (
                                     <TableRow key={i}>
                                         <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                                        <TableCell><Skeleton className="h-9 w-28" /></TableCell>
                                         <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                                        <TableCell><Skeleton className="h-9 w-28" /></TableCell>
                                     </TableRow>
                                 ))
                             ) : users && users.length > 0 ? (
                                 users.map(user => (
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">{user.username}</TableCell>
+                                        <TableCell>{user.email}</TableCell>
                                         <TableCell>
                                             <RoleSelector user={user} />
                                         </TableCell>
-                                        <TableCell>{user.email}</TableCell>
                                     </TableRow>
                                 ))
                             ) : (
