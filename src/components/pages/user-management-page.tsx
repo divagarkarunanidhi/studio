@@ -17,6 +17,12 @@ import {
   } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
 import type { WithId } from "@/firebase/firestore/use-collection";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+  } from "@/components/ui/tooltip"
 
 interface UserProfile {
     id: string;
@@ -57,21 +63,27 @@ function RoleSelector({ user }: { user: WithId<UserProfile> }) {
     };
 
     return (
-        <Select value={user.role} onValueChange={handleRoleChange}>
-            <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-                {ROLES.map(role => (
-                    <SelectItem key={role} value={role}>
-                        <div className="flex flex-col">
-                            <span className="font-medium">{role.charAt(0).toUpperCase() + role.slice(1)}</span>
-                            <span className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</span>
-                        </div>
-                    </SelectItem>
-                ))}
-            </SelectContent>
-      </Select>
+        <TooltipProvider>
+            <Select value={user.role} onValueChange={handleRoleChange}>
+                <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                    {ROLES.map(role => (
+                        <Tooltip key={role} delayDuration={300}>
+                            <TooltipTrigger asChild>
+                                <SelectItem value={role}>
+                                    {role.charAt(0).toUpperCase() + role.slice(1)}
+                                </SelectItem>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" align="start">
+                                <p className="max-w-xs">{ROLE_DESCRIPTIONS[role]}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ))}
+                </SelectContent>
+        </Select>
+      </TooltipProvider>
     )
 }
 
