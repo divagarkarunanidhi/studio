@@ -85,7 +85,6 @@ function MultiSelect({
                           }}
                           onMouseDown={(e) => {
                             e.preventDefault();
-                            e.stopPropagation();
                           }}
                           onClick={(e) => handleUnselect(e, item)}
                           role="button"
