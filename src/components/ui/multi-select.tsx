@@ -159,10 +159,6 @@ export const MultiSelect = React.forwardRef<
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <Separator
-                    orientation="vertical"
-                    className="flex min-h-6 h-full"
-                  />
                   <ChevronsUpDown className="h-4 w-4 ml-2" />
                 </div>
               </div>
@@ -262,27 +258,27 @@ export const MultiSelect = React.forwardRef<
                     </CommandGroup>
                 )}
               
-              <CommandSeparator />
-              <CommandGroup>
-                <div className="flex items-center justify-between">
-                  {selectedValues.length > 0 && (
-                      <CommandItem
+              {selectedValues.length > 0 && (
+                <>
+                    <CommandSeparator />
+                    <CommandGroup>
+                        <CommandItem
                         onSelect={() => {
-                          setSelectedValues([])
-                          onValueChange([])
+                            setSelectedValues([])
+                            onValueChange([])
                         }}
                         style={{
-                          pointerEvents: "auto",
-                          opacity: 1,
+                            pointerEvents: "auto",
+                            opacity: 1,
                         }}
-                        className="flex-1 justify-center cursor-pointer text-red-500"
                         onMouseDown={(e) => e.preventDefault()}
-                      >
+                        className="flex-1 justify-center cursor-pointer text-center text-red-500"
+                        >
                         Clear all
-                      </CommandItem>
-                  )}
-                </div>
-              </CommandGroup>
+                        </CommandItem>
+                    </CommandGroup>
+                </>
+              )}
             </CommandList>
           </Command>
         </PopoverContent>
