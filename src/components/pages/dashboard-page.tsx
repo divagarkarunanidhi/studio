@@ -664,16 +664,16 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                   To get started, please upload a CSV file or load the latest data from the server.
                 </p>
               </div>
-              <div className="flex flex-wrap items-stretch justify-center gap-4">
+              <div className="flex flex-col items-stretch justify-center gap-4 sm:flex-row">
                 {(userRole === 'admin') ? (
                     <FileUploader onDataUploaded={handleDataUploaded} />
                 ) : (
                     <p className="text-destructive">You do not have permission to upload data.</p>
                 )}
                  <div className="flex items-center text-muted-foreground">
-                    <div className="h-full w-px bg-border" />
-                    <span className="mx-4">OR</span>
-                    <div className="h-full w-px bg-border" />
+                    <div className="h-px w-full sm:h-full sm:w-px bg-border" />
+                    <span className="mx-4 sm:my-4">OR</span>
+                    <div className="h-px w-full sm:h-full sm:w-px bg-border" />
                  </div>
                  <div
                     onClick={handleLoadFromServer}
