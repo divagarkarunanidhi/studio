@@ -101,8 +101,8 @@ export function UserManagementPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Username</TableHead>
-                                <TableHead>Email</TableHead>
                                 <TableHead>Role</TableHead>
+                                <TableHead>Email</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -110,18 +110,18 @@ export function UserManagementPage() {
                                 Array.from({ length: 3 }).map((_, i) => (
                                     <TableRow key={i}>
                                         <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                                        <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                                         <TableCell><Skeleton className="h-9 w-28" /></TableCell>
+                                        <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                                     </TableRow>
                                 ))
                             ) : users && users.length > 0 ? (
                                 users.map(user => (
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">{user.username}</TableCell>
-                                        <TableCell>{user.email}</TableCell>
                                         <TableCell>
                                             <RoleSelector user={user} />
                                         </TableCell>
+                                        <TableCell>{user.email}</TableCell>
                                     </TableRow>
                                 ))
                             ) : (
