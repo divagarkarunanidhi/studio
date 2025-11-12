@@ -22,7 +22,7 @@ export type MultiSelectOption = {
 
 interface MultiSelectProps {
   options: MultiSelectOption[]
-  selected?: MultiSelectOption[]
+  selected: MultiSelectOption[]
   onChange: React.Dispatch<React.SetStateAction<MultiSelectOption[]>>
   className?: string
   placeholder?: string
@@ -133,6 +133,7 @@ export function MultiSelect({
                       key={option.value}
                       onMouseDown={(e) => {
                         e.preventDefault()
+                        e.stopPropagation()
                       }}
                       onSelect={() => {
                         setInputValue("")
