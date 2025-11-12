@@ -171,7 +171,7 @@ export const MultiSelect = React.forwardRef<
                     orientation="vertical"
                     className="flex min-h-6 h-full"
                   />
-                  <ChevronsUpDown className="h-4 w-4" />
+                  <ChevronsUpDown className="h-4 w-4 ml-2" />
                 </div>
               </div>
             ) : (
