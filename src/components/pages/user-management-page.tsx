@@ -27,6 +27,13 @@ interface UserProfile {
 
 const ROLES: UserProfile['role'][] = ['admin', 'taas', 'view', 'newuser'];
 
+const ROLE_DESCRIPTIONS: Record<UserProfile['role'], string> = {
+    admin: 'Full access, including user management and uploads.',
+    taas: 'Can use all analysis features and view attention-needed defects.',
+    view: 'Can use all analysis features but cannot upload or see attention list.',
+    newuser: 'Initial role. No access until changed by an admin.',
+};
+
 function RoleSelector({ user }: { user: WithId<UserProfile> }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -57,7 +64,10 @@ function RoleSelector({ user }: { user: WithId<UserProfile> }) {
             <SelectContent>
                 {ROLES.map(role => (
                     <SelectItem key={role} value={role}>
-                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                        <div className="flex flex-col">
+                            <span className="font-medium">{role.charAt(0).toUpperCase() + role.slice(1)}</span>
+                            <span className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</span>
+                        </div>
                     </SelectItem>
                 ))}
             </SelectContent>
