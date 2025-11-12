@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 
 
-type AnalysisType = 'creation' | 'resolution' | 'domain';
+export type AnalysisType = 'creation' | 'resolution' | 'domain';
 
 interface TrendPageProps {
   defects: Defect[];
