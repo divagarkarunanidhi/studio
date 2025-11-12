@@ -12,6 +12,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
+import { cn } from "@/lib/utils"
 
 export type MultiSelectOption = {
   value: string
@@ -21,7 +22,7 @@ export type MultiSelectOption = {
 
 interface MultiSelectProps {
   options: MultiSelectOption[]
-  selected: MultiSelectOption[]
+  selected?: MultiSelectOption[]
   onChange: React.Dispatch<React.SetStateAction<MultiSelectOption[]>>
   className?: string
   placeholder?: string
@@ -29,7 +30,7 @@ interface MultiSelectProps {
 
 export function MultiSelect({
   options,
-  selected,
+  selected = [],
   onChange,
   className,
   ...props
@@ -71,7 +72,7 @@ export function MultiSelect({
   return (
     <Command
       onKeyDown={handleKeyDown}
-      className="overflow-visible bg-transparent"
+      className={cn("overflow-visible bg-transparent", className)}
     >
       <div className="group rounded-md border border-input px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
         <div className="flex flex-wrap gap-1">
@@ -79,8 +80,8 @@ export function MultiSelect({
             return (
               <Badge key={option.value} variant="secondary">
                 {option.label}
-                <button
-                  className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                <div
+                  className="ml-1 cursor-pointer rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       handleUnselect(option)
@@ -91,9 +92,11 @@ export function MultiSelect({
                     e.stopPropagation()
                   }}
                   onClick={() => handleUnselect(option)}
+                  role="button"
+                  tabIndex={0}
                 >
                   <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                </button>
+                </div>
               </Badge>
             )
           })}
@@ -101,8 +104,7 @@ export function MultiSelect({
             <X
               className="my-auto ml-auto h-4 w-4 cursor-pointer text-muted-foreground"
               onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
+                event.preventDefault()
                 onChange([])
               }}
             />
@@ -131,7 +133,6 @@ export function MultiSelect({
                       key={option.value}
                       onMouseDown={(e) => {
                         e.preventDefault()
-                        e.stopPropagation()
                       }}
                       onSelect={() => {
                         setInputValue("")

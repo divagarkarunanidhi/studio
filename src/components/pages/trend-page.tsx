@@ -41,7 +41,7 @@ export function TrendPage({ defects }: TrendPageProps) {
     return uniqueDomains.map(d => ({ value: d, label: d }));
   }, [uniqueDomains]);
 
-  const [selectedDomains, setSelectedDomains] = useState<string[]>(() => domainOptions.slice(0, 5).map(d => d.value));
+  const [selectedDomainOptions, setSelectedDomainOptions] = useState<MultiSelectOption[]>(() => domainOptions.slice(0, 5));
 
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -107,8 +107,8 @@ export function TrendPage({ defects }: TrendPageProps) {
                 <CardContent>
                     <MultiSelect 
                         options={domainOptions}
-                        defaultValue={selectedDomains}
-                        onValueChange={setSelectedDomains}
+                        selected={selectedDomainOptions}
+                        onChange={setSelectedDomainOptions}
                         placeholder="Select domains to compare..."
                     />
                 </CardContent>
@@ -123,7 +123,7 @@ export function TrendPage({ defects }: TrendPageProps) {
             dateRange={dateRange}
             setDateRange={setDateRange}
             analysisType="domain"
-            selectedDomains={selectedDomains}
+            selectedDomains={selectedDomainOptions.map(o => o.value)}
           />
         </TabsContent>
       </Tabs>
