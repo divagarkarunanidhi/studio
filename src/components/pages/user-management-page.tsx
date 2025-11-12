@@ -17,12 +17,6 @@ import {
   } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
 import type { WithId } from "@/firebase/firestore/use-collection";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-  } from "@/components/ui/tooltip"
 
 interface UserProfile {
     id: string;
@@ -67,12 +61,12 @@ function RoleSelector({ user }: { user: WithId<UserProfile> }) {
             <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Select role" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="w-[280px]">
                 {ROLES.map(role => (
                     <SelectItem key={role} value={role}>
                         <div className="flex flex-col">
                             <span className="font-medium">{role.charAt(0).toUpperCase() + role.slice(1)}</span>
-                            <span className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[role]}</span>
+                            <span className="text-xs text-muted-foreground whitespace-normal">{ROLE_DESCRIPTIONS[role]}</span>
                         </div>
                     </SelectItem>
                 ))}
