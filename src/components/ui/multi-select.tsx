@@ -4,10 +4,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Check, X, ChevronsUpDown } from "lucide-react";
-import {
-  Command as CommandPrimitive,
-  useCommandState,
-} from "cmdk";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,25 +42,10 @@ const MultiSelect = ({
   placeholder = "Select options...",
 }: MultiSelectProps) => {
   const [open, setOpen] = React.useState(false);
-  const [inputValue, setInputValue] = React.useState("");
 
   const handleUnselect = (item: MultiSelectOption) => {
     onChange(selected.filter((s) => s.value !== item.value));
   };
-
-  const handleSelect = (option: MultiSelectOption) => {
-    if (selected.some((s) => s.value === option.value)) {
-      handleUnselect(option);
-    } else {
-      onChange([...selected, option]);
-    }
-  };
-
-  React.useEffect(() => {
-    if (!open) {
-      setInputValue("");
-    }
-  }, [open]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -74,6 +55,7 @@ const MultiSelect = ({
           role="combobox"
           aria-expanded={open}
           className={cn("w-full justify-between h-auto min-h-10", className)}
+          onClick={() => setOpen(!open)}
         >
           <div className="flex gap-1 flex-wrap">
             {selected.length > 0 ? (
@@ -83,7 +65,7 @@ const MultiSelect = ({
                   key={item.value}
                   className="mr-1 mb-1"
                   onClick={(e) => {
-                    e.preventDefault();
+                    e.stopPropagation();
                     handleUnselect(item);
                   }}
                 >
@@ -105,18 +87,24 @@ const MultiSelect = ({
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
-          <CommandInput
-            placeholder="Search..."
-            value={inputValue}
-            onValueChange={setInputValue}
-          />
+          <CommandInput placeholder="Search..." />
           <CommandList>
             <CommandEmpty>No item found.</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  onSelect={() => handleSelect(option)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onSelect={() => {
+                    if (selected.some((s) => s.value === option.value)) {
+                      handleUnselect(option);
+                    } else {
+                      onChange([...selected, option]);
+                    }
+                  }}
                 >
                   <Check
                     className={cn(
