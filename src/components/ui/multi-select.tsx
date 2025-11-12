@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -70,10 +71,15 @@ function MultiSelect({
                   }}
                 >
                   {item.label}
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Remove ${item.label}`}
                     className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
                         handleUnselect(item);
                       }
                     }}
@@ -88,7 +94,7 @@ function MultiSelect({
                     }}
                   >
                     <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                  </button>
+                  </div>
                 </Badge>
               ))
             ) : (
@@ -101,21 +107,24 @@ function MultiSelect({
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command className={className}>
           <CommandInput placeholder="Search..." />
-          <CommandEmpty>No item found.</CommandEmpty>
-          <CommandGroup>
-            <CommandList>
+          <CommandList>
+            <CommandEmpty>No item found.</CommandEmpty>
+            <CommandGroup>
                 {options.map((option) => {
                 const isSelected = selected.some((s) => s.value === option.value);
                 return (
                     <CommandItem
-                    key={option.value}
-                    onSelect={() => {
-                        if (isSelected) {
-                        handleUnselect(option);
-                        } else {
-                        onChange([...selected, option]);
-                        }
-                    }}
+                      key={option.value}
+                      onSelect={() => {
+                          if (isSelected) {
+                          handleUnselect(option);
+                          } else {
+                          onChange([...selected, option]);
+                          }
+                      }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                      }}
                     >
                     <Check
                         className={cn(
@@ -127,8 +136,8 @@ function MultiSelect({
                     </CommandItem>
                 );
                 })}
-            </CommandList>
-          </CommandGroup>
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
