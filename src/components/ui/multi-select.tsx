@@ -129,13 +129,11 @@ export const MultiSelect = React.forwardRef<
             {selectedValues.length > 0 ? (
               <div className="flex justify-between items-center w-full">
                 <div className="flex flex-wrap items-center">
-                  {selectedValues.slice(0, maxCount).map((value) => {
-                    const option = options.find((o) => o.value === value)
-                    if (!option) return null;
+                  {selectedOptions.slice(0, maxCount).map((option) => {
                     const Icon = option.icon
                     return (
                       <Badge
-                        key={value}
+                        key={option.value}
                         className={cn(multiSelectVariants({ variant }))}
                         style={{
                           animation: `animation-${animation}s`,
