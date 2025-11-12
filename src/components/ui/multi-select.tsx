@@ -184,6 +184,27 @@ export const MultiSelect = React.forwardRef<
             />
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
+              {selectedValues.length > 0 && (
+                <>
+                    <CommandGroup>
+                        <CommandItem
+                        onSelect={() => {
+                            setSelectedValues([])
+                            onValueChange([])
+                        }}
+                        style={{
+                            pointerEvents: "auto",
+                            opacity: 1,
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        className="flex-1 justify-center cursor-pointer text-center text-red-500"
+                        >
+                        Clear all
+                        </CommandItem>
+                    </CommandGroup>
+                    <CommandSeparator />
+                </>
+              )}
                 {selectedOptions.length > 0 && (
                     <CommandGroup>
                         {selectedOptions.map((option) => {
@@ -257,28 +278,6 @@ export const MultiSelect = React.forwardRef<
                         })}
                     </CommandGroup>
                 )}
-              
-              {selectedValues.length > 0 && (
-                <>
-                    <CommandSeparator />
-                    <CommandGroup>
-                        <CommandItem
-                        onSelect={() => {
-                            setSelectedValues([])
-                            onValueChange([])
-                        }}
-                        style={{
-                            pointerEvents: "auto",
-                            opacity: 1,
-                        }}
-                        onMouseDown={(e) => e.preventDefault()}
-                        className="flex-1 justify-center cursor-pointer text-center text-red-500"
-                        >
-                        Clear all
-                        </CommandItem>
-                    </CommandGroup>
-                </>
-              )}
             </CommandList>
           </Command>
         </PopoverContent>
