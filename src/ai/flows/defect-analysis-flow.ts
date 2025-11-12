@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to analyze a list of defects and provide insights.
@@ -60,10 +61,23 @@ const defectAnalysisFlow = ai.defineFlow(
   },
   async ({ defects }) => {
     const defectsString = JSON.stringify(defects, null, 2);
-    const { output } = await analysisPrompt({ defects: defectsString });
-    if (!output) {
-      throw new Error('The model did not return a valid analysis.');
+    try {
+        const { output } = await analysisPrompt({ defects: defectsString });
+        if (!output) {
+            throw new Error('The model did not return a valid analysis.');
+        }
+        return output;
+    } catch (e: any) {
+        if (e.message && e.message.includes('429 Too Many Requests')) {
+            console.warn('Rate limit exceeded, retrying with gemini-2.0-flash-lite...');
+            const { output } = await analysisPrompt({ defects: defectsString }, { model: 'googleai/gemini-2.0-flash-lite' });
+            if (!output) {
+                throw new Error('The fallback model also did not return a valid analysis.');
+            }
+            return output;
+        }
+        // Re-throw other errors
+        throw e;
     }
-    return output;
   }
 );

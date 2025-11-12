@@ -51,12 +51,26 @@ const defectSummaryFlow = ai.defineFlow(
   async ({ defects }) => {
     const summaries = await Promise.all(
       defects.map(async (defect) => {
-        const { output } = await summaryPrompt({ defect });
-        if (!output) {
-          // Return a default/unknown category if prediction fails
-          return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
+        try {
+            const { output } = await summaryPrompt({ defect });
+            if (!output) {
+              // Return a default/unknown category if prediction fails
+              return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
+            }
+            return { id: defect.id, ...output };
+        } catch (e: any) {
+             if (e.message && e.message.includes('429 Too Many Requests')) {
+                console.warn('Rate limit exceeded, retrying with gemini-2.0-flash-lite...');
+                const { output } = await summaryPrompt({ defect }, { model: 'googleai/gemini-2.0-flash-lite' });
+                if (!output) {
+                    return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
+                }
+                return { id: defect.id, ...output };
+             }
+             // For other errors, still return a default.
+             console.error('An error occurred during summary generation:', e);
+             return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
         }
-        return { id: defect.id, ...output };
       })
     );
 

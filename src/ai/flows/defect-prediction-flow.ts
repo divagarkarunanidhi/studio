@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to predict severity and priority for a list of defects.
@@ -52,14 +53,30 @@ const defectPredictionFlow = ai.defineFlow(
   async ({ defects }) => {
     const predictions = await Promise.all(
       defects.map(async (defect) => {
-        const { output } = await predictionPrompt({ defect });
-        if (!output) {
-          throw new Error('The model did not return a valid prediction.');
+        try {
+            const { output } = await predictionPrompt({ defect });
+            if (!output) {
+              throw new Error('The model did not return a valid prediction.');
+            }
+            return {
+              id: defect.id,
+              ...output,
+            };
+        } catch (e: any) {
+            if (e.message && e.message.includes('429 Too Many Requests')) {
+                console.warn('Rate limit exceeded, retrying with gemini-2.0-flash-lite...');
+                const { output } = await predictionPrompt({ defect }, { model: 'googleai/gemini-2.0-flash-lite' });
+                 if (!output) {
+                    throw new Error('The fallback model also did not return a valid prediction.');
+                }
+                return {
+                    id: defect.id,
+                    ...output,
+                };
+            }
+            // Re-throw other errors
+            throw e;
         }
-        return {
-          id: defect.id,
-          ...output,
-        };
       })
     );
 
