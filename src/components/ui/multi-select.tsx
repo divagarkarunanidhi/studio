@@ -111,6 +111,9 @@ export const MultiSelect = React.forwardRef<
       onValueChange(newSelectedValues)
     }
 
+    const selectedOptions = options.filter((option) => selectedValues.includes(option.value));
+    const unselectedOptions = options.filter((option) => !selectedValues.includes(option.value));
+
     return (
       <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
         <PopoverTrigger asChild>
@@ -195,37 +198,80 @@ export const MultiSelect = React.forwardRef<
             />
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
-              <CommandGroup>
-                {options.map((option) => {
-                  const isSelected = selectedValues.includes(option.value)
-                  return (
-                    <CommandItem
-                      key={option.value}
-                      onSelect={() => toggleOption(option.value)}
-                      style={{
-                        pointerEvents: "auto",
-                        opacity: 1,
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <div
-                        className={cn(
-                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                          isSelected
-                            ? "bg-primary text-primary-foreground"
-                            : "opacity-50 [&_svg]:invisible"
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                      </div>
-                      {option.icon && (
-                        <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span>{option.label}</span>
-                    </CommandItem>
-                  )
-                })}
-              </CommandGroup>
+                {selectedOptions.length > 0 && (
+                    <CommandGroup>
+                        {selectedOptions.map((option) => {
+                        const isSelected = selectedValues.includes(option.value)
+                        return (
+                            <CommandItem
+                            key={option.value}
+                            onSelect={() => toggleOption(option.value)}
+                            style={{
+                                pointerEvents: "auto",
+                                opacity: 1,
+                            }}
+                            className="cursor-pointer"
+                            onMouseDown={(e) => e.preventDefault()}
+                            >
+                            <div
+                                className={cn(
+                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                isSelected
+                                    ? "bg-primary text-primary-foreground"
+                                    : "opacity-50 [&_svg]:invisible"
+                                )}
+                            >
+                                <Check className="h-4 w-4" />
+                            </div>
+                            {option.icon && (
+                                <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                            )}
+                            <span>{option.label}</span>
+                            </CommandItem>
+                        )
+                        })}
+                    </CommandGroup>
+                )}
+
+                {selectedOptions.length > 0 && unselectedOptions.length > 0 && (
+                    <CommandSeparator />
+                )}
+
+                {unselectedOptions.length > 0 && (
+                    <CommandGroup>
+                        {unselectedOptions.map((option) => {
+                        const isSelected = selectedValues.includes(option.value)
+                        return (
+                            <CommandItem
+                            key={option.value}
+                            onSelect={() => toggleOption(option.value)}
+                            style={{
+                                pointerEvents: "auto",
+                                opacity: 1,
+                            }}
+                            className="cursor-pointer"
+                            onMouseDown={(e) => e.preventDefault()}
+                            >
+                            <div
+                                className={cn(
+                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                isSelected
+                                    ? "bg-primary text-primary-foreground"
+                                    : "opacity-50 [&_svg]:invisible"
+                                )}
+                            >
+                                <Check className="h-4 w-4" />
+                            </div>
+                            {option.icon && (
+                                <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                            )}
+                            <span>{option.label}</span>
+                            </CommandItem>
+                        )
+                        })}
+                    </CommandGroup>
+                )}
+              
               <CommandSeparator />
               <CommandGroup>
                 <div className="flex items-center justify-between">
@@ -240,6 +286,7 @@ export const MultiSelect = React.forwardRef<
                           opacity: 1,
                         }}
                         className="flex-1 justify-center cursor-pointer text-red-500"
+                        onMouseDown={(e) => e.preventDefault()}
                       >
                         Clear all
                       </CommandItem>
@@ -254,4 +301,3 @@ export const MultiSelect = React.forwardRef<
   }
 )
 MultiSelect.displayName = "MultiSelect"
-
