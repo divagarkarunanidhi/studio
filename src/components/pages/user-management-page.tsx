@@ -61,12 +61,12 @@ function RoleSelector({ user }: { user: WithId<UserProfile> }) {
             <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Select role" />
             </SelectTrigger>
-            <SelectContent className="w-[280px]">
+            <SelectContent className="w-[380px]">
                 {ROLES.map(role => (
                     <SelectItem key={role} value={role}>
-                        <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
                             <span className="font-medium">{role.charAt(0).toUpperCase() + role.slice(1)}</span>
-                            <span className="text-xs text-muted-foreground whitespace-normal">{ROLE_DESCRIPTIONS[role]}</span>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">- {ROLE_DESCRIPTIONS[role]}</span>
                         </div>
                     </SelectItem>
                 ))}
