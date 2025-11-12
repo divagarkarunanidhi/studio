@@ -664,18 +664,28 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                   To get started, please upload a CSV file or load the latest data from the server.
                 </p>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-stretch justify-center gap-4">
                 {(userRole === 'admin') ? (
                     <FileUploader onDataUploaded={handleDataUploaded} />
                 ) : (
                     <p className="text-destructive">You do not have permission to upload data.</p>
                 )}
-                 <div className="flex flex-col items-center gap-2">
-                    <span className="text-sm text-muted-foreground">OR</span>
-                    <Button onClick={handleLoadFromServer}>
-                        <Server className="mr-2 h-4 w-4" />
-                        Load from Server
-                    </Button>
+                 <div className="flex items-center text-muted-foreground">
+                    <div className="h-full w-px bg-border" />
+                    <span className="mx-4">OR</span>
+                    <div className="h-full w-px bg-border" />
+                 </div>
+                 <div
+                    onClick={handleLoadFromServer}
+                    className="relative flex w-full max-w-lg cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 text-center transition-colors bg-card hover:border-primary/50"
+                  >
+                    <Server className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <p className="mt-4 font-semibold text-foreground">
+                        Load From Server
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Use the latest uploaded data
+                    </p>
                 </div>
               </div>
             </div>
