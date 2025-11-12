@@ -158,8 +158,8 @@ export const MultiSelect = React.forwardRef<
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <X
-                    className="h-4 w-4 cursor-pointer"
+                   <X
+                    className="h-4 w-4 mx-2 cursor-pointer text-muted-foreground hover:text-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       setSelectedValues([])
@@ -230,7 +230,6 @@ export const MultiSelect = React.forwardRef<
               <CommandGroup>
                 <div className="flex items-center justify-between">
                   {selectedValues.length > 0 && (
-                    <>
                       <CommandItem
                         onSelect={() => {
                           setSelectedValues([])
@@ -240,26 +239,11 @@ export const MultiSelect = React.forwardRef<
                           pointerEvents: "auto",
                           opacity: 1,
                         }}
-                        className="flex-1 justify-center cursor-pointer"
+                        className="flex-1 justify-center cursor-pointer text-red-500"
                       >
-                        Clear
+                        Clear all
                       </CommandItem>
-                      <Separator
-                        orientation="vertical"
-                        className="flex min-h-6 h-full"
-                      />
-                    </>
                   )}
-                  <CommandItem
-                    onSelect={() => setIsPopoverOpen(false)}
-                    style={{
-                      pointerEvents: "auto",
-                      opacity: 1,
-                    }}
-                    className="flex-1 justify-center cursor-pointer"
-                  >
-                    Close
-                  </CommandItem>
                 </div>
               </CommandGroup>
             </CommandList>
@@ -270,3 +254,4 @@ export const MultiSelect = React.forwardRef<
   }
 )
 MultiSelect.displayName = "MultiSelect"
+
