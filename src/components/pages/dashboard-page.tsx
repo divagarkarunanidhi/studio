@@ -378,6 +378,13 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     await signOut(auth);
   };
 
+  const handleViewChange = (view: View) => {
+    setActiveView(view);
+    if (showUploader) {
+        setShowUploader(false);
+    }
+  };
+
   const yesterdayDefectsCount = useMemo(() => {
     if (!defects || defects.length === 0) return 0;
     const yesterday = subDays(new Date(), 1);
@@ -540,50 +547,50 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Dashboard" isActive={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')}>
+              <SidebarMenuButton tooltip="Dashboard" isActive={activeView === 'dashboard'} onClick={() => handleViewChange('dashboard')}>
                 <LayoutDashboard />
                 Dashboard
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Trend Analysis" isActive={activeView === 'trend-analysis'} onClick={() => setActiveView('trend-analysis')}>
+              <SidebarMenuButton tooltip="Trend Analysis" isActive={activeView === 'trend-analysis'} onClick={() => handleViewChange('trend-analysis')}>
                 <LineChart />
                 Trend Analysis
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Defect Summary" isActive={activeView === 'summary'} onClick={() => setActiveView('summary')}>
+              <SidebarMenuButton tooltip="Defect Summary" isActive={activeView === 'summary'} onClick={() => handleViewChange('summary')}>
                 <PieChart />
                 Defect Summary
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Defect Analysis" isActive={activeView === 'analysis'} onClick={() => setActiveView('analysis')}>
+              <SidebarMenuButton tooltip="Defect Analysis" isActive={activeView === 'analysis'} onClick={() => handleViewChange('analysis')}>
                 <FileHeart />
                 Static Analysis
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Defect Prediction" isActive={activeView === 'prediction'} onClick={() => setActiveView('prediction')}>
+              <SidebarMenuButton tooltip="Defect Prediction" isActive={activeView === 'prediction'} onClick={() => handleViewChange('prediction')}>
                 <Wand2 />
                 Defect Prediction
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Resolution Time" isActive={activeView === 'resolution-time'} onClick={() => setActiveView('resolution-time')}>
+              <SidebarMenuButton tooltip="Resolution Time" isActive={activeView === 'resolution-time'} onClick={() => handleViewChange('resolution-time')}>
                 <Timer />
                 Resolution Time
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="All Defects" isActive={activeView === 'all-defects'} onClick={() => setActiveView('all-defects')}>
+              <SidebarMenuButton tooltip="All Defects" isActive={activeView === 'all-defects'} onClick={() => handleViewChange('all-defects')}>
                 <Bug />
                 All Defects
               </SidebarMenuButton>
             </SidebarMenuItem>
             {(userRole === 'admin' || userRole === 'taas') && (
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Required Attention" isActive={activeView === 'required-attention'} onClick={() => setActiveView('required-attention')}>
+                <SidebarMenuButton tooltip="Required Attention" isActive={activeView === 'required-attention'} onClick={() => handleViewChange('required-attention')}>
                   <AlertTriangle />
                   Required Attention
                 </SidebarMenuButton>
@@ -591,7 +598,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             )}
             {userRole === 'admin' && (
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="User Management" isActive={activeView === 'user-management'} onClick={() => setActiveView('user-management')}>
+                <SidebarMenuButton tooltip="User Management" isActive={activeView === 'user-management'} onClick={() => handleViewChange('user-management')}>
                   <Users />
                   User Management
                 </SidebarMenuButton>
