@@ -140,13 +140,6 @@ export const MultiSelect = React.forwardRef<
                       >
                         {Icon && <Icon className="h-4 w-4 mr-2" />}
                         {option.label}
-                        <X
-                          className="ml-2 h-4 w-4 cursor-pointer"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            toggleOption(value)
-                          }}
-                        />
                       </Badge>
                     )
                   })}
@@ -168,7 +161,7 @@ export const MultiSelect = React.forwardRef<
                   <X
                     className="h-4 w-4 cursor-pointer"
                     onClick={(event) => {
-                      event.stopPropagation()
+                      event.stopPropagation();
                       setSelectedValues([])
                       onValueChange([])
                     }}
