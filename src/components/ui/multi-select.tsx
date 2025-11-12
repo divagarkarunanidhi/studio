@@ -3,7 +3,7 @@
 
 import { cn } from "@/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
-import { Check, X, ChevronsUpDown, Trash2 } from "lucide-react"
+import { Check, X, ChevronsUpDown } from "lucide-react"
 import * as React from "react"
 
 import { Badge } from "@/components/ui/badge"
