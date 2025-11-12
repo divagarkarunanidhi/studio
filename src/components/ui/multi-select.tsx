@@ -159,14 +159,6 @@ export const MultiSelect = React.forwardRef<
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                   <X
-                    className="h-4 w-4 mx-2 cursor-pointer text-muted-foreground hover:text-foreground"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setSelectedValues([])
-                      onValueChange([])
-                    }}
-                  />
                   <Separator
                     orientation="vertical"
                     className="flex min-h-6 h-full"
