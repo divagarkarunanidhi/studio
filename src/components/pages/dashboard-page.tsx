@@ -676,12 +676,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                         <Server className="mr-2 h-4 w-4" />
                         Load from Server
                     </Button>
-                     {defects.length > 0 && (
-                        <Button variant="outline" onClick={() => setShowUploader(false)}>
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Go Back
-                        </Button>
-                    )}
                 </div>
               </div>
             </div>
