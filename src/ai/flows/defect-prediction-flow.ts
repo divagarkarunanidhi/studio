@@ -63,8 +63,8 @@ const defectPredictionFlow = ai.defineFlow(
               ...output,
             };
         } catch (e: any) {
-            if (e.message && e.message.includes('429 Too Many Requests')) {
-                console.warn('Rate limit exceeded, retrying with gemini-2.0-flash-lite...');
+            if (e.message && (e.message.includes('429 Too Many Requests') || e.message.includes('503 Service Unavailable'))) {
+                console.warn('Rate limit or availability error, retrying with gemini-2.0-flash-lite...');
                 const { output } = await predictionPrompt({ defect }, { model: 'googleai/gemini-2.0-flash-lite' });
                  if (!output) {
                     throw new Error('The fallback model also did not return a valid prediction.');
