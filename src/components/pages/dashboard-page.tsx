@@ -246,20 +246,19 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         setUploadTimestamp(data.uploadedAt);
         setShowUploader(false);
       } else {
-        if (defects.length === 0) {
-            toast({ title: "No Data Found", description: "There is no data stored on the server. Please upload a file." });
-        }
+        toast({ title: "No Data Found", description: "There is no data stored on the server. Please upload a file." });
         setDefects([]);
         setUploadTimestamp(null);
-        setShowUploader(true);
+        setShowUploader(true); // Explicitly show uploader if no data
       }
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error Loading Data', description: error.message });
+      setShowUploader(true); // Also show uploader on error
       console.error(error);
     } finally {
       setDefectsLoading(false);
     }
-  }, [toast, defects.length]);
+  }, [toast]);
   
   useEffect(() => {
     handleLoadFromServer();
@@ -538,7 +537,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     );
   }
   
-  const displayUploader = showUploader && defects.length === 0 && activeView === 'dashboard';
+  const displayUploader = showUploader && activeView === 'dashboard';
 
   return (
     <SidebarProvider>
@@ -638,7 +637,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
             </div>
           </div>
-          {userRole === 'admin' && !showUploader && (
+          {userRole === 'admin' && (
             <div className="flex items-center gap-4">
                 {uploadTimestamp && <ClientTimestamp timestamp={uploadTimestamp} />}
                 <AlertDialog>
