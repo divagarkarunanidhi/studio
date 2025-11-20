@@ -69,39 +69,46 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
     };
     
     if (analysisType === 'creation-vs-closure') {
-        const countsByPeriod: { [date: string]: { created: number; resolved: number } } = {};
-        
+      const allEvents: { date: Date, type: 'created' | 'resolved' }[] = [];
         defects.forEach(defect => {
             try {
-                // Process creation date
-                const creationDate = parseISO(defect.created_at);
-                const creationKey = getGroupKey(creationDate);
-                if (!countsByPeriod[creationKey]) {
-                    countsByPeriod[creationKey] = { created: 0, resolved: 0 };
+                if (defect.created_at) {
+                    allEvents.push({ date: parseISO(defect.created_at), type: 'created' });
                 }
-                countsByPeriod[creationKey].created++;
-            } catch (e) { /* ignore */ }
-
-            try {
-                // Process resolution date
                 if (defect.status?.toLowerCase() === 'done' && defect.updated) {
-                    const resolutionDate = parseISO(defect.updated);
-                    const resolutionKey = getGroupKey(resolutionDate);
-                    if (!countsByPeriod[resolutionKey]) {
-                        countsByPeriod[resolutionKey] = { created: 0, resolved: 0 };
-                    }
-                    countsByPeriod[resolutionKey].resolved++;
+                    allEvents.push({ date: parseISO(defect.updated), type: 'resolved' });
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+                // Ignore parsing errors
+            }
         });
 
-        const trendData = Object.entries(countsByPeriod)
-            .map(([date, counts]) => ({ date, ...counts }))
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        // Sort events chronologically
+        allEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        let cumulativeCreated = 0;
+        let cumulativeResolved = 0;
+        const dataMap = new Map<string, { date: string, created: number, resolved: number }>();
+
+        allEvents.forEach(event => {
+            if (event.type === 'created') {
+                cumulativeCreated++;
+            } else {
+                cumulativeResolved++;
+            }
+            const dateStr = format(event.date, 'yyyy-MM-dd');
+            dataMap.set(dateStr, {
+                date: dateStr,
+                created: cumulativeCreated,
+                resolved: cumulativeResolved
+            });
+        });
+
+        const trendData = Array.from(dataMap.values()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         
         const newChartConfig: ChartConfig = {
-            created: { label: 'Created', color: 'hsl(var(--chart-1))' },
-            resolved: { label: 'Resolved', color: 'hsl(var(--chart-2))' },
+            created: { label: 'Cumulative Created', color: 'hsl(var(--chart-1))' },
+            resolved: { label: 'Cumulative Resolved', color: 'hsl(var(--chart-2))' },
         };
         
         return { trendData, chartConfig: newChartConfig };
@@ -193,6 +200,9 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
 
   const tickFormatter = (value: string): string => {
     try {
+        if (analysisType === 'creation-vs-closure') {
+            return format(parseISO(value), 'MMM d, yyyy');
+        }
         switch (period) {
             case 'yearly':
                 return value; // '2023'
@@ -232,11 +242,11 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
         'custom': 'Number of new defects per domain per week in the selected date range',
     },
     'creation-vs-closure': {
-        'all-time': 'Comparison of created vs. resolved defects per week across all time',
-        'weekly': 'Comparison of created vs. resolved defects per week',
-        'yearly': 'Comparison of created vs. resolved defects per year',
-        'monthly': `Comparison of created vs. resolved defects per month for the year ${year}`,
-        'custom': 'Comparison of created vs. resolved defects per week in the selected date range',
+        'all-time': 'Cumulative count of created vs. resolved defects over time.',
+        'weekly': 'Cumulative count of created vs. resolved defects over time.',
+        'yearly': 'Cumulative count of created vs. resolved defects over time.',
+        'monthly': `Cumulative count of created vs. resolved defects over time.`,
+        'custom': 'Cumulative count of created vs. resolved defects over time.',
     }
   };
 
@@ -245,7 +255,7 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
     creation: 'Defect Creation Trend',
     resolution: 'Defect Resolution Trend',
     domain: 'Defect Trend by Domain',
-    'creation-vs-closure': 'Defect Creation vs. Closure'
+    'creation-vs-closure': 'Cumulative Defect Creation vs. Closure'
   };
   const title = titleMap[analysisType]
 
@@ -312,7 +322,7 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
                         tickFormatter={tickFormatter}
                         interval={trendData.length > 30 ? Math.floor(trendData.length / 15) : 0}
                     />
-                    <YAxis />
+                    <YAxis allowDecimals={false} />
                     <Tooltip content={<ChartTooltipContent indicator="dot" />} />
                     <Legend content={<ChartLegendContent />} />
                     <Line dataKey="created" type="monotone" stroke="var(--color-created)" strokeWidth={2} dot={false} />

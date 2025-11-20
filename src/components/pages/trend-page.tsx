@@ -65,6 +65,8 @@ export function TrendPage({ defects }: TrendPageProps) {
   const [selectedYear, setSelectedYear] = useState<number>(() => availableYears[0] || new Date().getFullYear());
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
+  const isTimeFilterDisabled = analysisType === 'creation-vs-closure';
+
   return (
     <div className="space-y-6">
        <Tabs
@@ -89,6 +91,7 @@ export function TrendPage({ defects }: TrendPageProps) {
             dateRange={dateRange}
             setDateRange={setDateRange}
             analysisType="creation"
+            isTimeFilterDisabled={isTimeFilterDisabled}
           />
         </TabsContent>
         <TabsContent value="resolution" className="mt-4">
@@ -102,6 +105,7 @@ export function TrendPage({ defects }: TrendPageProps) {
             dateRange={dateRange}
             setDateRange={setDateRange}
             analysisType="resolution"
+            isTimeFilterDisabled={isTimeFilterDisabled}
           />
         </TabsContent>
         <TabsContent value="domain" className="mt-4 space-y-4">
@@ -129,6 +133,7 @@ export function TrendPage({ defects }: TrendPageProps) {
             setDateRange={setDateRange}
             analysisType="domain"
             selectedDomains={selectedDomains}
+            isTimeFilterDisabled={isTimeFilterDisabled}
           />
         </TabsContent>
         <TabsContent value="creation-vs-closure" className="mt-4">
@@ -142,6 +147,7 @@ export function TrendPage({ defects }: TrendPageProps) {
             dateRange={dateRange}
             setDateRange={setDateRange}
             analysisType="creation-vs-closure"
+            isTimeFilterDisabled={isTimeFilterDisabled}
           />
         </TabsContent>
       </Tabs>
@@ -161,6 +167,7 @@ interface TrendChartContainerProps {
     setDateRange: (dateRange: DateRange | undefined) => void;
     analysisType: AnalysisType;
     selectedDomains?: string[];
+    isTimeFilterDisabled: boolean;
 }
 
 function TrendChartContainer({
@@ -173,45 +180,54 @@ function TrendChartContainer({
     dateRange,
     setDateRange,
     analysisType,
-    selectedDomains
+    selectedDomains,
+    isTimeFilterDisabled
 }: TrendChartContainerProps) {
+    
+    // For 'creation-vs-closure', we force 'all-time' and hide the filters.
+    const currentPeriod = isTimeFilterDisabled ? 'all-time' : period;
+    
     return (
         <Tabs
-            value={period}
+            value={currentPeriod}
             onValueChange={(value) => setPeriod(value as TrendPeriod)}
             className="w-full"
         >
             <div className="flex flex-wrap items-center gap-4">
-            <TabsList>
-                <TabsTrigger value="all-time">All Time</TabsTrigger>
-                <TabsTrigger value="weekly">Weekly</TabsTrigger>
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                <TabsTrigger value="yearly">Yearly</TabsTrigger>
-                <TabsTrigger value="custom">Custom</TabsTrigger>
-            </TabsList>
-            {period === 'monthly' && (
-                <Select
-                value={String(selectedYear)}
-                onValueChange={(value) => setSelectedYear(Number(value))}
-                >
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select Year" />
-                </SelectTrigger>
-                <SelectContent>
-                    {availableYears.map(year => (
-                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                    ))}
-                </SelectContent>
-                </Select>
-            )}
-            {period === 'custom' && (
-                <DateRangePicker date={dateRange} onDateChange={setDateRange} />
-            )}
+                {!isTimeFilterDisabled && (
+                    <>
+                        <TabsList>
+                            <TabsTrigger value="all-time">All Time</TabsTrigger>
+                            <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                            <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                            <TabsTrigger value="yearly">Yearly</TabsTrigger>
+                            <TabsTrigger value="custom">Custom</TabsTrigger>
+                        </TabsList>
+                        {period === 'monthly' && (
+                            <Select
+                            value={String(selectedYear)}
+                            onValueChange={(value) => setSelectedYear(Number(value))}
+                            >
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Select Year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableYears.map(year => (
+                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                        )}
+                        {period === 'custom' && (
+                            <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+                        )}
+                    </>
+                )}
             </div>
             <div className="mt-4">
                 <DefectTrendChart 
                     defects={defects} 
-                    period={period} 
+                    period={currentPeriod}
                     year={selectedYear} 
                     dateRange={dateRange} 
                     analysisType={analysisType}
