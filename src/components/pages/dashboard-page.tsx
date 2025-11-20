@@ -538,7 +538,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     );
   }
   
-  const displayUploader = showUploader && defects.length === 0;
+  const displayUploader = showUploader && defects.length === 0 && activeView === 'dashboard';
 
   return (
     <SidebarProvider>
@@ -638,9 +638,9 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
             </div>
           </div>
-          {uploadTimestamp && userRole === 'admin' && !showUploader && (
+          {userRole === 'admin' && !showUploader && (
             <div className="flex items-center gap-4">
-                <ClientTimestamp timestamp={uploadTimestamp} />
+                {uploadTimestamp && <ClientTimestamp timestamp={uploadTimestamp} />}
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="outline">
