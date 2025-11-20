@@ -28,7 +28,9 @@ service cloud.firestore {
     }
 
     match /appConfiguration/{configId} {
-        allow read: if isSignedIn();
+        // Allow server-side processes (which are unauthenticated) to read the config.
+        allow read: if request.auth == null; 
+        // Only allow authenticated users (clients) to write the config.
         allow write: if isSignedIn();
     }
   }
