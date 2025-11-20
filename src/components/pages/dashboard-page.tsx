@@ -600,12 +600,14 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-             <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Configuration" isActive={activeView === 'configuration'} onClick={() => handleViewChange('configuration')}>
-                <Settings />
-                Configuration
-                </SidebarMenuButton>
-            </SidebarMenuItem>
+            {userRole === 'admin' && (
+              <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="Configuration" isActive={activeView === 'configuration'} onClick={() => handleViewChange('configuration')}>
+                  <Settings />
+                  Configuration
+                  </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
             {userRole === 'admin' && (
                 <SidebarMenuItem>
                     <SidebarMenuButton tooltip="User Management" isActive={activeView === 'user-management'} onClick={() => handleViewChange('user-management')}>
@@ -639,7 +641,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             </div>
           </div>
           <div className="flex items-center gap-4">
-              {uploadTimestamp && activeView === 'dashboard' && <ClientTimestamp timestamp={uploadTimestamp} />}
+              {activeView === 'dashboard' && uploadTimestamp && <ClientTimestamp timestamp={uploadTimestamp} />}
               {userRole === 'admin' && activeView === 'dashboard' && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -727,7 +729,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             {activeView === 'user-management' && userRole === 'admin' && (
               <UserManagementPage />
             )}
-             {activeView === 'configuration' && (
+             {activeView === 'configuration' && userRole === 'admin' && (
               <ConfigurationPage />
             )}
 
