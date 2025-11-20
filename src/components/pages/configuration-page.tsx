@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +21,7 @@ import type { AppConfiguration } from '@/lib/types';
 export function ConfigurationPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const [isTesting, setIsTesting] = useState(false);
 
   const configRef = useMemoFirebase(() => doc(firestore, 'appConfiguration', 'global'), [firestore]);
   const { data: configData, isLoading: isConfigLoading, error: configError } = useDoc<AppConfiguration>(configRef);
@@ -57,6 +58,39 @@ export function ConfigurationPage() {
         title: 'Error Saving Configuration',
         description: error.message || 'An unknown error occurred.',
       });
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    toast({
+        title: "Testing Connection...",
+        description: "Attempting to connect to MongoDB with saved credentials."
+    });
+    try {
+        const response = await fetch('/api/test-mongo');
+        const result = await response.json();
+
+        if (response.ok) {
+            toast({
+                title: 'Success!',
+                description: result.message,
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Connection Failed',
+                description: result.error || 'Could not connect to MongoDB.',
+            });
+        }
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Connection Test Error',
+            description: 'An unexpected error occurred while testing the connection.',
+        });
+    } finally {
+        setIsTesting(false);
     }
   };
 
@@ -181,9 +215,14 @@ export function ConfigurationPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Saving...' : 'Save Configuration'}
-            </Button>
+            <div className="flex items-center gap-4">
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Saving...' : 'Save Configuration'}
+                </Button>
+                <Button type="button" variant="outline" onClick={handleTestConnection} disabled={isTesting}>
+                    {isTesting ? 'Testing...' : 'Test MongoDB Connection'}
+                </Button>
+            </div>
           </form>
         </Form>
       </CardContent>
