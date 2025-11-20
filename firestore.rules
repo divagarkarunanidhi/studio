@@ -29,7 +29,7 @@ service cloud.firestore {
 
     match /appConfiguration/{configId} {
         allow read: if isSignedIn();
-        allow write: if isAdmin();
+        allow write: if isSignedIn();
     }
   }
 }
