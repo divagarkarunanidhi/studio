@@ -372,6 +372,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   }, [user, toast, handleLoadFromServer]);
 
   const handleClearData = () => {
+    setActiveView('dashboard');
     setShowUploader(true);
   };
   
