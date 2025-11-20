@@ -675,7 +675,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 </p>
               </div>
               <div className="flex w-full max-w-4xl flex-col items-stretch justify-center gap-4 sm:flex-row">
-                {(userRole === 'admin') ? (
+                {userRole === 'admin' ? (
                     <FileUploader onDataUploaded={handleDataUploaded} />
                 ) : (
                     <p className="text-destructive">You do not have permission to upload data.</p>
