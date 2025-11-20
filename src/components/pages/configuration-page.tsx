@@ -209,7 +209,7 @@ export function ConfigurationPage() {
                 <FormItem>
                   <FormLabel>JIRA Base URL</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., https://your-company.atlassian.net/browse" {...field} />
+                    <Input placeholder="e.g., https://your-company.atlassian.net" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

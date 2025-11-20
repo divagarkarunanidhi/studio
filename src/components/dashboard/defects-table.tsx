@@ -84,7 +84,7 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                 <TableRow key={defect.id} className={cn(isUrgent && 'bg-destructive/10')}>
                   <TableCell className="font-medium">
                     <a
-                      href={`${jiraLink}/${defect.id}`}
+                      href={`${jiraLink}/browse/${defect.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline"

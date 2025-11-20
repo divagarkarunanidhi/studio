@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 
 
-export type AnalysisType = 'creation' | 'resolution' | 'domain';
+export type AnalysisType = 'creation' | 'resolution' | 'domain' | 'creation-vs-closure';
 
 interface TrendPageProps {
   defects: Defect[];
@@ -51,6 +51,10 @@ export function TrendPage({ defects }: TrendPageProps) {
         if(dateKey) {
             years.add(getYear(parseISO(dateKey)));
         }
+        // Also consider created_at for 'creation-vs-closure'
+        if (analysisType === 'creation-vs-closure' && defect.created_at) {
+          years.add(getYear(parseISO(defect.created_at)));
+        }
       } catch (e) {
         // ignore invalid dates
       }
@@ -68,10 +72,11 @@ export function TrendPage({ defects }: TrendPageProps) {
         onValueChange={(value) => setAnalysisType(value as AnalysisType)}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="creation">By Creation</TabsTrigger>
           <TabsTrigger value="resolution">By Resolution</TabsTrigger>
           <TabsTrigger value="domain">By Domain</TabsTrigger>
+          <TabsTrigger value="creation-vs-closure">Creation vs Closure</TabsTrigger>
         </TabsList>
         <TabsContent value="creation" className="mt-4">
           <TrendChartContainer
@@ -124,6 +129,19 @@ export function TrendPage({ defects }: TrendPageProps) {
             setDateRange={setDateRange}
             analysisType="domain"
             selectedDomains={selectedDomains}
+          />
+        </TabsContent>
+        <TabsContent value="creation-vs-closure" className="mt-4">
+           <TrendChartContainer
+            defects={defects}
+            period={period}
+            setPeriod={setPeriod}
+            selectedYear={selectedYear}
+            setSelectedYear={setSelectedYear}
+            availableYears={availableYears}
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            analysisType="creation-vs-closure"
           />
         </TabsContent>
       </Tabs>
