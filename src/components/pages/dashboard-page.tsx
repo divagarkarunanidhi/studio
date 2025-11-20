@@ -671,32 +671,15 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               <div className="rounded-lg bg-card p-6 shadow-sm">
                 <h2 className="text-2xl font-bold">Upload Data</h2>
                 <p className="mt-2 text-muted-foreground">
-                  To get started, please upload a CSV file or load the latest data from the server.
+                  To get started, please upload a CSV file.
                 </p>
               </div>
-              <div className="flex w-full max-w-4xl flex-col items-stretch justify-center gap-4 sm:flex-row">
+              <div className="flex w-full max-w-lg flex-col items-stretch justify-center gap-4">
                 {userRole === 'admin' ? (
                     <FileUploader onDataUploaded={handleDataUploaded} />
                 ) : (
                     <p className="text-destructive">You do not have permission to upload data.</p>
                 )}
-                 <div className="flex items-center text-muted-foreground">
-                    <div className="h-px w-full bg-border sm:h-full sm:w-px" />
-                    <span className="mx-4 sm:my-4">OR</span>
-                    <div className="h-px w-full bg-border sm:h-full sm:w-px" />
-                 </div>
-                 <div
-                    onClick={handleLoadFromServer}
-                    className="relative flex w-full max-w-lg cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 text-center transition-colors bg-card hover:border-primary/50"
-                  >
-                    <Server className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <p className="mt-4 font-semibold text-foreground">
-                        Load From Server
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                        Use the latest uploaded data
-                    </p>
-                </div>
               </div>
             </div>
           </main>
