@@ -638,31 +638,31 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 <p className="text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
             </div>
           </div>
-          {userRole === 'admin' && (
-            <div className="flex items-center gap-4">
-                {uploadTimestamp && <ClientTimestamp timestamp={uploadTimestamp} />}
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="outline">
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload New Data
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Ready to upload a new file?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will take you to the file uploader. Uploading a new file will create a new record on the server.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleClearData}>Continue</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+              {uploadTimestamp && <ClientTimestamp timestamp={uploadTimestamp} />}
+              {userRole === 'admin' && (
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                          <Button variant="outline">
+                              <Upload className="mr-2 h-4 w-4" />
+                              Upload New Data
+                          </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                          <AlertDialogTitle>Ready to upload a new file?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                              This will take you to the file uploader. Uploading a new file will create a new record on the server.
+                          </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleClearData}>Continue</AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+              )}
+          </div>
         </header>
 
         {displayUploader ? (
