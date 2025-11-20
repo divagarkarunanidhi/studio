@@ -3,33 +3,44 @@ import { MongoClient } from "mongodb";
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
-const { firestore } = initializeFirebase();
+let clientPromise: Promise<MongoClient> | undefined;
+let dbName: string | undefined;
 
-let clientPromise: Promise<MongoClient>;
-let dbName: string;
-
+// This function will be called by API routes to ensure everything is initialized.
 async function setupMongo() {
+    // Only initialize if we haven't already.
+    if (clientPromise && dbName) {
+        return { clientPromise, dbName };
+    }
+
+    // Initialize Firebase and get Firestore instance *inside* the setup function.
+    const { firestore } = initializeFirebase();
+    
     const configDocRef = doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configDocRef);
 
     if (!configSnap.exists()) {
+        console.error("MongoDB configuration not found in Firestore.");
         throw new Error("MongoDB configuration not found in Firestore.");
     }
     const configData = configSnap.data();
     
     const uri = configData.mongodbUri;
-    dbName = configData.mongodbDbName;
+    const localDbName = configData.mongodbDbName;
 
-    if (!uri || !dbName) {
+    if (!uri || !localDbName) {
+        console.error('Invalid/Missing MongoDB configuration in Firestore.', { uri: !!uri, dbName: !!localDbName });
         throw new Error('Invalid/Missing MongoDB configuration in Firestore.');
     }
+    
+    dbName = localDbName;
 
     const options = {
         tls: true,
     };
 
     let client: MongoClient;
-
+    
     if (process.env.NODE_ENV === "development") {
         let globalWithMongo = global as typeof globalThis & {
             _mongoClientPromise?: Promise<MongoClient>;
@@ -44,18 +55,16 @@ async function setupMongo() {
         client = new MongoClient(uri, options);
         clientPromise = client.connect();
     }
+    
+    return { clientPromise, dbName };
 }
 
-// We need an async function to export the promise, so we'll wrap the setup
-// and export a promise that resolves with the clientPromise and dbName.
-// This is a bit of a workaround to deal with the async setup.
-// A better approach in a real app might be a dependency injection container.
-let setupPromise: Promise<void> | null = null;
-const getMongoDetails = () => {
-    if (!setupPromise) {
-        setupPromise = setupMongo();
+// getMongoDetails now ensures setup is complete before returning.
+const getMongoDetails = async () => {
+    if (!clientPromise || !dbName) {
+        return await setupMongo();
     }
-    return setupPromise.then(() => ({ clientPromise, dbName }));
+    return { clientPromise, dbName };
 }
 
 export { getMongoDetails };
