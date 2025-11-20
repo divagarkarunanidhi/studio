@@ -382,9 +382,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const handleViewChange = (view: View) => {
     setActiveView(view);
-    if (showUploader) {
-        setShowUploader(false);
-    }
+    setShowUploader(false);
   };
 
   const yesterdayDefectsCount = useMemo(() => {
@@ -540,7 +538,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     );
   }
   
-  const displayUploader = showUploader && activeView !== 'user-management' && activeView !== 'configuration';
+  const displayUploader = showUploader && defects.length === 0;
 
   return (
     <SidebarProvider>
@@ -602,21 +600,19 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
+             <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Configuration" isActive={activeView === 'configuration'} onClick={() => handleViewChange('configuration')}>
+                <Settings />
+                Configuration
+                </SidebarMenuButton>
+            </SidebarMenuItem>
             {userRole === 'admin' && (
-              <>
                 <SidebarMenuItem>
                     <SidebarMenuButton tooltip="User Management" isActive={activeView === 'user-management'} onClick={() => handleViewChange('user-management')}>
                     <Users />
                     User Management
                     </SidebarMenuButton>
                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Configuration" isActive={activeView === 'configuration'} onClick={() => handleViewChange('configuration')}>
-                    <Settings />
-                    Configuration
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-              </>
             )}
           </SidebarMenu>
         </SidebarContent>
@@ -748,7 +744,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             {activeView === 'user-management' && userRole === 'admin' && (
               <UserManagementPage />
             )}
-             {activeView === 'configuration' && userRole === 'admin' && (
+             {activeView === 'configuration' && (
               <ConfigurationPage />
             )}
 
