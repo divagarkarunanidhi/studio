@@ -639,7 +639,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             </div>
           </div>
           <div className="flex items-center gap-4">
-              {uploadTimestamp && <ClientTimestamp timestamp={uploadTimestamp} />}
+              {uploadTimestamp && activeView === 'dashboard' && <ClientTimestamp timestamp={uploadTimestamp} />}
               {userRole === 'admin' && activeView === 'dashboard' && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
