@@ -144,7 +144,7 @@ export function ConfigurationPage() {
                 <FormItem>
                   <FormLabel>Gemini API Key</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Enter your Gemini API Key" {...field} />
+                    <Input type="text" placeholder="Enter your Gemini API Key" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -157,7 +157,7 @@ export function ConfigurationPage() {
                 <FormItem>
                   <FormLabel>MongoDB URI</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Enter your MongoDB Connection String" {...field} />
+                    <Input type="text" placeholder="Enter your MongoDB Connection String" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
