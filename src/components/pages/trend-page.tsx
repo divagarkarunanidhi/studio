@@ -15,7 +15,7 @@ import {
 import { getYear, parseISO } from 'date-fns';
 import { DateRangePicker } from '../ui/date-range-picker';
 import type { DateRange } from 'react-day-picker';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 
 
@@ -41,7 +41,9 @@ export function TrendPage({ defects }: TrendPageProps) {
     return uniqueDomains.map(d => ({ value: d, label: d }));
   }, [uniqueDomains]);
 
-  const [selectedDomains, setSelectedDomains] = useState<string[]>(() => domainOptions.slice(0, 5).map(o => o.value));
+  const [selectedCompareDomains, setSelectedCompareDomains] = useState<string[]>(() => domainOptions.slice(0, 5).map(o => o.value));
+  const [selectedFilterDomains, setSelectedFilterDomains] = useState<string[]>([]);
+
 
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -67,6 +69,8 @@ export function TrendPage({ defects }: TrendPageProps) {
 
   const isTimeFilterDisabled = analysisType === 'creation-vs-closure';
 
+  const showDomainFilter = analysisType === 'creation' || analysisType === 'resolution' || analysisType === 'creation-vs-closure';
+
   return (
     <div className="space-y-6">
        <Tabs
@@ -80,6 +84,24 @@ export function TrendPage({ defects }: TrendPageProps) {
           <TabsTrigger value="domain">By Domain</TabsTrigger>
           <TabsTrigger value="creation-vs-closure">Creation vs Closure</TabsTrigger>
         </TabsList>
+
+        {showDomainFilter && (
+             <Card className="mt-4">
+                <CardHeader>
+                    <CardTitle>Domain Filter</CardTitle>
+                    <CardDescription>Select domains to filter the chart data. Leave empty to include all domains.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <MultiSelect 
+                        options={domainOptions}
+                        defaultValue={selectedFilterDomains}
+                        onValueChange={setSelectedFilterDomains}
+                        placeholder="Filter by domains..."
+                    />
+                </CardContent>
+            </Card>
+        )}
+
         <TabsContent value="creation" className="mt-4">
           <TrendChartContainer
             defects={defects}
@@ -91,6 +113,7 @@ export function TrendPage({ defects }: TrendPageProps) {
             dateRange={dateRange}
             setDateRange={setDateRange}
             analysisType="creation"
+            selectedDomains={selectedFilterDomains}
             isTimeFilterDisabled={isTimeFilterDisabled}
           />
         </TabsContent>
@@ -105,6 +128,7 @@ export function TrendPage({ defects }: TrendPageProps) {
             dateRange={dateRange}
             setDateRange={setDateRange}
             analysisType="resolution"
+            selectedDomains={selectedFilterDomains}
             isTimeFilterDisabled={isTimeFilterDisabled}
           />
         </TabsContent>
@@ -112,12 +136,13 @@ export function TrendPage({ defects }: TrendPageProps) {
              <Card>
                 <CardHeader>
                     <CardTitle>Domain Selection</CardTitle>
+                    <CardDescription>Select domains to compare on the chart.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <MultiSelect 
                         options={domainOptions}
-                        defaultValue={selectedDomains}
-                        onValueChange={setSelectedDomains}
+                        defaultValue={selectedCompareDomains}
+                        onValueChange={setSelectedCompareDomains}
                         placeholder="Select domains to compare..."
                     />
                 </CardContent>
@@ -132,7 +157,7 @@ export function TrendPage({ defects }: TrendPageProps) {
             dateRange={dateRange}
             setDateRange={setDateRange}
             analysisType="domain"
-            selectedDomains={selectedDomains}
+            selectedDomains={selectedCompareDomains}
             isTimeFilterDisabled={isTimeFilterDisabled}
           />
         </TabsContent>
@@ -147,6 +172,7 @@ export function TrendPage({ defects }: TrendPageProps) {
             dateRange={dateRange}
             setDateRange={setDateRange}
             analysisType="creation-vs-closure"
+            selectedDomains={selectedFilterDomains}
             isTimeFilterDisabled={isTimeFilterDisabled}
           />
         </TabsContent>
@@ -184,8 +210,8 @@ function TrendChartContainer({
     isTimeFilterDisabled
 }: TrendChartContainerProps) {
     
-    // For 'creation-vs-closure', we force 'all-time' and hide the filters.
-    const currentPeriod = isTimeFilterDisabled ? 'all-time' : period;
+    // For 'creation-vs-closure', we force 'all-time' and hide the time period filters.
+    const currentPeriod = analysisType === 'creation-vs-closure' ? 'all-time' : period;
     
     return (
         <Tabs
@@ -194,7 +220,7 @@ function TrendChartContainer({
             className="w-full"
         >
             <div className="flex flex-wrap items-center gap-4">
-                {!isTimeFilterDisabled && (
+                {analysisType !== 'creation-vs-closure' && (
                     <>
                         <TabsList>
                             <TabsTrigger value="all-time">All Time</TabsTrigger>

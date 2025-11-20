@@ -46,6 +46,13 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
     const { trendData, chartConfig } = useMemo(() => {
     if (!defects.length) return { trendData: [], chartConfig: {} };
 
+    let defectsToProcess = defects;
+
+    // Apply domain filter for relevant analysis types
+    if (analysisType !== 'domain' && selectedDomains.length > 0) {
+      defectsToProcess = defects.filter(d => selectedDomains.includes(d.domain || ''));
+    }
+
     let chartConfig: ChartConfig = {
         count: {
             label: analysisType === 'creation' ? 'Created' : 'Resolved',
@@ -70,7 +77,7 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
     
     if (analysisType === 'creation-vs-closure') {
       const allEvents: { date: Date, type: 'created' | 'resolved' }[] = [];
-        defects.forEach(defect => {
+        defectsToProcess.forEach(defect => {
             try {
                 if (defect.created_at) {
                     allEvents.push({ date: parseISO(defect.created_at), type: 'created' });
@@ -114,7 +121,6 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
         return { trendData, chartConfig: newChartConfig };
 
     } else if(analysisType === 'domain') {
-        let defectsToProcess = defects;
         const domainCountsByPeriod: { [date: string]: { [domain: string]: number } } = {};
         
         const filteredDefects = defectsToProcess.filter(d => selectedDomains.includes(d.domain || ''));
@@ -148,14 +154,14 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
         return { trendData, chartConfig: newChartConfig };
 
     } else { // creation or resolution
-        let defectsToProcess = defects;
+        let processedForTime = defectsToProcess;
 
         if (analysisType === 'resolution') {
-            defectsToProcess = defects.filter(d => d.status?.toLowerCase() === 'done' && d.updated);
+            processedForTime = defectsToProcess.filter(d => d.status?.toLowerCase() === 'done' && d.updated);
         }
         
         if (period === 'monthly' && year) {
-            defectsToProcess = defectsToProcess.filter(d => {
+            processedForTime = processedForTime.filter(d => {
                 try {
                     const dateKey = analysisType === 'resolution' ? d.updated : d.created_at;
                     return getYear(parseISO(dateKey!)) === year;
@@ -167,7 +173,7 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
     
         if (period === 'custom' && dateRange?.from && dateRange?.to) {
             const interval = { start: dateRange.from, end: dateRange.to };
-            defectsToProcess = defectsToProcess.filter(d => {
+            processedForTime = processedForTime.filter(d => {
                 try {
                     const dateKey = analysisType === 'resolution' ? d.updated : d.created_at;
                     return isWithinInterval(parseISO(dateKey!), interval);
@@ -177,7 +183,7 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
             });
         }
 
-        const countsByPeriod = defectsToProcess.reduce((acc, defect) => {
+        const countsByPeriod = processedForTime.reduce((acc, defect) => {
             try {
               const dateKey = analysisType === 'resolution' ? defect.updated : defect.created_at;
               const date = parseISO(dateKey!);
@@ -281,7 +287,14 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription>
+            {description}
+            {selectedDomains.length > 0 && analysisType !== 'domain' && (
+                <span className="text-xs block mt-1 text-muted-foreground italic">
+                    (Filtered by {selectedDomains.length} domain{selectedDomains.length > 1 ? 's' : ''})
+                </span>
+            )}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[250px]">
