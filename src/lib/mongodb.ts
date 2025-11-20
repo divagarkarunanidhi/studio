@@ -1,7 +1,7 @@
 
 import { MongoClient } from "mongodb";
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { getFirestoreInstance } from "@/firebase/server-config";
 
 let clientPromise: Promise<MongoClient> | undefined;
 let dbName: string | undefined;
@@ -14,7 +14,7 @@ async function setupMongo() {
     }
 
     // Initialize Firebase and get Firestore instance *inside* the setup function.
-    const { firestore } = initializeFirebase();
+    const { firestore } = await getFirestoreInstance();
     
     const configDocRef = doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configDocRef);
@@ -61,10 +61,7 @@ async function setupMongo() {
 
 // getMongoDetails now ensures setup is complete before returning.
 const getMongoDetails = async () => {
-    if (!clientPromise || !dbName) {
-        return await setupMongo();
-    }
-    return { clientPromise, dbName };
+    return await setupMongo();
 }
 
 export { getMongoDetails };

@@ -2,12 +2,11 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/google-genai';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { getFirestoreInstance } from '@/firebase/server-config';
 
-// Initialize Firebase to get Firestore instance
-const { firestore } = initializeFirebase();
 
 async function getGlobalConfig() {
+    const { firestore } = await getFirestoreInstance();
     const configDocRef = doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configDocRef);
 
@@ -30,7 +29,6 @@ const config = await getGlobalConfig();
 export const ai = genkit({
   plugins: [
     googleAI({
-      // The API key is now fetched dynamically
       apiKey: config.apiKey,
     }),
   ],

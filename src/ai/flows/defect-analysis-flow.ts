@@ -18,9 +18,7 @@ import {
 } from '@/lib/types';
 import { z } from 'zod';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
-
-const { firestore } = initializeFirebase();
+import { getFirestoreInstance } from '@/firebase/server-config';
 
 const DefectAnalysisInputSchema = z.object({
   defects: z.string(),
@@ -66,6 +64,7 @@ const defectAnalysisFlow = ai.defineFlow(
   async ({ defects }) => {
     const defectsString = JSON.stringify(defects, null, 2);
     
+    const { firestore } = await getFirestoreInstance();
     const configRef = doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configRef);
     if (!configSnap.exists()) {

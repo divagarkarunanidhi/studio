@@ -15,9 +15,7 @@ import {
 } from '@/lib/types';
 import { z } from 'zod';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
-
-const { firestore } = initializeFirebase();
+import { getFirestoreInstance } from '@/firebase/server-config';
 
 const SingleDefectSummarySchema = z.object({
     rootCause: z.string().describe("A short, one or two-word category for the defect's root cause (e.g., 'Data Integrity', 'Configuration', 'UI/UX', 'Performance', 'Security')."),
@@ -54,6 +52,7 @@ const defectSummaryFlow = ai.defineFlow(
     outputSchema: DefectSummaryOutputSchema,
   },
   async ({ defects }) => {
+    const { firestore } = await getFirestoreInstance();
     const configRef = doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configRef);
     if (!configSnap.exists()) {
