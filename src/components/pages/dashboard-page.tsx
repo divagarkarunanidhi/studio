@@ -539,6 +539,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         </div>
     );
   }
+  
+  const displayUploader = showUploader && activeView !== 'user-management' && activeView !== 'configuration';
 
   return (
     <SidebarProvider>
@@ -667,7 +669,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
           )}
         </header>
 
-        {showUploader ? (
+        {displayUploader ? (
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
