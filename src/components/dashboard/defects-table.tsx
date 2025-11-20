@@ -1,9 +1,12 @@
 
+import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { Defect } from '@/lib/types';
+import type { Defect, AppConfiguration } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { differenceInDays, parseISO, format } from 'date-fns';
+import { doc, getDoc } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
 import {
   Tooltip,
   TooltipContent,
@@ -21,6 +24,21 @@ interface DefectsTableProps {
 }
 
 export function DefectsTable({ defects, showAll = false, showDescription = false }: DefectsTableProps) {
+  const [jiraLink, setJiraLink] = useState<string>("");
+  const firestore = useFirestore();
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+        const configRef = doc(firestore, 'appConfiguration', 'global');
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+            const configData = configSnap.data() as AppConfiguration;
+            setJiraLink(configData.jiraLink);
+        }
+    };
+    fetchConfig();
+  }, [firestore]);
+  
   const sortedDefects = [...defects].sort((a, b) => {
     try {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -66,7 +84,7 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                 <TableRow key={defect.id} className={cn(isUrgent && 'bg-destructive/10')}>
                   <TableCell className="font-medium">
                     <a
-                      href={`https://dhl2.atlassian.net/browse/${defect.id}`}
+                      href={`${jiraLink}/${defect.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline"

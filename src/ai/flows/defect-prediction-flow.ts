@@ -11,8 +11,13 @@ import {
   DefectPredictionOutputSchema,
   type DefectPredictionOutput,
   type Defect,
+  type AppConfiguration,
 } from '@/lib/types';
 import { z } from 'zod';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
+
+const { firestore } = initializeFirebase();
 
 const DefectPredictionInputSchema = z.object({
   defects: z.array(DefectSchema),
@@ -51,6 +56,14 @@ const defectPredictionFlow = ai.defineFlow(
     outputSchema: DefectPredictionOutputSchema,
   },
   async ({ defects }) => {
+    const configRef = doc(firestore, 'appConfiguration', 'global');
+    const configSnap = await getDoc(configRef);
+    if (!configSnap.exists()) {
+        throw new Error("App configuration not found.");
+    }
+    const config = configSnap.data() as AppConfiguration;
+    const retryModel = config.geminiRetryModel;
+
     const predictions = await Promise.all(
       defects.map(async (defect) => {
         try {
@@ -64,8 +77,8 @@ const defectPredictionFlow = ai.defineFlow(
             };
         } catch (e: any) {
             if (e.message && (e.message.includes('429 Too Many Requests') || e.message.includes('503 Service Unavailable'))) {
-                console.warn('Rate limit or availability error, retrying with gemini-2.0-flash-lite...');
-                const { output } = await predictionPrompt({ defect }, { model: 'googleai/gemini-2.0-flash-lite' });
+                console.warn(`Rate limit or availability error, retrying with ${retryModel}...`);
+                const { output } = await predictionPrompt({ defect }, { model: `googleai/${retryModel}` });
                  if (!output) {
                     throw new Error('The fallback model also did not return a valid prediction.');
                 }

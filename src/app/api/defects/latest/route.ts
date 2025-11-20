@@ -1,8 +1,10 @@
+
 import { NextResponse } from "next/server";
-import { clientPromise, dbName } from "@/lib/mongodb";
+import { getMongoDetails } from "@/lib/mongodb";
 
 export async function GET() {
   try {
+    const { clientPromise, dbName } = await getMongoDetails();
     const client = await clientPromise;
     const db = client.db(dbName);
 

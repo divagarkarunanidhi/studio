@@ -65,6 +65,31 @@
         }
       },
       "required": ["uploadedAt", "defects", "uploaderId"]
+    },
+    "AppConfiguration": {
+      "title": "App Configuration",
+      "type": "object",
+      "description": "Stores global application configuration settings.",
+      "properties": {
+        "geminiApiKey": {
+          "type": "string"
+        },
+        "mongodbUri": {
+          "type": "string"
+        },
+        "mongodbDbName": {
+          "type": "string"
+        },
+        "geminiModel": {
+          "type": "string"
+        },
+        "geminiRetryModel": {
+          "type": "string"
+        },
+        "jiraLink": {
+          "type": "string"
+        }
+      }
     }
   },
   "auth": {
@@ -100,6 +125,19 @@
           "params": [
             { "name": "fileId", "description": "The unique ID for the uploaded file." }
           ]
+        }
+      },
+      {
+        "path": "/appConfiguration/{configId}",
+        "definition": {
+            "entityName": "AppConfiguration",
+            "schema": {
+                "$ref": "#/backend/entities/AppConfiguration"
+            },
+            "description": "Stores a single document for global app configuration.",
+            "params": [
+                { "name": "configId", "description": "The static ID for the configuration document, typically 'global'." }
+            ]
         }
       }
     ]

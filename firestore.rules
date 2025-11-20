@@ -26,5 +26,10 @@ service cloud.firestore {
     match /TAASBugSenseAI/{fileId} {
       allow read, create, update, delete: if isSignedIn();
     }
+
+    match /appConfiguration/{configId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
+    }
   }
 }

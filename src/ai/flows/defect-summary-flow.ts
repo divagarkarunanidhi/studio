@@ -11,8 +11,13 @@ import {
   DefectSummaryOutputSchema,
   type DefectSummaryOutput,
   type Defect,
+  type AppConfiguration,
 } from '@/lib/types';
 import { z } from 'zod';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
+
+const { firestore } = initializeFirebase();
 
 const SingleDefectSummarySchema = z.object({
     rootCause: z.string().describe("A short, one or two-word category for the defect's root cause (e.g., 'Data Integrity', 'Configuration', 'UI/UX', 'Performance', 'Security')."),
@@ -49,6 +54,14 @@ const defectSummaryFlow = ai.defineFlow(
     outputSchema: DefectSummaryOutputSchema,
   },
   async ({ defects }) => {
+    const configRef = doc(firestore, 'appConfiguration', 'global');
+    const configSnap = await getDoc(configRef);
+    if (!configSnap.exists()) {
+        throw new Error("App configuration not found.");
+    }
+    const config = configSnap.data() as AppConfiguration;
+    const retryModel = config.geminiRetryModel;
+    
     const summaries = await Promise.all(
       defects.map(async (defect) => {
         try {
@@ -60,8 +73,8 @@ const defectSummaryFlow = ai.defineFlow(
             return { id: defect.id, ...output };
         } catch (e: any) {
              if (e.message && (e.message.includes('429 Too Many Requests') || e.message.includes('503 Service Unavailable'))) {
-                console.warn('Rate limit or availability error, retrying with gemini-2.0-flash-lite...');
-                const { output } = await summaryPrompt({ defect }, { model: 'googleai/gemini-2.0-flash-lite' });
+                console.warn(`Rate limit or availability error, retrying with ${retryModel}...`);
+                const { output } = await summaryPrompt({ defect }, { model: `googleai/${retryModel}` });
                 if (!output) {
                     return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
                 }

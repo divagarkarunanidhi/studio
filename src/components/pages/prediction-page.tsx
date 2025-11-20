@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import type { Defect, DefectPrediction } from '@/lib/types';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import type { Defect, DefectPrediction, AppConfiguration } from '@/lib/types';
 import { predictDefects } from '@/ai/flows/defect-prediction-flow';
 import {
   Table,
@@ -18,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, AlertTriangle, Wand2 } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 import {
     Select,
     SelectContent,
@@ -37,6 +39,20 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
+  const [jiraLink, setJiraLink] = useState<string>("");
+  const firestore = useFirestore();
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+        const configRef = doc(firestore, 'appConfiguration', 'global');
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+            const configData = configSnap.data() as AppConfiguration;
+            setJiraLink(configData.jiraLink);
+        }
+    };
+    fetchConfig();
+  }, [firestore]);
 
   const filteredDefects = useMemo(() => {
     if (!selectedDomain) return [];
@@ -158,7 +174,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                 <TableRow key={defect.id}>
                                     <TableCell className="font-medium">
                                         <a
-                                            href={`https://dhl2.atlassian.net/browse/${defect.id}`}
+                                            href={`${jiraLink}/${defect.id}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-primary hover:underline"

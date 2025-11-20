@@ -1,8 +1,10 @@
+
 "use client";
 
 import * as React from "react";
 import { Pie, PieChart, Cell, Tooltip } from "recharts";
-
+import { doc, getDoc } from "firebase/firestore";
+import { useFirestore, useMemoFirebase } from "@/firebase";
 import {
   Card,
   CardContent,
@@ -26,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
 import { Badge } from "../ui/badge";
+import type { AppConfiguration } from "@/lib/types";
 
 interface ChartPoint {
   name: string;
@@ -59,6 +62,22 @@ export function DefectPieChart({
   description,
   isLoading,
 }: DefectPieChartProps) {
+  const [jiraLink, setJiraLink] = React.useState<string>("");
+  const firestore = useFirestore();
+
+  React.useEffect(() => {
+    const fetchConfig = async () => {
+        const configRef = doc(firestore, 'appConfiguration', 'global');
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+            const configData = configSnap.data() as AppConfiguration;
+            setJiraLink(configData.jiraLink);
+        }
+    };
+    fetchConfig();
+  }, [firestore]);
+
+
   const chartConfig = React.useMemo(() => {
     return data.reduce((acc, item, index) => {
       acc[item.name] = {
@@ -157,7 +176,7 @@ export function DefectPieChart({
                         {item.defectIds.map(id => (
                             <Badge key={id} variant="secondary">
                                 <a
-                                    href={`https://dhl2.atlassian.net/browse/${id}`}
+                                    href={`${jiraLink}/${id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="hover:underline"

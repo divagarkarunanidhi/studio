@@ -1,4 +1,5 @@
 
+
 import { z } from 'zod';
 
 export const DefectSchema = z.object({
@@ -15,6 +16,17 @@ export const DefectSchema = z.object({
 });
 
 export type Defect = z.infer<typeof DefectSchema>;
+
+export const AppConfigurationSchema = z.object({
+    geminiApiKey: z.string().min(1, 'Gemini API Key is required.'),
+    mongodbUri: z.string().min(1, 'MongoDB URI is required.'),
+    mongodbDbName: z.string().min(1, 'MongoDB DB Name is required.'),
+    geminiModel: z.string().min(1, 'Gemini Model is required.'),
+    geminiRetryModel: z.string().min(1, 'Gemini Retry Model is required.'),
+    jiraLink: z.string().url('Must be a valid URL.').min(1, 'JIRA Link is required.'),
+});
+  
+export type AppConfiguration = z.infer<typeof AppConfigurationSchema>;
 
 // AI Flow Schemas
 export const DefectAnalysisInputSchema = z.object({

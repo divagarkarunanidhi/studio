@@ -31,7 +31,7 @@ import {
   Server,
   LogOut,
   Users,
-  ArrowLeft,
+  Settings,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -68,8 +68,10 @@ import {
   } from "@/components/ui/alert-dialog"
 import { UserManagementPage } from './user-management-page';
 import type { UserProfile } from '@/app/page';
+import { ConfigurationPage } from './configuration-page';
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management';
+
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -417,6 +419,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     summary: 'Defect Summary',
     'required-attention': 'Defects Requiring Attention',
     'user-management': 'User Management',
+    configuration: 'Application Configuration'
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -429,6 +432,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     summary: 'AI-powered summary of defect root cause and functional area.',
     'required-attention': 'Defects that are missing key information and are not yet done.',
     'user-management': 'View and manage all users in the system.',
+    configuration: 'Manage global application settings and API keys.'
   };
 
   const uniqueDomains = useMemo(() => {
@@ -597,12 +601,20 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               </SidebarMenuItem>
             )}
             {userRole === 'admin' && (
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="User Management" isActive={activeView === 'user-management'} onClick={() => handleViewChange('user-management')}>
-                  <Users />
-                  User Management
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              <>
+                <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="User Management" isActive={activeView === 'user-management'} onClick={() => handleViewChange('user-management')}>
+                    <Users />
+                    User Management
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Configuration" isActive={activeView === 'configuration'} onClick={() => handleViewChange('configuration')}>
+                    <Settings />
+                    Configuration
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
             )}
           </SidebarMenu>
         </SidebarContent>
@@ -734,6 +746,9 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             {activeView === 'user-management' && userRole === 'admin' && (
               <UserManagementPage />
             )}
+             {activeView === 'configuration' && userRole === 'admin' && (
+              <ConfigurationPage />
+            )}
 
             {activeView === 'all-defects' && (
                <Card>
@@ -834,13 +849,3 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
-
-    
-
-    
-
-    
-
-    
-
-    
