@@ -114,8 +114,8 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
         const trendData = Array.from(dataMap.values()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         
         const newChartConfig: ChartConfig = {
-            created: { label: 'Cumulative Created', color: 'hsl(var(--chart-1))' },
-            resolved: { label: 'Cumulative Resolved', color: 'hsl(var(--chart-2))' },
+            created: { label: 'Created', color: 'hsl(var(--chart-1))' },
+            resolved: { label: 'Resolved', color: 'hsl(var(--chart-2))' },
         };
         
         return { trendData, chartConfig: newChartConfig };
@@ -261,7 +261,7 @@ export function DefectTrendChart({ defects, period, analysisType, selectedDomain
     creation: 'Defect Creation Trend',
     resolution: 'Defect Resolution Trend',
     domain: 'Defect Trend by Domain',
-    'creation-vs-closure': 'Cumulative Defect Creation vs. Closure'
+    'creation-vs-closure': 'Defect Creation vs. Closure'
   };
   const title = titleMap[analysisType]
 

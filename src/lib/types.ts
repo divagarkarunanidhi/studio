@@ -64,6 +64,13 @@ export const DefectPredictionOutputSchema = z.object({
 export type DefectPredictionOutput = z.infer<typeof DefectPredictionOutputSchema>;
 
 
+export const SavedPredictionSchema = z.object({
+    defect: DefectSchema,
+    prediction: DefectPredictionSchema,
+    savedAt: z.string(),
+});
+export type SavedPrediction = z.infer<typeof SavedPredictionSchema>;
+
 // Summary Flow Schemas
 const ChartDataPointSchema = z.object({
     name: z.string(),

@@ -9,41 +9,72 @@ import {
   DefectSchema,
   DefectPredictionSchema,
   DefectPredictionOutputSchema,
+  SavedPredictionSchema,
   type DefectPredictionOutput,
   type Defect,
   type AppConfiguration,
+  type SavedPrediction,
 } from '@/lib/types';
 import { z } from 'zod';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/firebase/server-config';
 
 const DefectPredictionInputSchema = z.object({
   defects: z.array(DefectSchema),
+  userId: z.string(),
 });
 
 export async function predictDefects(
-  input: { defects: Defect[] }
+  input: { defects: Defect[], userId: string }
 ): Promise<DefectPredictionOutput> {
   return defectPredictionFlow(input);
 }
 
+const FewShotExampleSchema = z.object({
+    input: DefectSchema,
+    output: DefectPredictionSchema
+});
+
 const predictionPrompt = ai.definePrompt({
   name: 'defectPredictionPrompt',
-  input: { schema: z.object({ defect: DefectSchema }) },
+  input: { schema: z.object({ 
+    defect: DefectSchema,
+    examples: z.array(FewShotExampleSchema).optional(),
+   }) },
   output: { schema: DefectPredictionSchema },
   prompt: `As a QA expert, analyze the following defect and predict its severity, priority and root cause.
-  - Severity should be one of: Critical, High, Medium, Low.
-  - Priority should be one of: Highest, High, Medium, Low.
-  - The predicted root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX').
-  - Provide a short, one-sentence description explaining your reasoning.
+- Severity should be one of: Critical, High, Medium, Low.
+- Priority should be one of: Highest, High, Medium, Low.
+- The predicted root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX').
+- Provide a short, one-sentence description explaining your reasoning.
 
-  Defect:
-  - Summary: {{{defect.summary}}}
-  - Description: {{{defect.description}}}
-  - Domain: {{{defect.domain}}}
-  - Status: {{{defect.status}}}
+{{#if examples}}
+---
+Here are some examples of excellent predictions to learn from:
+{{#each examples}}
 
-  Based on this information, provide your prediction in the required JSON format.
+Example Input Defect:
+- Summary: {{{input.summary}}}
+- Description: {{{input.description}}}
+
+Example Output Prediction:
+- Predicted Severity: {{{output.predictedSeverity}}}
+- Predicted Priority: {{{output.predictedPriority}}}
+- Predicted Root Cause: {{{output.predictedRootCause}}}
+- Reasoning: {{{output.predictionDescription}}}
+---
+{{/each}}
+{{/if}}
+
+Now, analyze the following new defect:
+
+Defect:
+- Summary: {{{defect.summary}}}
+- Description: {{{defect.description}}}
+- Domain: {{{defect.domain}}}
+- Status: {{{defect.status}}}
+
+Based on this information, provide your prediction in the required JSON format.
 `,
 });
 
@@ -53,7 +84,7 @@ const defectPredictionFlow = ai.defineFlow(
     inputSchema: DefectPredictionInputSchema,
     outputSchema: DefectPredictionOutputSchema,
   },
-  async ({ defects }) => {
+  async ({ defects, userId }) => {
     const { firestore } = await getFirestoreInstance();
     const configRef = doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configRef);
@@ -62,11 +93,23 @@ const defectPredictionFlow = ai.defineFlow(
     }
     const config = configSnap.data() as AppConfiguration;
     const retryModel = config.geminiRetryModel;
+    
+    // Fetch few-shot examples
+    const examplesRef = collection(firestore, `users/${userId}/savedPredictions`);
+    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(5));
+    const examplesSnap = await getDocs(examplesQuery);
+    const examples = examplesSnap.docs.map(doc => {
+        const data = doc.data() as SavedPrediction;
+        return {
+            input: data.defect,
+            output: data.prediction,
+        };
+    });
 
     const predictions = await Promise.all(
       defects.map(async (defect) => {
         try {
-            const { output } = await predictionPrompt({ defect });
+            const { output } = await predictionPrompt({ defect, examples });
             if (!output) {
               throw new Error('The model did not return a valid prediction.');
             }
@@ -77,7 +120,7 @@ const defectPredictionFlow = ai.defineFlow(
         } catch (e: any) {
             if (e.message && (e.message.includes('429 Too Many Requests') || e.message.includes('503 Service Unavailable'))) {
                 console.warn(`Rate limit or availability error, retrying with ${retryModel}...`);
-                const { output } = await predictionPrompt({ defect }, { model: `googleai/${retryModel}` });
+                const { output } = await predictionPrompt({ defect, examples }, { model: `googleai/${retryModel}` });
                  if (!output) {
                     throw new Error('The fallback model also did not return a valid prediction.');
                 }

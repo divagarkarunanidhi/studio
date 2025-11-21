@@ -66,6 +66,29 @@
       },
       "required": ["uploadedAt", "defects", "uploaderId"]
     },
+    "SavedPrediction": {
+        "title": "Saved Prediction",
+        "type": "object",
+        "description": "Represents a user-approved defect prediction example for few-shot learning.",
+        "properties": {
+            "defect": { "$ref": "#/backend/entities/Defect" },
+            "prediction": { "$ref": "#/backend/entities/DefectPrediction" },
+            "savedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["defect", "prediction", "savedAt"]
+    },
+    "DefectPrediction": {
+      "title": "Defect Prediction",
+      "type": "object",
+      "description": "Represents the AI's prediction for a defect.",
+      "properties": {
+        "predictedSeverity": { "type": "string" },
+        "predictedPriority": { "type": "string" },
+        "predictionDescription": { "type": "string" },
+        "predictedRootCause": { "type": "string" }
+      },
+      "required": ["predictedSeverity", "predictedPriority", "predictionDescription", "predictedRootCause"]
+    },
     "AppConfiguration": {
       "title": "App Configuration",
       "type": "object",
@@ -112,6 +135,20 @@
           },
           "description": "Stores user-specific data, like roles and preferences.",
           "params": [{ "name": "userId", "description": "The unique identifier for the user, matching their Firebase Auth UID." }]
+        }
+      },
+      {
+        "path": "/users/{userId}/savedPredictions/{predictionId}",
+        "definition": {
+          "entityName": "SavedPrediction",
+          "schema": {
+            "$ref": "#/backend/entities/SavedPrediction"
+          },
+          "description": "Stores user-approved predictions to be used as few-shot examples.",
+          "params": [
+            { "name": "userId", "description": "The user's ID." },
+            { "name": "predictionId", "description": "The unique ID for the saved prediction." }
+          ]
         }
       },
       {
