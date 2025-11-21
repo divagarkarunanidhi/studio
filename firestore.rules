@@ -23,6 +23,11 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /users/{userId}/savedPredictions/{predictionId} {
+      allow read, write: if isOwner(userId);
+      allow list: if isOwner(userId) || isAdmin();
+    }
+
     match /TAASBugSenseAI/{fileId} {
       allow read, create, update, delete: if isSignedIn();
     }
