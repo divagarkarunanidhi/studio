@@ -7,8 +7,9 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Allow server-side reads (unauthenticated) OR owner access.
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth == null || (isSignedIn() && request.auth.uid == userId);
     }
 
     function isAdmin() {
@@ -24,7 +25,9 @@ service cloud.firestore {
     }
 
     match /users/{userId}/savedPredictions/{predictionId} {
-      allow read, write: if isOwner(userId);
+      // The server (request.auth == null) can read. The user can read and write.
+      allow read: if isOwner(userId);
+      allow write: if isSignedIn() && request.auth.uid == userId;
       allow list: if isOwner(userId) || isAdmin();
     }
 
