@@ -130,25 +130,52 @@ function FeedbackRow({ feedback, jiraLink, userId }: { feedback: WithId<SavedPre
                 </Select>
             </TableCell>
             <TableCell className="w-[200px]">
-                <Input
-                    value={editablePrediction.predictedRootCause}
-                    onChange={(e) => handlePredictionChange('predictedRootCause', e.target.value)}
-                    className="h-8 text-xs"
-                />
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Input
+                                value={editablePrediction.predictedRootCause}
+                                onChange={(e) => handlePredictionChange('predictedRootCause', e.target.value)}
+                                className="h-8 text-xs"
+                            />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{editablePrediction.predictedRootCause}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </TableCell>
             <TableCell className="w-[200px]">
-                <Input
-                    value={editablePrediction.predictedFunctionalArea}
-                    onChange={(e) => handlePredictionChange('predictedFunctionalArea', e.target.value)}
-                    className="h-8 text-xs"
-                />
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Input
+                                value={editablePrediction.predictedFunctionalArea}
+                                onChange={(e) => handlePredictionChange('predictedFunctionalArea', e.target.value)}
+                                className="h-8 text-xs"
+                            />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{editablePrediction.predictedFunctionalArea}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </TableCell>
             <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
-                <Textarea
-                    value={editablePrediction.predictedDefectSuggestions}
-                    onChange={(e) => handlePredictionChange('predictedDefectSuggestions', e.target.value)}
-                    className="h-20 text-xs"
-                />
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Textarea
+                                value={editablePrediction.predictedDefectSuggestions}
+                                onChange={(e) => handlePredictionChange('predictedDefectSuggestions', e.target.value)}
+                                className="h-20 text-xs"
+                            />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                            <p className="whitespace-pre-wrap">{editablePrediction.predictedDefectSuggestions}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </TableCell>
             <TableCell className="text-right space-x-2">
                 <TooltipProvider>
@@ -274,4 +301,3 @@ export function FeedbackManagementPage() {
         </Card>
     );
 }
-
