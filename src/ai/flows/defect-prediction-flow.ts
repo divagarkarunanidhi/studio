@@ -47,7 +47,7 @@ const predictionPrompt = ai.definePrompt({
 - Priority should be one of: Highest, High, Medium, Low, Lowest.
 - The predicted root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX').
 - The functional area should be a short, one or two-word category (e.g., 'User Auth', 'Billing', 'Search').
-- The suggestion for reduction should be a concise, actionable suggestion for this specific defect.
+- The suggestion for reduction should be a concise, actionable suggestion for this specific defect. IMPORTANT: Since all these defects are found by an automated regression suite, do not suggest "improve automation" or "add a regression suite". Focus on code quality, logic, or process improvements.
 - The source of defect should be the likely component or area where the bug originated.
 
 {{#if examples}}
