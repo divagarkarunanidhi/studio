@@ -49,7 +49,6 @@ const predictionPrompt = ai.definePrompt({
 - The functional area should be a short, one or two-word category (e.g., 'User Auth', 'Billing', 'Search').
 - The suggestion for reduction should be a concise, actionable suggestion for this specific defect.
 - The source of defect should be the likely component or area where the bug originated.
-- Provide a short, one-sentence description explaining your reasoning.
 
 {{#if examples}}
 ---
@@ -67,7 +66,6 @@ Example Output Prediction:
 - Predicted Functional Area: {{{output.predictedFunctionalArea}}}
 - Predicted Suggestion: {{{output.predictedDefectSuggestions}}}
 - Predicted Source: {{{output.predictedDefectSource}}}
-- Reasoning: {{{output.predictionDescription}}}
 ---
 {{/each}}
 {{/if}}

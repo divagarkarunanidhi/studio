@@ -105,7 +105,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
     }
   }, [filteredDefects, selectedDomain, user]);
 
-  const handlePredictionChange = (defectId: string, field: keyof DefectPrediction, value: string) => {
+  const handlePredictionChange = (defectId: string, field: keyof Omit<DefectPrediction, 'id'>, value: string) => {
     setEditablePredictions(prev => ({
         ...prev,
         [defectId]: {
@@ -123,7 +123,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
         ...defect,
         predictedSeverity: editablePrediction?.predictedSeverity ?? originalPrediction?.predictedSeverity,
         predictedPriority: editablePrediction?.predictedPriority ?? originalPrediction?.predictedPriority,
-        predictionDescription: editablePrediction?.predictionDescription ?? originalPrediction?.predictionDescription,
         predictedRootCause: editablePrediction?.predictedRootCause ?? originalPrediction?.predictedRootCause,
         predictedFunctionalArea: editablePrediction?.predictedFunctionalArea ?? originalPrediction?.predictedFunctionalArea,
         predictedDefectSuggestions: editablePrediction?.predictedDefectSuggestions ?? originalPrediction?.predictedDefectSuggestions,
@@ -145,7 +144,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
     const finalPrediction: Omit<DefectPrediction, 'id'> = {
         predictedSeverity: editedPrediction.predictedSeverity,
         predictedPriority: editedPrediction.predictedPriority,
-        predictionDescription: editedPrediction.predictionDescription,
         predictedRootCause: editedPrediction.predictedRootCause,
         predictedFunctionalArea: editedPrediction.predictedFunctionalArea,
         predictedDefectSuggestions: editedPrediction.predictedDefectSuggestions,
@@ -240,7 +238,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                             <TableHead>Priority (Actual/Predicted)</TableHead>
                             <TableHead>Root Cause</TableHead>
                             <TableHead>Functional Area</TableHead>
-                            <TableHead>Reasoning</TableHead>
                             <TableHead>Suggestion for Reduction</TableHead>
                             <TableHead>Source of Defect</TableHead>
                             </TableRow>
@@ -255,7 +252,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                     <TableCell><Skeleton className="h-8 w-28" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-32" /></TableCell>
-                                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
@@ -353,15 +349,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                                     value={currentPrediction.predictedFunctionalArea}
                                                     onChange={(e) => handlePredictionChange(defect.id, 'predictedFunctionalArea', e.target.value)}
                                                     className="h-8 text-xs"
-                                                />
-                                            ) : '...'}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
-                                            {hasPrediction ? (
-                                                <Textarea
-                                                    value={currentPrediction.predictionDescription}
-                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictionDescription', e.target.value)}
-                                                    className="h-20 text-xs"
                                                 />
                                             ) : '...'}
                                         </TableCell>
