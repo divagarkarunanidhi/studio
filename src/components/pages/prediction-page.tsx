@@ -39,7 +39,7 @@ interface PredictionPageProps {
 }
 
 const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
-const PRIORITY_OPTIONS = ['Highest', 'High', 'Medium', 'Low'];
+const PRIORITY_OPTIONS = ['High', 'Medium', 'Low', 'Lowest'];
 
 export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) {
   const [predictions, setPredictions] = useState<DefectPrediction[]>([]);

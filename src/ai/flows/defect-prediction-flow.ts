@@ -44,7 +44,7 @@ const predictionPrompt = ai.definePrompt({
   output: { schema: DefectPredictionSchema },
   prompt: `As a QA expert, analyze the following defect and predict its properties.
 - Severity should be one of: Critical, High, Medium, Low.
-- Priority should be one of: Highest, High, Medium, Low.
+- Priority should be one of: High, Medium, Low, Lowest.
 - The predicted root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX').
 - The functional area should be a short, one or two-word category (e.g., 'User Auth', 'Billing', 'Search').
 - The suggestion for reduction should be a concise, actionable suggestion for this specific defect.
