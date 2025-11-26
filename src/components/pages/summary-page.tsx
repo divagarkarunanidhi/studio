@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback, useMemo } from 'react';
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DefectPieChart } from '../dashboard/defect-pie-chart';
+import { useUser } from '@/firebase';
 
 interface SummaryPageProps {
   defects: Defect[];
@@ -26,6 +28,7 @@ export function SummaryPage({ defects, uniqueDomains }: SummaryPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
+  const { user } = useUser();
 
   const filteredDefects = useMemo(() => {
     if (!selectedDomain) return [];
@@ -37,11 +40,15 @@ export function SummaryPage({ defects, uniqueDomains }: SummaryPageProps) {
       setError("No defects found for the selected domain.");
       return;
     }
+    if (!user) {
+        setError("You must be logged in to run summaries.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
     setSummary(null);
     try {
-      const result = await summarizeDefects({ defects: filteredDefects });
+      const result = await summarizeDefects({ defects: filteredDefects, userId: user.uid });
       setSummary(result);
     } catch (err) {
       console.error(err);
@@ -49,7 +56,7 @@ export function SummaryPage({ defects, uniqueDomains }: SummaryPageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [filteredDefects]);
+  }, [filteredDefects, user]);
 
   return (
     <div className="space-y-6">

@@ -9,12 +9,15 @@ import {
   DefectSchema,
   DefectSummaryInputSchema,
   DefectSummaryOutputSchema,
+  DefectPredictionSchema,
+  SavedPredictionSchema,
   type DefectSummaryOutput,
   type Defect,
   type AppConfiguration,
+  type SavedPrediction,
 } from '@/lib/types';
 import { z } from 'zod';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/firebase/server-config';
 
 const SingleDefectSummarySchema = z.object({
@@ -23,18 +26,39 @@ const SingleDefectSummarySchema = z.object({
 });
 
 export async function summarizeDefects(
-  input: { defects: Defect[] }
+  input: { defects: Defect[], userId: string }
 ): Promise<DefectSummaryOutput> {
   return defectSummaryFlow(input);
 }
 
+const FewShotExampleSchema = z.object({
+    input: DefectSchema,
+    output: DefectPredictionSchema
+});
+
 const summaryPrompt = ai.definePrompt({
   name: 'defectSummaryPrompt',
-  input: { schema: z.object({ defect: DefectSchema }) },
+  input: { schema: z.object({ 
+    defect: DefectSchema,
+    examples: z.array(FewShotExampleSchema).optional(),
+   }) },
   output: { schema: SingleDefectSummarySchema },
   prompt: `As a QA expert, analyze the following defect and classify it into a root cause category and a functional area category.
   - The root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX', 'Performance', 'Security').
   - The functional area should be a short, one or two-word category (e.g., 'User Auth', 'Billing', 'Search', 'Reporting', 'Checkout').
+
+  {{#if examples}}
+  ---
+  Here are some examples of high-quality classifications to learn from:
+  {{#each examples}}
+  Defect: {{{input.summary}}}
+  - Predicted Root Cause: {{{output.predictedRootCause}}}
+  - Predicted Functional Area: {{{output.predictedFunctionalArea}}}
+  ---
+  {{/each}}
+  {{/if}}
+
+  Now, classify the following new defect:
 
   Defect:
   - Summary: {{{defect.summary}}}
@@ -48,10 +72,13 @@ const summaryPrompt = ai.definePrompt({
 const defectSummaryFlow = ai.defineFlow(
   {
     name: 'defectSummaryFlow',
-    inputSchema: DefectSummaryInputSchema,
+    inputSchema: z.object({ 
+        defects: z.array(DefectSchema),
+        userId: z.string(),
+    }),
     outputSchema: DefectSummaryOutputSchema,
   },
-  async ({ defects }) => {
+  async ({ defects, userId }) => {
     const { firestore } = await getFirestoreInstance();
     const configRef = doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configRef);
@@ -61,10 +88,22 @@ const defectSummaryFlow = ai.defineFlow(
     const config = configSnap.data() as AppConfiguration;
     const retryModel = config.geminiRetryModel;
     
+    // Fetch few-shot examples
+    const examplesRef = collection(firestore, `users/${userId}/savedPredictions`);
+    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(5));
+    const examplesSnap = await getDocs(examplesQuery);
+    const examples = examplesSnap.docs.map(doc => {
+        const data = doc.data() as SavedPrediction;
+        return {
+            input: data.defect,
+            output: data.prediction,
+        };
+    });
+
     const summaries = await Promise.all(
       defects.map(async (defect) => {
         try {
-            const { output } = await summaryPrompt({ defect });
+            const { output } = await summaryPrompt({ defect, examples });
             if (!output) {
               // Return a default/unknown category if prediction fails
               return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
@@ -73,7 +112,7 @@ const defectSummaryFlow = ai.defineFlow(
         } catch (e: any) {
              if (e.message && (e.message.includes('429 Too Many Requests') || e.message.includes('503 Service Unavailable'))) {
                 console.warn(`Rate limit or availability error, retrying with ${retryModel}...`);
-                const { output } = await summaryPrompt({ defect }, { model: `googleai/${retryModel}` });
+                const { output } = await summaryPrompt({ defect, examples }, { model: `googleai/${retryModel}` });
                 if (!output) {
                     return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
                 }

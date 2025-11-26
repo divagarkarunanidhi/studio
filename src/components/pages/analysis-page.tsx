@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useUser } from '@/firebase';
 
 interface AnalysisPageProps {
   defects: Defect[];
@@ -27,6 +28,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
+  const { user } = useUser();
 
   const filteredDefects = useMemo(() => {
     if (!selectedDomain) return [];
@@ -38,11 +40,15 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
         setError("No defects found for the selected domain.");
         return;
     }
+    if (!user) {
+        setError("You must be logged in to run analysis.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
     setAnalysis(null);
     try {
-      const result = await analyzeDefects({ defects: filteredDefects });
+      const result = await analyzeDefects({ defects: filteredDefects, userId: user.uid });
       setAnalysis(result);
     } catch (err) {
       console.error(err);
@@ -50,7 +56,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [filteredDefects]);
+  }, [filteredDefects, user]);
 
 
   const renderContent = (title: string, content: string | undefined) => {
