@@ -50,6 +50,8 @@ export const DefectPredictionSchema = z.object({
     predictionDescription: z.string().describe("A short, one-sentence description explaining the reasoning for the prediction."),
     predictedRootCause: z.string().describe("A brief, one or two-word potential root cause for the defect (e.g., 'Data Integrity', 'Configuration', 'UI/UX')."),
     predictedFunctionalArea: z.string().describe("A short, one or two-word category for the functional area affected (e.g., 'User Auth', 'Billing', 'Search', 'Reporting', 'Checkout')."),
+    predictedDefectSuggestions: z.string().describe("A concise, actionable suggestion to engineering teams to prevent this type of defect in the future."),
+    predictedDefectSource: z.string().describe("The likely source of this defect (e.g., a specific component, integration point, or code module)."),
 });
 
 export type DefectPrediction = z.infer<typeof DefectPredictionSchema> & { id: string };
@@ -91,3 +93,4 @@ export const DefectSummaryInputSchema = z.object({
 });
 
 export type DefectSummaryInput = z.infer<typeof DefectSummaryInputSchema>;
+

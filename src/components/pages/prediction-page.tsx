@@ -31,6 +31,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Textarea } from '../ui/textarea';
 
 interface PredictionPageProps {
     defects: Defect[];
@@ -125,6 +126,8 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
         predictionDescription: editablePrediction?.predictionDescription ?? originalPrediction?.predictionDescription,
         predictedRootCause: editablePrediction?.predictedRootCause ?? originalPrediction?.predictedRootCause,
         predictedFunctionalArea: editablePrediction?.predictedFunctionalArea ?? originalPrediction?.predictedFunctionalArea,
+        predictedDefectSuggestions: editablePrediction?.predictedDefectSuggestions ?? originalPrediction?.predictedDefectSuggestions,
+        predictedDefectSource: editablePrediction?.predictedDefectSource ?? originalPrediction?.predictedDefectSource,
       };
     });
   }, [filteredDefects, predictions, editablePredictions]);
@@ -145,6 +148,8 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
         predictionDescription: editedPrediction.predictionDescription,
         predictedRootCause: editedPrediction.predictedRootCause,
         predictedFunctionalArea: editedPrediction.predictedFunctionalArea,
+        predictedDefectSuggestions: editedPrediction.predictedDefectSuggestions,
+        predictedDefectSource: editedPrediction.predictedDefectSource,
     };
 
     const savedPrediction: Omit<SavedPrediction, 'savedAt'> = {
@@ -231,11 +236,13 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                             <TableRow>
                             <TableHead className='w-[50px]'></TableHead>
                             <TableHead>Defect ID / Summary</TableHead>
-                            <TableHead>Reasoning</TableHead>
                             <TableHead>Severity (Actual/Predicted)</TableHead>
                             <TableHead>Priority (Actual/Predicted)</TableHead>
                             <TableHead>Root Cause</TableHead>
                             <TableHead>Functional Area</TableHead>
+                            <TableHead>Reasoning</TableHead>
+                            <TableHead>Suggestion for Reduction</TableHead>
+                            <TableHead>Source of Defect</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -244,11 +251,13 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                 <TableRow key={i}>
                                     <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-28" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-28" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-full" /></TableCell>
-                                    <TableCell><Skeleton className="h-8 w-28" /></TableCell>
-                                    <TableCell><Skeleton className="h-8 w-28" /></TableCell>
-                                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
-                                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                                 ))
                             : defectsWithPredictions.map((defect) => {
@@ -292,15 +301,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                                 {defect.id}
                                             </a>
                                             <p className='text-muted-foreground text-xs mt-1 truncate'>{defect.summary}</p>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
-                                            {hasPrediction ? (
-                                                <Input
-                                                    value={currentPrediction.predictionDescription}
-                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictionDescription', e.target.value)}
-                                                    className="h-8 text-xs"
-                                                />
-                                            ) : '...'}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col gap-1">
@@ -353,6 +353,33 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                                     value={currentPrediction.predictedFunctionalArea}
                                                     onChange={(e) => handlePredictionChange(defect.id, 'predictedFunctionalArea', e.target.value)}
                                                     className="h-8 text-xs"
+                                                />
+                                            ) : '...'}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
+                                            {hasPrediction ? (
+                                                <Textarea
+                                                    value={currentPrediction.predictionDescription}
+                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictionDescription', e.target.value)}
+                                                    className="h-20 text-xs"
+                                                />
+                                            ) : '...'}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
+                                            {hasPrediction ? (
+                                                <Textarea
+                                                    value={currentPrediction.predictedDefectSuggestions}
+                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedDefectSuggestions', e.target.value)}
+                                                    className="h-20 text-xs"
+                                                />
+                                            ) : '...'}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
+                                            {hasPrediction ? (
+                                                <Textarea
+                                                    value={currentPrediction.predictedDefectSource}
+                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedDefectSource', e.target.value)}
+                                                    className="h-20 text-xs"
                                                 />
                                             ) : '...'}
                                         </TableCell>
