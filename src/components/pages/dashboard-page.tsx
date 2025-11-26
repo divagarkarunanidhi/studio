@@ -32,6 +32,7 @@ import {
   LogOut,
   Users,
   Settings,
+  Bookmark,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -69,9 +70,10 @@ import {
 import { UserManagementPage } from './user-management-page';
 import type { UserProfile } from '@/app/page';
 import { ConfigurationPage } from './configuration-page';
+import { FeedbackManagementPage } from './feedback-management-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -417,7 +419,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     summary: 'Defect Summary',
     'required-attention': 'Defects Requiring Attention',
     'user-management': 'User Management',
-    configuration: 'Application Configuration'
+    configuration: 'Application Configuration',
+    'feedback-management': 'Feedback Management'
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -430,7 +433,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     summary: 'AI-powered summary of defect root cause and functional area.',
     'required-attention': 'Defects that are missing key information and are not yet done.',
     'user-management': 'View and manage all users in the system.',
-    configuration: 'Manage global application settings and API keys.'
+    configuration: 'Manage global application settings and API keys.',
+    'feedback-management': 'View, edit, and delete saved few-shot learning examples.'
   };
 
   const uniqueDomains = useMemo(() => {
@@ -581,6 +585,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Feedback Management" isActive={activeView === 'feedback-management'} onClick={() => handleViewChange('feedback-management')}>
+                <Bookmark />
+                Feedback Management
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton tooltip="Resolution Time" isActive={activeView === 'resolution-time'} onClick={() => handleViewChange('resolution-time')}>
                 <Timer />
                 Resolution Time
@@ -720,6 +730,10 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
             {activeView === 'prediction' && (
               <PredictionPage defects={defects} uniqueDomains={uniqueDomains} />
+            )}
+
+             {activeView === 'feedback-management' && (
+              <FeedbackManagementPage />
             )}
 
             {activeView === 'resolution-time' && (
