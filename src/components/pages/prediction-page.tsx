@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Lightbulb, AlertTriangle, Wand2, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Lightbulb, AlertTriangle, Wand2, Bookmark, BookmarkCheck, HelpCircle } from 'lucide-react';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import {
@@ -233,13 +233,69 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                         <TableHeader>
                             <TableRow>
                             <TableHead className='w-[50px]'></TableHead>
-                            <TableHead>Defect ID / Summary</TableHead>
-                            <TableHead>Severity (Actual/Predicted)</TableHead>
-                            <TableHead>Priority (Actual/Predicted)</TableHead>
-                            <TableHead>Root Cause</TableHead>
-                            <TableHead>Functional Area</TableHead>
-                            <TableHead>Suggestion for Reduction</TableHead>
-                            <TableHead>Source of Defect</TableHead>
+                            <TableHead>
+                                <div className="flex items-center gap-1">
+                                    <span>Defect ID / Summary</span>
+                                    <Tooltip>
+                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                                        <TooltipContent><p>The unique identifier and summary of the defect.</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TableHead>
+                             <TableHead>
+                                <div className="flex items-center gap-1">
+                                    <span>Severity (Actual/Predicted)</span>
+                                    <Tooltip>
+                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                                        <TooltipContent><p>Actual vs. AI-predicted severity. You can edit the prediction.</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TableHead>
+                            <TableHead>
+                                <div className="flex items-center gap-1">
+                                    <span>Priority (Actual/Predicted)</span>
+                                    <Tooltip>
+                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                                        <TooltipContent><p>Actual vs. AI-predicted priority. You can edit the prediction.</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TableHead>
+                            <TableHead>
+                                <div className="flex items-center gap-1">
+                                    <span>Root Cause</span>
+                                    <Tooltip>
+                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                                        <TooltipContent><p>The AI's predicted root cause for the defect. This is editable.</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TableHead>
+                            <TableHead>
+                                <div className="flex items-center gap-1">
+                                    <span>Functional Area</span>
+                                    <Tooltip>
+                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                                        <TooltipContent><p>The AI's predicted functional area. This is editable.</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TableHead>
+                            <TableHead>
+                                <div className="flex items-center gap-1">
+                                    <span>Suggestion for Reduction</span>
+                                    <Tooltip>
+                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                                        <TooltipContent><p>The AI's suggestion to prevent similar defects. This is editable.</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TableHead>
+                            <TableHead>
+                                <div className="flex items-center gap-1">
+                                    <span>Source of Defect</span>
+                                    <Tooltip>
+                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                                        <TooltipContent><p>The AI's predicted origin of the defect. This is editable.</p></TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -392,3 +448,5 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
     </div>
   );
 }
+
+    
