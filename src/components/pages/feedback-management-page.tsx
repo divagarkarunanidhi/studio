@@ -39,7 +39,7 @@ import { deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase
 const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
 const PRIORITY_OPTIONS = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
 
-function FeedbackRow({ feedback, jiraLink }: { feedback: WithId<SavedPrediction>, jiraLink: string }) {
+function FeedbackRow({ feedback, jiraLink, userId }: { feedback: WithId<SavedPrediction>, jiraLink: string, userId: string }) {
     const { toast } = useToast();
     const firestore = useFirestore();
     const [editablePrediction, setEditablePrediction] = useState(feedback.prediction);
@@ -60,7 +60,7 @@ function FeedbackRow({ feedback, jiraLink }: { feedback: WithId<SavedPrediction>
 
     const handleUpdate = () => {
         if (!firestore) return;
-        const docRef = doc(firestore, `users/${feedback.defect.reported_by}/savedPredictions`, feedback.id);
+        const docRef = doc(firestore, `users/${userId}/savedPredictions`, feedback.id);
         
         updateDocumentNonBlocking(docRef, { prediction: editablePrediction });
 
@@ -73,7 +73,7 @@ function FeedbackRow({ feedback, jiraLink }: { feedback: WithId<SavedPrediction>
 
     const handleDelete = () => {
         if (!firestore) return;
-        const docRef = doc(firestore, `users/${feedback.defect.reported_by}/savedPredictions`, feedback.id);
+        const docRef = doc(firestore, `users/${userId}/savedPredictions`, feedback.id);
         deleteDocumentNonBlocking(docRef);
         toast({
             title: "Feedback Deleted",
@@ -258,7 +258,7 @@ export function FeedbackManagementPage() {
                                 ))
                             ) : feedbackData && feedbackData.length > 0 ? (
                                 feedbackData.map(feedbackItem => (
-                                   <FeedbackRow key={feedbackItem.id} feedback={feedbackItem} jiraLink={jiraLink} />
+                                   <FeedbackRow key={feedbackItem.id} feedback={feedbackItem} jiraLink={jiraLink} userId={user!.uid} />
                                 ))
                             ) : (
                                 <TableRow>
