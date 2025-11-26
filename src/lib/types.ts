@@ -38,7 +38,6 @@ export type DefectAnalysisInput = z.infer<typeof DefectAnalysisInputSchema>;
 export const DefectAnalysisOutputSchema = z.object({
     defectCause: z.string().describe("An analysis of the root causes of the recurring defects."),
     defectSuggestions: z.string().describe("Actionable suggestions for engineering teams to reduce future defects."),
-    defectSource: z.string().describe("An identification of where most defects are originating from (e.g., a specific domain, component, or issue type)."),
 });
 
 export type DefectAnalysisOutput = z.infer<typeof DefectAnalysisOutputSchema>;
@@ -50,7 +49,6 @@ export const DefectPredictionSchema = z.object({
     predictedRootCause: z.string().describe("A brief, one or two-word potential root cause for the defect (e.g., 'Data Integrity', 'Configuration', 'UI/UX')."),
     predictedFunctionalArea: z.string().describe("A short, one or two-word category for the functional area affected (e.g., 'User Auth', 'Billing', 'Search', 'Reporting', 'Checkout')."),
     predictedDefectSuggestions: z.string().describe("A concise, actionable suggestion to engineering teams to prevent this type of defect in the future."),
-    predictedDefectSource: z.string().describe("The likely source of this defect (e.g., a specific component, integration point, or code module)."),
 });
 
 export type DefectPrediction = z.infer<typeof DefectPredictionSchema> & { id: string };
@@ -85,7 +83,7 @@ export const DefectSummaryOutputSchema = z.object({
     defectArea: z.array(ChartDataPointSchema).describe("An array of objects representing defect counts and IDs grouped by their predicted functional area."),
 });
 
-export type DefectSummaryOutput = z.infer<typeof DefectSummaryOutputSchema>;
+export type DefectSummaryOutput = z_infer<typeof DefectSummaryOutputSchema>;
 
 export const DefectSummaryInputSchema = z.object({
     defects: z.array(DefectSchema),

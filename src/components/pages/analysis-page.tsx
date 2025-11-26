@@ -149,14 +149,6 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
                 {renderContent("Suggestions", analysis?.defectSuggestions)}
             </CardContent>
             </Card>
-            <Card>
-            <CardHeader>
-                <CardTitle>Source of Defects</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {renderContent("Primary Sources", analysis?.defectSource)}
-            </CardContent>
-            </Card>
         </div>
       )}
     </div>

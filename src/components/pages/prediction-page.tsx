@@ -126,7 +126,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
         predictedRootCause: editablePrediction?.predictedRootCause ?? originalPrediction?.predictedRootCause,
         predictedFunctionalArea: editablePrediction?.predictedFunctionalArea ?? originalPrediction?.predictedFunctionalArea,
         predictedDefectSuggestions: editablePrediction?.predictedDefectSuggestions ?? originalPrediction?.predictedDefectSuggestions,
-        predictedDefectSource: editablePrediction?.predictedDefectSource ?? originalPrediction?.predictedDefectSource,
       };
     });
   }, [filteredDefects, predictions, editablePredictions]);
@@ -147,7 +146,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
         predictedRootCause: editedPrediction.predictedRootCause,
         predictedFunctionalArea: editedPrediction.predictedFunctionalArea,
         predictedDefectSuggestions: editedPrediction.predictedDefectSuggestions,
-        predictedDefectSource: editedPrediction.predictedDefectSource,
     };
 
     const savedPrediction: Omit<SavedPrediction, 'savedAt'> = {
@@ -287,15 +285,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                     </Tooltip>
                                 </div>
                             </TableHead>
-                            <TableHead>
-                                <div className="flex items-center gap-1">
-                                    <span>Source of Defect</span>
-                                    <Tooltip>
-                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
-                                        <TooltipContent><p>The AI's predicted origin of the defect. This is editable.</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -308,7 +297,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                     <TableCell><Skeleton className="h-8 w-28" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-32" /></TableCell>
-                                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                                 ))
@@ -345,7 +333,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                         </TableCell>
                                         <TableCell className="font-medium max-w-xs">
                                             <a
-                                                href={`${jiraLink}/${defect.id}`}
+                                                href={`${jiraLink}/browse/${defect.id}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-primary hover:underline"
@@ -441,22 +429,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                                     </TooltipTrigger>
                                                     <TooltipContent className="max-w-md">
                                                         <p className="whitespace-pre-wrap">{currentPrediction.predictedDefectSuggestions}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            ) : '...'}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
-                                            {hasPrediction ? (
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Textarea
-                                                            value={currentPrediction.predictedDefectSource}
-                                                            onChange={(e) => handlePredictionChange(defect.id, 'predictedDefectSource', e.target.value)}
-                                                            className="h-20 text-xs"
-                                                        />
-                                                    </TooltipTrigger>
-                                                     <TooltipContent className="max-w-md">
-                                                        <p className="whitespace-pre-wrap">{currentPrediction.predictedDefectSource}</p>
                                                     </TooltipContent>
                                                 </Tooltip>
                                             ) : '...'}
