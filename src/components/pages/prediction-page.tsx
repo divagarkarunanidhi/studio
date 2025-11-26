@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Lightbulb, AlertTriangle, Wand2, Bookmark, BookmarkCheck } from 'lucide-react';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore, useUser } from '@/firebase';
@@ -29,15 +30,19 @@ import {
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface PredictionPageProps {
     defects: Defect[];
     uniqueDomains: string[];
 }
 
+const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
+const PRIORITY_OPTIONS = ['Highest', 'High', 'Medium', 'Low'];
 
 export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) {
   const [predictions, setPredictions] = useState<DefectPrediction[]>([]);
+  const [editablePredictions, setEditablePredictions] = useState<Record<string, DefectPrediction>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
@@ -69,6 +74,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
   const handleRunPrediction = useCallback(async () => {
     if (filteredDefects.length === 0) {
       setPredictions([]);
+      setEditablePredictions({});
       if(selectedDomain) {
         setError("No defects found for the selected domain to make predictions.");
       }
@@ -83,6 +89,13 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
     try {
       const result = await predictDefects({ defects: filteredDefects, userId: user.uid });
       setPredictions(result.predictions);
+      
+      const editableMap = result.predictions.reduce((acc, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {} as Record<string, DefectPrediction>);
+      setEditablePredictions(editableMap);
+
     } catch (err) {
       console.error(err);
       setError('An error occurred while generating predictions.');
@@ -91,20 +104,31 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
     }
   }, [filteredDefects, selectedDomain, user]);
 
+  const handlePredictionChange = (defectId: string, field: keyof DefectPrediction, value: string) => {
+    setEditablePredictions(prev => ({
+        ...prev,
+        [defectId]: {
+            ...prev[defectId],
+            [field]: value
+        }
+    }));
+  };
+
   const defectsWithPredictions = useMemo(() => {
     return filteredDefects.map((defect) => {
-      const prediction = predictions.find((p) => p.id === defect.id);
+      const originalPrediction = predictions.find((p) => p.id === defect.id);
+      const editablePrediction = editablePredictions[defect.id];
       return {
         ...defect,
-        predictedSeverity: prediction?.predictedSeverity,
-        predictedPriority: prediction?.predictedPriority,
-        predictionDescription: prediction?.predictionDescription,
-        predictedRootCause: prediction?.predictedRootCause,
+        predictedSeverity: editablePrediction?.predictedSeverity ?? originalPrediction?.predictedSeverity,
+        predictedPriority: editablePrediction?.predictedPriority ?? originalPrediction?.predictedPriority,
+        predictionDescription: editablePrediction?.predictionDescription ?? originalPrediction?.predictionDescription,
+        predictedRootCause: editablePrediction?.predictedRootCause ?? originalPrediction?.predictedRootCause,
       };
     });
-  }, [filteredDefects, predictions]);
+  }, [filteredDefects, predictions, editablePredictions]);
 
-  const handleSavePrediction = (defect: Defect, prediction: Omit<DefectPrediction, 'id'>) => {
+  const handleSavePrediction = (defect: Defect, editedPrediction: DefectPrediction) => {
     if (!user || !firestore) {
         toast({
             variant: 'destructive',
@@ -114,14 +138,16 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
         return;
     }
 
+    const finalPrediction: Omit<DefectPrediction, 'id'> = {
+        predictedSeverity: editedPrediction.predictedSeverity,
+        predictedPriority: editedPrediction.predictedPriority,
+        predictionDescription: editedPrediction.predictionDescription,
+        predictedRootCause: editedPrediction.predictedRootCause,
+    };
+
     const savedPrediction: Omit<SavedPrediction, 'savedAt'> = {
         defect: defect,
-        prediction: {
-            predictedSeverity: prediction.predictedSeverity!,
-            predictedPriority: prediction.predictedPriority!,
-            predictionDescription: prediction.predictionDescription!,
-            predictedRootCause: prediction.predictedRootCause!,
-        }
+        prediction: finalPrediction
     };
 
     const collectionRef = collection(firestore, `users/${user.uid}/savedPredictions`);
@@ -134,8 +160,8 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
     setSavedPredictionIds(prev => new Set(prev).add(defect.id));
 
     toast({
-        title: 'Prediction Saved!',
-        description: 'This example will be used to improve future predictions.'
+        title: 'Feedback Saved!',
+        description: 'This corrected example will improve future predictions.'
     });
   };
 
@@ -145,11 +171,16 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
             <CardHeader>
                 <CardTitle>Defect Predictions</CardTitle>
                 <CardDescription>
-                    AI-powered predictions for severity and priority. Your feedback by saving accurate predictions helps improve the model over time.
+                    AI-powered predictions for severity and priority. Correct any inaccurate predictions and save them as feedback to improve the model over time.
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex items-center gap-4">
-                <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+                <Select value={selectedDomain} onValueChange={(value) => {
+                    setSelectedDomain(value);
+                    setPredictions([]);
+                    setEditablePredictions({});
+                    setError(null);
+                }}>
                     <SelectTrigger className="w-[240px]">
                         <SelectValue placeholder="Select a Domain" />
                     </SelectTrigger>
@@ -188,58 +219,66 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
              <Card>
                 <CardHeader>
                     <CardTitle>Predictions for '{selectedDomain}'</CardTitle>
-                    <CardDescription>The table below shows the actual vs. predicted values for defects in the selected domain. Click the bookmark icon to save a high-quality prediction as an example for future runs.</CardDescription>
+                    <CardDescription>The table below shows the actual vs. predicted values. Edit the predictions to be more accurate and click the bookmark icon to save your feedback.</CardDescription>
                 </CardHeader>
                 <CardContent>
+                    <TooltipProvider>
                     <div className="overflow-x-auto rounded-md border">
                         <Table>
                         <TableHeader>
                             <TableRow>
-                            <TableHead className='w-[40px]'></TableHead>
-                            <TableHead>Defect ID</TableHead>
-                            <TableHead>Summary</TableHead>
+                            <TableHead className='w-[50px]'></TableHead>
+                            <TableHead>Defect ID / Summary</TableHead>
                             <TableHead>Reasoning</TableHead>
-                            <TableHead>Actual / Predicted Severity</TableHead>
-                            <TableHead>Actual / Predicted Priority</TableHead>
-                            <TableHead>Predicted Root Cause</TableHead>
+                            <TableHead>Severity (Actual/Predicted)</TableHead>
+                            <TableHead>Priority (Actual/Predicted)</TableHead>
+                            <TableHead>Root Cause</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading
                             ? Array.from({ length: Math.min(filteredDefects.length, 3) || 1 }).map((_, i) => (
                                 <TableRow key={i}>
-                                    <TableCell><Skeleton className="h-6 w-6" /></TableCell>
-                                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                    <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                                    <TableCell><Skeleton className="h-5 w-64" /></TableCell>
-                                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-28" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-28" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                                 </TableRow>
                                 ))
                             : defectsWithPredictions.map((defect) => {
-                                const hasPrediction = defect.predictedSeverity && defect.predictedPriority;
+                                const currentPrediction = editablePredictions[defect.id];
+                                const hasPrediction = !!currentPrediction;
                                 const isSaved = savedPredictionIds.has(defect.id);
                                 return (
-                                    <TableRow key={defect.id}>
-                                         <TableCell>
+                                    <TableRow key={defect.id} className="align-top">
+                                         <TableCell className='pt-3.5'>
                                             {hasPrediction && (
-                                                 <Button
-                                                 variant="ghost"
-                                                 size="icon"
-                                                 onClick={() => handleSavePrediction(defect, defect)}
-                                                 disabled={isSaved}
-                                                 aria-label="Save prediction"
-                                             >
-                                                 {isSaved ? (
-                                                     <BookmarkCheck className="h-5 w-5 text-primary" />
-                                                 ) : (
-                                                     <Bookmark className="h-5 w-5 text-muted-foreground" />
-                                                 )}
-                                             </Button>
+                                                 <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleSavePrediction(defect, currentPrediction)}
+                                                            disabled={isSaved}
+                                                            aria-label="Save prediction as feedback"
+                                                            className='h-8 w-8'
+                                                        >
+                                                            {isSaved ? (
+                                                                <BookmarkCheck className="h-5 w-5 text-primary" />
+                                                            ) : (
+                                                                <Bookmark className="h-5 w-5 text-muted-foreground" />
+                                                            )}
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{isSaved ? 'Feedback saved!' : 'Save corrected prediction as feedback'}</p>
+                                                    </TooltipContent>
+                                                 </Tooltip>
                                             )}
                                         </TableCell>
-                                        <TableCell className="font-medium">
+                                        <TableCell className="font-medium max-w-xs">
                                             <a
                                                 href={`${jiraLink}/${defect.id}`}
                                                 target="_blank"
@@ -248,27 +287,61 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                             >
                                                 {defect.id}
                                             </a>
+                                            <p className='text-muted-foreground text-xs mt-1 truncate'>{defect.summary}</p>
                                         </TableCell>
-                                        <TableCell className="font-medium max-w-xs truncate">
-                                            {defect.summary}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-xs max-w-md truncate">
-                                            {defect.predictionDescription || '...'}
+                                        <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
+                                            {hasPrediction ? (
+                                                <Input
+                                                    value={currentPrediction.predictionDescription}
+                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictionDescription', e.target.value)}
+                                                    className="h-8 text-xs"
+                                                />
+                                            ) : '...'}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col gap-1">
-                                                <Badge variant="outline" className="w-fit">{defect.severity || 'N/A'}</Badge>
-                                                <Badge variant="secondary" className="w-fit">{defect.predictedSeverity || '...'}</Badge>
+                                                <Badge variant="outline" className="w-fit mb-1">{defect.severity || 'N/A'}</Badge>
+                                                {hasPrediction ? (
+                                                    <Select
+                                                        value={currentPrediction.predictedSeverity}
+                                                        onValueChange={(value) => handlePredictionChange(defect.id, 'predictedSeverity', value)}
+                                                    >
+                                                        <SelectTrigger className="h-8 w-[120px] text-xs">
+                                                            <SelectValue placeholder="Severity" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {SEVERITY_OPTIONS.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                ) : <Badge variant="secondary" className="w-fit">...</Badge>}
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                                <div className="flex flex-col gap-1">
-                                                <Badge variant="outline" className="w-fit">{defect.priority || 'N/A'}</Badge>
-                                                <Badge variant="secondary" className="w-fit">{defect.predictedPriority || '...'}</Badge>
+                                            <div className="flex flex-col gap-1">
+                                                <Badge variant="outline" className="w-fit mb-1">{defect.priority || 'N/A'}</Badge>
+                                                {hasPrediction ? (
+                                                    <Select
+                                                        value={currentPrediction.predictedPriority}
+                                                        onValueChange={(value) => handlePredictionChange(defect.id, 'predictedPriority', value)}
+                                                    >
+                                                        <SelectTrigger className="h-8 w-[120px] text-xs">
+                                                            <SelectValue placeholder="Priority" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {PRIORITY_OPTIONS.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                ) : <Badge variant="secondary" className="w-fit">...</Badge>}
                                             </div>
                                         </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">{defect.predictedRootCause || '...'}</Badge>
+                                        <TableCell className="w-[200px]">
+                                            {hasPrediction ? (
+                                                <Input
+                                                    value={currentPrediction.predictedRootCause}
+                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedRootCause', e.target.value)}
+                                                    className="h-8 text-xs"
+                                                />
+                                            ) : '...'}
                                         </TableCell>
                                     </TableRow>
                                 )
@@ -276,6 +349,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                         </TableBody>
                         </Table>
                     </div>
+                    </TooltipProvider>
                     {!isLoading && defectsWithPredictions.length === 0 && !error && (
                         <Alert className="mt-4">
                             <Lightbulb className="h-4 w-4" />
@@ -291,3 +365,5 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
     </div>
   );
 }
+
+    
