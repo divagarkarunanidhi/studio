@@ -85,9 +85,10 @@
         "predictedSeverity": { "type": "string" },
         "predictedPriority": { "type": "string" },
         "predictionDescription": { "type": "string" },
-        "predictedRootCause": { "type": "string" }
+        "predictedRootCause": { "type": "string" },
+        "predictedFunctionalArea": { "type": "string" }
       },
-      "required": ["predictedSeverity", "predictedPriority", "predictionDescription", "predictedRootCause"]
+      "required": ["predictedSeverity", "predictedPriority", "predictionDescription", "predictedRootCause", "predictedFunctionalArea"]
     },
     "AppConfiguration": {
       "title": "App Configuration",

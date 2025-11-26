@@ -42,10 +42,11 @@ const predictionPrompt = ai.definePrompt({
     examples: z.array(FewShotExampleSchema).optional(),
    }) },
   output: { schema: DefectPredictionSchema },
-  prompt: `As a QA expert, analyze the following defect and predict its severity, priority and root cause.
+  prompt: `As a QA expert, analyze the following defect and predict its severity, priority, root cause, and functional area.
 - Severity should be one of: Critical, High, Medium, Low.
 - Priority should be one of: Highest, High, Medium, Low.
 - The predicted root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX').
+- The functional area should be a short, one or two-word category for the functional area affected (e.g., 'User Auth', 'Billing', 'Search', 'Reporting', 'Checkout').
 - Provide a short, one-sentence description explaining your reasoning.
 
 {{#if examples}}
@@ -61,6 +62,7 @@ Example Output Prediction:
 - Predicted Severity: {{{output.predictedSeverity}}}
 - Predicted Priority: {{{output.predictedPriority}}}
 - Predicted Root Cause: {{{output.predictedRootCause}}}
+- Predicted Functional Area: {{{output.predictedFunctionalArea}}}
 - Reasoning: {{{output.predictionDescription}}}
 ---
 {{/each}}

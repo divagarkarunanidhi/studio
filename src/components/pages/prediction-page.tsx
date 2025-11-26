@@ -124,6 +124,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
         predictedPriority: editablePrediction?.predictedPriority ?? originalPrediction?.predictedPriority,
         predictionDescription: editablePrediction?.predictionDescription ?? originalPrediction?.predictionDescription,
         predictedRootCause: editablePrediction?.predictedRootCause ?? originalPrediction?.predictedRootCause,
+        predictedFunctionalArea: editablePrediction?.predictedFunctionalArea ?? originalPrediction?.predictedFunctionalArea,
       };
     });
   }, [filteredDefects, predictions, editablePredictions]);
@@ -143,6 +144,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
         predictedPriority: editedPrediction.predictedPriority,
         predictionDescription: editedPrediction.predictionDescription,
         predictedRootCause: editedPrediction.predictedRootCause,
+        predictedFunctionalArea: editedPrediction.predictedFunctionalArea,
     };
 
     const savedPrediction: Omit<SavedPrediction, 'savedAt'> = {
@@ -233,6 +235,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                             <TableHead>Severity (Actual/Predicted)</TableHead>
                             <TableHead>Priority (Actual/Predicted)</TableHead>
                             <TableHead>Root Cause</TableHead>
+                            <TableHead>Functional Area</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -244,6 +247,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                     <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-28" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-28" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                                 </TableRow>
                                 ))
@@ -343,6 +347,15 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                                 />
                                             ) : '...'}
                                         </TableCell>
+                                        <TableCell className="w-[200px]">
+                                            {hasPrediction ? (
+                                                <Input
+                                                    value={currentPrediction.predictedFunctionalArea}
+                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedFunctionalArea', e.target.value)}
+                                                    className="h-8 text-xs"
+                                                />
+                                            ) : '...'}
+                                        </TableCell>
                                     </TableRow>
                                 )
                             })}
@@ -365,5 +378,3 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
     </div>
   );
 }
-
-    
