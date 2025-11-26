@@ -46,7 +46,7 @@ export type DefectAnalysisOutput = z.infer<typeof DefectAnalysisOutputSchema>;
 // Prediction Flow Schemas
 export const DefectPredictionSchema = z.object({
     predictedSeverity: z.string().describe("The predicted severity of the defect (Critical, High, Medium, Low)."),
-    predictedPriority: z.string().describe("The predicted priority of the defect (High, Medium, Low, Lowest)."),
+    predictedPriority: z.string().describe("The predicted priority of the defect (Highest, High, Medium, Low, Lowest)."),
     predictedRootCause: z.string().describe("A brief, one or two-word potential root cause for the defect (e.g., 'Data Integrity', 'Configuration', 'UI/UX')."),
     predictedFunctionalArea: z.string().describe("A short, one or two-word category for the functional area affected (e.g., 'User Auth', 'Billing', 'Search', 'Reporting', 'Checkout')."),
     predictedDefectSuggestions: z.string().describe("A concise, actionable suggestion to engineering teams to prevent this type of defect in the future."),
@@ -92,6 +92,3 @@ export const DefectSummaryInputSchema = z.object({
 });
 
 export type DefectSummaryInput = z.infer<typeof DefectSummaryInputSchema>;
-
-
-
