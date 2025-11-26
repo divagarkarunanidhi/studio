@@ -352,7 +352,14 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                             >
                                                 {defect.id}
                                             </a>
-                                            <p className='text-muted-foreground text-xs mt-1 truncate'>{defect.summary}</p>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <p className='text-muted-foreground text-xs mt-1 truncate'>{defect.summary}</p>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-md">
+                                                    <p>{defect.summary}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col gap-1">
@@ -392,38 +399,66 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                         </TableCell>
                                         <TableCell className="w-[200px]">
                                             {hasPrediction ? (
-                                                <Input
-                                                    value={currentPrediction.predictedRootCause}
-                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedRootCause', e.target.value)}
-                                                    className="h-8 text-xs"
-                                                />
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Input
+                                                            value={currentPrediction.predictedRootCause}
+                                                            onChange={(e) => handlePredictionChange(defect.id, 'predictedRootCause', e.target.value)}
+                                                            className="h-8 text-xs"
+                                                        />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{currentPrediction.predictedRootCause}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
                                             ) : '...'}
                                         </TableCell>
                                         <TableCell className="w-[200px]">
                                             {hasPrediction ? (
-                                                <Input
-                                                    value={currentPrediction.predictedFunctionalArea}
-                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedFunctionalArea', e.target.value)}
-                                                    className="h-8 text-xs"
-                                                />
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Input
+                                                            value={currentPrediction.predictedFunctionalArea}
+                                                            onChange={(e) => handlePredictionChange(defect.id, 'predictedFunctionalArea', e.target.value)}
+                                                            className="h-8 text-xs"
+                                                        />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{currentPrediction.predictedFunctionalArea}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
                                             ) : '...'}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
                                             {hasPrediction ? (
-                                                <Textarea
-                                                    value={currentPrediction.predictedDefectSuggestions}
-                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedDefectSuggestions', e.target.value)}
-                                                    className="h-20 text-xs"
-                                                />
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Textarea
+                                                            value={currentPrediction.predictedDefectSuggestions}
+                                                            onChange={(e) => handlePredictionChange(defect.id, 'predictedDefectSuggestions', e.target.value)}
+                                                            className="h-20 text-xs"
+                                                        />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent className="max-w-md">
+                                                        <p className="whitespace-pre-wrap">{currentPrediction.predictedDefectSuggestions}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
                                             ) : '...'}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
                                             {hasPrediction ? (
-                                                <Textarea
-                                                    value={currentPrediction.predictedDefectSource}
-                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedDefectSource', e.target.value)}
-                                                    className="h-20 text-xs"
-                                                />
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Textarea
+                                                            value={currentPrediction.predictedDefectSource}
+                                                            onChange={(e) => handlePredictionChange(defect.id, 'predictedDefectSource', e.target.value)}
+                                                            className="h-20 text-xs"
+                                                        />
+                                                    </TooltipTrigger>
+                                                     <TooltipContent className="max-w-md">
+                                                        <p className="whitespace-pre-wrap">{currentPrediction.predictedDefectSource}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
                                             ) : '...'}
                                         </TableCell>
                                     </TableRow>
@@ -448,5 +483,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
     </div>
   );
 }
+
+    
 
     
