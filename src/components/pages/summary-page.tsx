@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DefectPieChart } from '../dashboard/defect-pie-chart';
-import { useUser } from '@/firebase';
+import { useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 interface SummaryPageProps {
   defects: Defect[];
@@ -50,9 +50,18 @@ export function SummaryPage({ defects, uniqueDomains }: SummaryPageProps) {
     try {
       const result = await summarizeDefects({ defects: filteredDefects, userId: user.uid });
       setSummary(result);
-    } catch (err) {
-      console.error(err);
-      setError('Could not generate summary due to an unexpected error. Please check the console for details.');
+    } catch (err: any) {
+      if (err.message?.includes('permission-denied') || err.message?.includes('insufficient permissions')) {
+        const contextualError = new FirestorePermissionError({
+            operation: 'list',
+            path: 'sharedFeedback',
+        });
+        errorEmitter.emit('permission-error', contextualError);
+        setError('A permission error occurred while fetching summary examples. The detailed error has been logged.');
+      } else {
+        console.error(err);
+        setError('Could not generate summary due to an unexpected error. Please check the console for details.');
+      }
     } finally {
       setIsLoading(false);
     }

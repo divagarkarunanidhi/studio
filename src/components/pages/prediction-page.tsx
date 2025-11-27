@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lightbulb, AlertTriangle, Wand2, Bookmark, BookmarkCheck, HelpCircle } from 'lucide-react';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useAuth, useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import {
     Select,
     SelectContent,
@@ -97,9 +97,18 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
       }, {} as Record<string, DefectPrediction>);
       setEditablePredictions(editableMap);
 
-    } catch (err) {
-      console.error(err);
-      setError('An error occurred while generating predictions.');
+    } catch (err: any) {
+      if (err.message?.includes('permission-denied') || err.message?.includes('insufficient permissions')) {
+        const contextualError = new FirestorePermissionError({
+            operation: 'list',
+            path: 'sharedFeedback',
+        });
+        errorEmitter.emit('permission-error', contextualError);
+        setError('A permission error occurred while fetching prediction examples. The detailed error has been logged.');
+      } else {
+        console.error(err);
+        setError('An error occurred while generating predictions.');
+      }
     } finally {
       setIsLoading(false);
     }
