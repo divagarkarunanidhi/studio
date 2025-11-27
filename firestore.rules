@@ -25,11 +25,13 @@ service cloud.firestore {
     }
 
     match /sharedFeedback/{feedbackId} {
+      // Rule for individual document access (get, write, update, delete)
       allow get, write: if isSignedIn();
     }
 
     match /sharedFeedback {
-      allow list: if isSignedIn();
+        // Rule for collection-level access (list)
+        allow list: if isSignedIn();
     }
 
     match /TAASBugSenseAI/{fileId} {
