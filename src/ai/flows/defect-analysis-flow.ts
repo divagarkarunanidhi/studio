@@ -13,7 +13,6 @@ import {
   DefectSchema,
   DefectAnalysisOutputSchema,
   DefectPredictionSchema,
-  SavedPredictionSchema,
   type DefectAnalysisOutput,
   type Defect,
   type AppConfiguration,
@@ -88,9 +87,10 @@ const defectAnalysisFlow = ai.defineFlow(
   async ({ defects, userId }) => {
     const defectsString = JSON.stringify(defects, null, 2);
     
-    const { firestore } = await getFirestoreInstance();
-    const configRef = doc(firestore, 'appConfiguration', 'global');
+    // Use the server-side firestore instance for all Firestore operations in the flow.
+    const { firestore } = await getFirestoreInstance(); 
     
+    const configRef = doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configRef);
     
     if (!configSnap.exists()) {
@@ -99,7 +99,7 @@ const defectAnalysisFlow = ai.defineFlow(
     const config = configSnap.data() as AppConfiguration;
     const retryModel = config.geminiRetryModel;
     
-    const examplesRef = collection(firestore, `sharedFeedback`);
+    const examplesRef = collection(firestore, 'sharedFeedback');
     const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(5));
 
     const examplesSnap = await getDocs(examplesQuery);
@@ -127,7 +127,7 @@ const defectAnalysisFlow = ai.defineFlow(
             }
             return output;
         }
-        // Re-throw other errors
+        // Re-throw other errors including permission errors
         throw e;
     }
   }

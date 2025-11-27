@@ -87,6 +87,7 @@ const defectPredictionFlow = ai.defineFlow(
     outputSchema: DefectPredictionOutputSchema,
   },
   async ({ defects, userId }) => {
+    // Use the server-side firestore instance for all Firestore operations in the flow.
     const { firestore } = await getFirestoreInstance();
     const configRef = doc(firestore, 'appConfiguration', 'global');
     
@@ -98,7 +99,7 @@ const defectPredictionFlow = ai.defineFlow(
     const config = configSnap.data() as AppConfiguration;
     const retryModel = config.geminiRetryModel;
     
-    const examplesRef = collection(firestore, `sharedFeedback`);
+    const examplesRef = collection(firestore, 'sharedFeedback');
     const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(5));
     
     const examplesSnap = await getDocs(examplesQuery);

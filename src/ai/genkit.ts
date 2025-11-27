@@ -14,7 +14,7 @@ async function getGlobalConfig() {
         console.warn("App configuration not found in Firestore. AI features may not work.");
         return {
             apiKey: process.env.GEMINI_API_KEY,
-            model: 'googleai/gemini-2.5-pro',
+            model: 'googleai/gemini-pro',
         };
     }
     const configData = configSnap.data();

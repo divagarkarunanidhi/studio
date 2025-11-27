@@ -24,7 +24,9 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    match /sharedFeedback/{document=**} {
+    // Allow any signed-in user to read and write to the shared feedback collection.
+    // This is used for few-shot examples for the AI.
+    match /sharedFeedback/{feedbackId} {
       allow read, write: if isSignedIn();
     }
 
