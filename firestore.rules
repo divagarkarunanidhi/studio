@@ -25,8 +25,8 @@ service cloud.firestore {
     }
 
     match /sharedFeedback/{feedbackId} {
-      // Allow any signed-in user to read and write feedback.
-      allow read, write: if isSignedIn();
+      // Allow any signed-in user to read, list, and write feedback.
+      allow get, list, write: if isSignedIn();
     }
 
     match /TAASBugSenseAI/{fileId} {
