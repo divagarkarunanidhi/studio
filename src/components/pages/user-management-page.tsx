@@ -2,7 +2,7 @@
 'use client';
 
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, updateDoc } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Skeleton } from "../ui/skeleton";
@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import type { WithId } from "@/firebase/firestore/use-collection";
 import { Text } from "recharts";
+import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 interface UserProfile {
     id: string;
@@ -41,20 +42,11 @@ function RoleSelector({ user }: { user: WithId<UserProfile> }) {
 
     const handleRoleChange = async (newRole: UserProfile['role']) => {
         const userRef = doc(firestore, 'users', user.id);
-        try {
-            await updateDoc(userRef, { role: newRole });
-            toast({
-                title: 'Role Updated',
-                description: `${user.username}'s role has been changed to ${newRole}.`,
-            });
-        } catch (error) {
-            console.error("Failed to update role:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Update Failed',
-                description: `Could not update role for ${user.username}.`,
-            });
-        }
+        updateDocumentNonBlocking(userRef, { role: newRole });
+        toast({
+            title: 'Role Updated',
+            description: `${user.username}'s role has been changed to ${newRole}.`,
+        });
     };
 
     return (
