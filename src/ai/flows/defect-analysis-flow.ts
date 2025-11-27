@@ -22,7 +22,6 @@ import {
 import { z } from 'zod';
 import { getFirestore, doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/firebase/server-config';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 const DefectAnalysisInputSchema = z.object({
   defects: z.string(),
@@ -91,19 +90,9 @@ const defectAnalysisFlow = ai.defineFlow(
     
     const { firestore } = await getFirestoreInstance();
     const configRef = doc(firestore, 'appConfiguration', 'global');
-    let configSnap;
-    try {
-        configSnap = await getDoc(configRef);
-    } catch (e: any) {
-        if (e.code === 'permission-denied') {
-            throw new FirestorePermissionError({
-                path: configRef.path,
-                operation: 'get',
-            });
-        }
-        throw e;
-    }
-
+    
+    const configSnap = await getDoc(configRef);
+    
     if (!configSnap.exists()) {
         throw new Error("App configuration not found.");
     }
@@ -112,18 +101,8 @@ const defectAnalysisFlow = ai.defineFlow(
     
     const examplesRef = collection(firestore, `sharedFeedback`);
     const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(5));
-    let examplesSnap;
-    try {
-        examplesSnap = await getDocs(examplesQuery);
-    } catch (e: any) {
-        if (e.code === 'permission-denied') {
-            throw new FirestorePermissionError({
-                path: examplesRef.path,
-                operation: 'list',
-            });
-        }
-        throw e;
-    }
+
+    const examplesSnap = await getDocs(examplesQuery);
     
     const examples = examplesSnap.docs.map(doc => {
         const data = doc.data() as SavedPrediction;
