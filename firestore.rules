@@ -24,11 +24,9 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    match /users/{userId}/savedPredictions/{predictionId} {
-      // The server (request.auth == null) can read. The user can read and write.
-      allow read: if isOwner(userId);
-      allow write: if isSignedIn() && request.auth.uid == userId;
-      allow list: if isOwner(userId) || isAdmin();
+    match /sharedFeedback/{feedbackId} {
+      // Allow any signed-in user to read and write feedback.
+      allow read, write: if isSignedIn();
     }
 
     match /TAASBugSenseAI/{fileId} {

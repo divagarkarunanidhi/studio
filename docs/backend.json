@@ -84,11 +84,11 @@
       "properties": {
         "predictedSeverity": { "type": "string" },
         "predictedPriority": { "type": "string" },
-        "predictionDescription": { "type": "string" },
         "predictedRootCause": { "type": "string" },
-        "predictedFunctionalArea": { "type": "string" }
+        "predictedFunctionalArea": { "type": "string" },
+        "predictedDefectSuggestions": { "type": "string" }
       },
-      "required": ["predictedSeverity", "predictedPriority", "predictionDescription", "predictedRootCause", "predictedFunctionalArea"]
+      "required": ["predictedSeverity", "predictedPriority", "predictedRootCause", "predictedFunctionalArea", "predictedDefectSuggestions"]
     },
     "AppConfiguration": {
       "title": "App Configuration",
@@ -139,17 +139,16 @@
         }
       },
       {
-        "path": "/users/{userId}/savedPredictions/{predictionId}",
+        "path": "/sharedFeedback/{feedbackId}",
         "definition": {
-          "entityName": "SavedPrediction",
-          "schema": {
-            "$ref": "#/backend/entities/SavedPrediction"
-          },
-          "description": "Stores user-approved predictions to be used as few-shot examples.",
-          "params": [
-            { "name": "userId", "description": "The user's ID." },
-            { "name": "predictionId", "description": "The unique ID for the saved prediction." }
-          ]
+            "entityName": "SavedPrediction",
+            "schema": {
+                "$ref": "#/backend/entities/SavedPrediction"
+            },
+            "description": "Stores user-approved predictions to be used as few-shot examples for all users.",
+            "params": [
+                { "name": "feedbackId", "description": "The unique ID for the saved feedback." }
+            ]
         }
       },
       {

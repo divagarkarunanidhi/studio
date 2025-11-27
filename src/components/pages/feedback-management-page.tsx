@@ -60,7 +60,7 @@ function FeedbackRow({ feedback, jiraLink, userId }: { feedback: WithId<SavedPre
 
     const handleUpdate = () => {
         if (!firestore) return;
-        const docRef = doc(firestore, `users/${userId}/savedPredictions`, feedback.id);
+        const docRef = doc(firestore, 'sharedFeedback', feedback.id);
         
         updateDocumentNonBlocking(docRef, { prediction: editablePrediction });
 
@@ -73,7 +73,7 @@ function FeedbackRow({ feedback, jiraLink, userId }: { feedback: WithId<SavedPre
 
     const handleDelete = () => {
         if (!firestore) return;
-        const docRef = doc(firestore, `users/${userId}/savedPredictions`, feedback.id);
+        const docRef = doc(firestore, 'sharedFeedback', feedback.id);
         deleteDocumentNonBlocking(docRef);
         toast({
             title: "Feedback Deleted",
@@ -219,7 +219,7 @@ export function FeedbackManagementPage() {
     const [jiraLink, setJiraLink] = useState<string>("");
 
     const feedbackColRef = useMemoFirebase(
-        () => (user ? collection(firestore, `users/${user.uid}/savedPredictions`) : null),
+        () => (user ? collection(firestore, 'sharedFeedback') : null),
         [firestore, user]
     );
     const { data: feedbackData, isLoading: isFeedbackLoading, error } = useCollection<SavedPrediction>(feedbackColRef);

@@ -153,7 +153,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
         prediction: finalPrediction
     };
 
-    const collectionRef = collection(firestore, `users/${user.uid}/savedPredictions`);
+    const collectionRef = collection(firestore, 'sharedFeedback');
     
     addDocumentNonBlocking(collectionRef, {
         ...savedPrediction,

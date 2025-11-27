@@ -88,8 +88,8 @@ const defectSummaryFlow = ai.defineFlow(
     const config = configSnap.data() as AppConfiguration;
     const retryModel = config.geminiRetryModel;
     
-    // Fetch few-shot examples
-    const examplesRef = collection(firestore, `users/${userId}/savedPredictions`);
+    // Fetch few-shot examples from the shared collection
+    const examplesRef = collection(firestore, `sharedFeedback`);
     const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(5));
     const examplesSnap = await getDocs(examplesQuery);
     const examples = examplesSnap.docs.map(doc => {
