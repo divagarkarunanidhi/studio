@@ -24,8 +24,8 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    match /sharedFeedback/{feedbackId} {
-      allow list, get, write: if isSignedIn();
+    match /sharedFeedback/{document=**} {
+      allow read, write: if isSignedIn();
     }
 
     match /TAASBugSenseAI/{fileId} {
