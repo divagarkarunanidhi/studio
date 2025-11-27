@@ -7,9 +7,8 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Allow server-side reads (unauthenticated) OR owner access.
     function isOwner(userId) {
-      return request.auth == null || (isSignedIn() && request.auth.uid == userId);
+      return request.auth.uid == userId;
     }
 
     function isAdmin() {
@@ -19,15 +18,13 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
-      // Allow users to create their own profile, and allow admins to perform any write.
       allow create: if isOwner(userId);
       allow update, delete: if isAdmin();
     }
 
-    // Allow any signed-in user to read and write to the shared feedback collection.
-    // This is used for few-shot examples for the AI.
     match /sharedFeedback/{feedbackId} {
-      allow read, write: if isSignedIn();
+      // Allow server-side reads (unauthenticated) OR signed-in client reads/writes.
+      allow read, write: if request.auth == null || isSignedIn();
     }
 
     match /TAASBugSenseAI/{fileId} {
