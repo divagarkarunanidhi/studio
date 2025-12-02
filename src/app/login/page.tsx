@@ -52,6 +52,14 @@ export default function LoginPage() {
         });
         return;
     }
+    if (!email.endsWith('@dhl.com')) {
+        toast({
+            variant: 'destructive',
+            title: 'Invalid Email',
+            description: 'Only @dhl.com email addresses are allowed.',
+        });
+        return;
+    }
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(
