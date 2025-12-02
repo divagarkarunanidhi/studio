@@ -66,7 +66,7 @@ export default function LoginPage() {
       const userProfile = {
         username: username,
         email: user.email,
-        role: 'newuser', // Default role
+        role: 'taas', // Default role
       };
       setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
 
@@ -135,7 +135,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="user@dhl.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
@@ -173,7 +173,7 @@ export default function LoginPage() {
                 <Input
                   id="username"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isLoading}
@@ -184,7 +184,7 @@ export default function LoginPage() {
                 <Input
                   id="email-signup"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="user@dhl.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}

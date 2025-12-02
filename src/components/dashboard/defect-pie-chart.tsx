@@ -176,7 +176,7 @@ export function DefectPieChart({
                         {item.defectIds.map(id => (
                             <Badge key={id} variant="secondary">
                                 <a
-                                    href={`${jiraLink}/${id}`}
+                                    href={`${jiraLink}/browse/${id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="hover:underline"
