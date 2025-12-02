@@ -97,7 +97,8 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: 'Signed In!', description: 'Welcome back.' });
       router.push('/');
-    } catch (error: any)      toast({
+    } catch (error: any) {
+      toast({
         variant: 'destructive',
         title: 'Sign In Failed',
         description: error.message,
