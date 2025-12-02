@@ -74,7 +74,7 @@ export default function LoginPage() {
       const userProfile = {
         username: username,
         email: user.email,
-        role: 'taas', // Default role
+        role: 'view', // Default role
       };
       setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
 
