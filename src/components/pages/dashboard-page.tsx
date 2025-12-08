@@ -666,6 +666,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     } else if (format === 'excel') {
         const worksheetData = data.map(d => {
             const row: any = {
+                'Defect ID': jiraLink ? { t: 's', v: d.id, l: { Target: `${jiraLink}/browse/${d.id}`, Tooltip: `View ${d.id} in JIRA` } } : d.id,
                 'Summary': d.summary,
                 'Description': d.description,
                 'Domain': d.domain,
@@ -673,18 +674,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 'Status': d.status,
                 'Reason for Attention': d.reasonForAttention,
             };
-            
-            // Create a hyperlink object for the 'Defect ID' field
-            if (jiraLink) {
-                row['Defect ID'] = {
-                    t: 's', // cell type string
-                    v: d.id, // display value
-                    l: { Target: `${jiraLink}/browse/${d.id}`, Tooltip: `View ${d.id} in JIRA` }
-                };
-            } else {
-                row['Defect ID'] = d.id;
-            }
-            
             return row;
         });
 
