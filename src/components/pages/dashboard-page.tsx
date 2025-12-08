@@ -1,9 +1,7 @@
-
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import type { Defect } from '@/lib/types';
+import type { Defect, AppConfiguration } from '@/lib/types';
 import {
   SidebarProvider,
   Sidebar,
@@ -61,7 +59,7 @@ import {
   } from "@/components/ui/dropdown-menu"
 import { useToast } from '@/hooks/use-toast';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import {
     AlertDialog,
@@ -81,6 +79,7 @@ import { FeedbackManagementPage } from './feedback-management-page';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { doc, getDoc } from 'firebase/firestore';
 
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management';
@@ -227,11 +226,13 @@ interface DashboardPageProps {
 export function DashboardPage({ userProfile }: DashboardPageProps) {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   const userRole = userProfile?.role;
   
   const [defects, setDefects] = useState<Defect[]>([]);
   const [uploadTimestamp, setUploadTimestamp] = useState<string | null>(null);
   const [defectsLoading, setDefectsLoading] = useState(true);
+  const [jiraLink, setJiraLink] = useState<string>('');
 
   const [activeView, setActiveView] = useState<View>('dashboard');
   
@@ -246,6 +247,19 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const [showUploader, setShowUploader] = useState(false);
 
+  useEffect(() => {
+    const fetchConfig = async () => {
+        if (!firestore) return;
+        const configRef = doc(firestore, 'appConfiguration', 'global');
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+            const configData = configSnap.data() as AppConfiguration;
+            setJiraLink(configData.jiraLink);
+        }
+    };
+    fetchConfig();
+  }, [firestore]);
+  
   const handleLoadFromServer = useCallback(async () => {
     setDefectsLoading(true);
     try {
@@ -651,7 +665,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     } else if (format === 'excel') {
         const dataWithJiraLink = data.map(row => ({
             ...row,
-            id: `${jiraLink}/browse/${row.id}`
+            id: jiraLink ? `${jiraLink}/browse/${row.id}` : row.id
         }));
         
         const worksheet = XLSX.utils.json_to_sheet(dataWithJiraLink.map(d => ({
