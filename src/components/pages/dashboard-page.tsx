@@ -439,13 +439,18 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const uniqueDomains = useMemo(() => {
     const domains = new Set<string>();
+    let hasBlankDomain = false;
     defects.forEach(defect => {
-        if (defect.domain) {
-            domains.add(defect.domain);
+        if (defect.domain && defect.domain.trim() !== '') {
+            domains.add(defect.domain.trim());
+        } else {
+            hasBlankDomain = true;
         }
     });
     const domainArray = Array.from(domains).sort();
-    domainArray.unshift('N/A');
+    if (hasBlankDomain) {
+      domainArray.unshift('N/A');
+    }
     return domainArray;
   }, [defects]);
 
@@ -460,13 +465,18 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
     const uniqueStatuses = useMemo(() => {
         const statuses = new Set<string>();
+        let hasBlankStatus = false;
         defects.forEach(defect => {
-            if (defect.status) {
-                statuses.add(defect.status);
+            if (defect.status && defect.status.trim() !== '') {
+                statuses.add(defect.status.trim());
+            } else {
+                hasBlankStatus = true;
             }
         });
         const statusArray = Array.from(statuses).sort();
-        statusArray.unshift('N/A');
+        if (hasBlankStatus) {
+            statusArray.unshift('N/A');
+        }
         return statusArray;
     }, [defects]);
 
@@ -532,7 +542,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
         const missingInfo: string[] = [];
         if (isDomainBlank) {
-          missingInfo.push("Blank domain");
+          missingInfo.push("domain is missing");
         }
         if (isBugCategoryBlank) {
           missingInfo.push("Bug Category is missing");
@@ -882,4 +892,3 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
-
