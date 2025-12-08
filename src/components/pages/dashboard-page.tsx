@@ -231,6 +231,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const [filterAttention, setFilterAttention] = useState<string>('all');
   
   const [currentPage, setCurrentPage] = useState(1);
+  const [attentionCurrentPage, setAttentionCurrentPage] = useState(1);
   const { toast } = useToast();
 
   const [showUploader, setShowUploader] = useState(false);
@@ -585,6 +586,14 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     return filteredDefects.slice(startIndex, endIndex);
   }, [filteredDefects, currentPage]);
 
+  const attentionTotalPages = Math.ceil(filteredAttentionDefects.length / RECORDS_PER_PAGE);
+
+  const paginatedAttentionDefects = useMemo(() => {
+    const startIndex = (attentionCurrentPage - 1) * RECORDS_PER_PAGE;
+    const endIndex = startIndex + RECORDS_PER_PAGE;
+    return filteredAttentionDefects.slice(startIndex, endIndex);
+  }, [filteredAttentionDefects, attentionCurrentPage]);
+
   if (isUserLoading || defectsLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
@@ -902,7 +911,31 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <DefectsTable defects={filteredAttentionDefects} showAll showDescription={true} isAttentionView={true} />
+                        <DefectsTable defects={paginatedAttentionDefects} showAll showDescription={true} isAttentionView={true} />
+                        <div className="mt-4 flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">
+                                Showing {paginatedAttentionDefects.length > 0 ? (attentionCurrentPage - 1) * RECORDS_PER_PAGE + 1 : 0}-
+                                {Math.min(attentionCurrentPage * RECORDS_PER_PAGE, filteredAttentionDefects.length)} of {filteredAttentionDefects.length} defects
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setAttentionCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={attentionCurrentPage === 1}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setAttentionCurrentPage(prev => Math.min(prev + 1, attentionTotalPages))}
+                                    disabled={attentionCurrentPage === attentionTotalPages || attentionTotalPages === 0}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             )}
