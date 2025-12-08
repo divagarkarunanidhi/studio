@@ -649,9 +649,21 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         document.body.removeChild(link);
 
     } else if (format === 'excel') {
-        const worksheet = XLSX.utils.json_to_sheet(data, { header: headers.map(h => h.toLowerCase().replace(/ /g, '_')) });
-        // Use the original headers for the sheet
-        XLSX.utils.sheet_add_aoa(worksheet, [headers], { origin: 'A1' });
+        const dataWithJiraLink = data.map(row => ({
+            ...row,
+            id: `${jiraLink}/browse/${row.id}`
+        }));
+        
+        const worksheet = XLSX.utils.json_to_sheet(dataWithJiraLink.map(d => ({
+            'Defect ID': d.id,
+            'Summary': d.summary,
+            'Description': d.description,
+            'Domain': d.domain,
+            'Reported By': d.reported_by,
+            'Status': d.status,
+            'Reason for Attention': d.reasonForAttention,
+        })));
+        
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Defects');
         XLSX.writeFile(workbook, 'defects_requiring_attention.xlsx');
