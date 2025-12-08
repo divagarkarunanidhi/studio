@@ -58,9 +58,13 @@
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.24.2",
     "tsx": "^4.16.2",
-    "react-firebase-hooks": "^5.1.1"
+    "react-firebase-hooks": "^5.1.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/jspdf": "^2.0.0",
     "@types/mongodb": "^4.0.7",
     "@types/node": "^20",
     "@types/react": "^18",

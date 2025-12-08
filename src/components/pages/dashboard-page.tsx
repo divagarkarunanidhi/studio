@@ -33,6 +33,7 @@ import {
   Users,
   Settings,
   Bookmark,
+  Download,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -52,6 +53,12 @@ import {
     SelectTrigger,
     SelectValue,
   } from '@/components/ui/select';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu"
 import { useToast } from '@/hooks/use-toast';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
 import { useUser, useAuth } from '@/firebase';
@@ -71,6 +78,9 @@ import { UserManagementPage } from './user-management-page';
 import type { UserProfile } from '@/app/page';
 import { ConfigurationPage } from './configuration-page';
 import { FeedbackManagementPage } from './feedback-management-page';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 
 type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management';
@@ -589,6 +599,73 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     return filteredAttentionDefects.slice(startIndex, endIndex);
   }, [filteredAttentionDefects, attentionCurrentPage]);
 
+  const handleExport = (format: 'csv' | 'excel' | 'pdf') => {
+    const dataToExport = filteredAttentionDefects;
+    if (dataToExport.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'No Data to Export',
+            description: 'There are no defects to export in the "Required Attention" list.',
+        });
+        return;
+    }
+
+    const headers = ["Defect ID", "Summary", "Description", "Domain", "Reported By", "Status", "Reason for Attention"];
+    const data = dataToExport.map(d => ({
+        id: d.id,
+        summary: d.summary,
+        description: d.description || '',
+        domain: d.domain || 'N/A',
+        reported_by: d.reported_by || 'N/A',
+        status: d.status || 'N/A',
+        reasonForAttention: d.reasonForAttention
+    }));
+
+    if (format === 'csv') {
+        const csvContent = [
+            headers.join(','),
+            ...data.map(row => headers.map(header => {
+                const key = header.toLowerCase().replace(/ /g, '_') as keyof typeof row;
+                let cellData = String(row[key] || '');
+                // Escape quotes and wrap in quotes if it contains commas
+                if (cellData.includes('"')) {
+                    cellData = cellData.replace(/"/g, '""');
+                }
+                if (cellData.includes(',')) {
+                    cellData = `"${cellData}"`;
+                }
+                return cellData;
+            }).join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "defects_requiring_attention.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } else if (format === 'excel') {
+        const worksheet = XLSX.utils.json_to_sheet(data, { header: headers.map(h => h.toLowerCase().replace(/ /g, '_')) });
+        // Use the original headers for the sheet
+        XLSX.utils.sheet_add_aoa(worksheet, [headers], { origin: 'A1' });
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Defects');
+        XLSX.writeFile(workbook, 'defects_requiring_attention.xlsx');
+
+    } else if (format === 'pdf') {
+        const doc = new jsPDF();
+        (doc as any).autoTable({
+            head: [headers],
+            body: data.map(row => headers.map(header => String(row[header.toLowerCase().replace(/ /g, '_') as keyof typeof row] || ''))),
+        });
+        doc.save('defects_requiring_attention.pdf');
+    }
+  };
+
   if (isUserLoading || defectsLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
@@ -887,7 +964,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                             <div>
                                 <CardTitle>{viewTitles['required-attention']} ({filteredAttentionDefects.length})</CardTitle>
                                 <CardDescription>
-                                    These defects have a status other than "Done" and are missing key information.
+                                    These defects are missing key information that could improve analysis.
                                 </CardDescription>
                             </div>
                             <div className="flex items-center gap-2">
@@ -902,6 +979,19 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline">
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Export
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onSelect={() => handleExport('csv')}>Export as CSV</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleExport('excel')}>Export as Excel</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleExport('pdf')}>Export as PDF</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
                     </CardHeader>
