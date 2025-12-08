@@ -440,17 +440,15 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const uniqueDomains = useMemo(() => {
     if (!defects) return [];
     const domains = new Set<string>();
-    let hasBlankDomain = false;
     defects.forEach(defect => {
       if (defect.domain) {
         domains.add(defect.domain);
-      } else {
-        hasBlankDomain = true;
       }
     });
     const domainArray = Array.from(domains).sort();
-    if (hasBlankDomain) {
-        domainArray.unshift('N/A');
+    // Always ensure "N/A" is an option
+    if (!domainArray.includes('N/A')) {
+      domainArray.unshift('N/A');
     }
     return domainArray;
   }, [defects]);
