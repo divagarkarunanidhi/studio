@@ -440,10 +440,19 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const uniqueDomains = useMemo(() => {
     if (!defects) return [];
     const domains = new Set<string>();
+    let hasBlankDomain = false;
     defects.forEach(defect => {
-      if (defect.domain) domains.add(defect.domain);
+      if (defect.domain) {
+        domains.add(defect.domain);
+      } else {
+        hasBlankDomain = true;
+      }
     });
-    return Array.from(domains).filter(Boolean).sort();
+    const domainArray = Array.from(domains).sort();
+    if (hasBlankDomain) {
+        domainArray.unshift('N/A');
+    }
+    return domainArray;
   }, [defects]);
 
   const uniqueReporters = useMemo(() => {
@@ -477,7 +486,15 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const filteredDefects = useMemo(() => {
     if (!defects) return [];
     return defects.filter(defect => {
-        const domainMatch = filterDomain === 'all' || defect.domain === filterDomain;
+        let domainMatch = true;
+        if (filterDomain !== 'all') {
+            if (filterDomain === 'N/A') {
+                domainMatch = !defect.domain;
+            } else {
+                domainMatch = defect.domain === filterDomain;
+            }
+        }
+        
         const reporterMatch = filterReportedBy === 'all' || defect.reported_by === filterReportedBy;
         
         let statusMatch = true;
