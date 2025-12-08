@@ -902,7 +902,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <DefectsTable defects={filteredAttentionDefects} showAll showDescription={true} />
+                        <DefectsTable defects={filteredAttentionDefects} showAll showDescription={true} isAttentionView={true} />
                     </CardContent>
                 </Card>
             )}

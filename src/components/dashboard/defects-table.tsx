@@ -21,9 +21,10 @@ interface DefectsTableProps {
   defects: AugmentedDefect[];
   showAll?: boolean;
   showDescription?: boolean;
+  isAttentionView?: boolean;
 }
 
-export function DefectsTable({ defects, showAll = false, showDescription = false }: DefectsTableProps) {
+export function DefectsTable({ defects, showAll = false, showDescription = false, isAttentionView = false }: DefectsTableProps) {
   const [jiraLink, setJiraLink] = useState<string>("");
   const firestore = useFirestore();
 
@@ -64,9 +65,9 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
               <TableHead>Domain</TableHead>
               <TableHead>Reported By</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Severity</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead className="text-right">Created Date</TableHead>
+              {!isAttentionView && <TableHead>Severity</TableHead>}
+              {!isAttentionView && <TableHead>Priority</TableHead>}
+              {!isAttentionView && <TableHead className="text-right">Created Date</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -124,11 +125,13 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                   </TableCell>
                   <TableCell>{defect.reported_by || 'N/A'}</TableCell>
                   <TableCell>{defect.status || 'N/A'}</TableCell>
-                  <TableCell>{defect.severity || 'N/A'}</TableCell>
-                  <TableCell>{defect.priority || 'N/A'}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {defect.created_at ? format(parseISO(defect.created_at), 'MMM d, yyyy') : 'Invalid Date'}
-                  </TableCell>
+                  {!isAttentionView && <TableCell>{defect.severity || 'N/A'}</TableCell>}
+                  {!isAttentionView && <TableCell>{defect.priority || 'N/A'}</TableCell>}
+                  {!isAttentionView && (
+                    <TableCell className="text-right text-muted-foreground">
+                      {defect.created_at ? format(parseISO(defect.created_at), 'MMM d, yyyy') : 'Invalid Date'}
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}
