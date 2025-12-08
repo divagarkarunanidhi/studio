@@ -116,14 +116,14 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                     </TableCell>
                   )}
                   {showReasonColumn && (
-                    <TableCell className="text-xs text-destructive whitespace-pre-wrap max-w-md">
+                    <TableCell className="text-xs text-destructive whitespace-pre-wrap max-w-lg">
                       {defect.reasonForAttention?.split(', ').join('\n')}
                     </TableCell>
                   )}
                   <TableCell>
                     <Badge variant="outline">{defect.domain || 'N/A'}</Badge>
                   </TableCell>
-                  <TableCell>{defect.reported_by || 'N/A'}</TableCell>
+                  <TableCell className={cn(isAttentionView ? "max-w-[100px] truncate" : "")}>{defect.reported_by || 'N/A'}</TableCell>
                   <TableCell>{defect.status || 'N/A'}</TableCell>
                   {!isAttentionView && <TableCell>{defect.severity || 'N/A'}</TableCell>}
                   {!isAttentionView && <TableCell>{defect.priority || 'N/A'}</TableCell>}
