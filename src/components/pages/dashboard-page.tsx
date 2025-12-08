@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -663,21 +664,43 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         document.body.removeChild(link);
 
     } else if (format === 'excel') {
-        const dataWithJiraLink = data.map(row => ({
-            ...row,
-            id: jiraLink ? `${jiraLink}/browse/${row.id}` : row.id
-        }));
+        const worksheetData = data.map(d => {
+            const row: any = {
+                'Summary': d.summary,
+                'Description': d.description,
+                'Domain': d.domain,
+                'Reported By': d.reported_by,
+                'Status': d.status,
+                'Reason for Attention': d.reasonForAttention,
+            };
+            
+            // Create a hyperlink object for the 'Defect ID' field
+            if (jiraLink) {
+                row['Defect ID'] = {
+                    t: 's', // cell type string
+                    v: d.id, // display value
+                    l: { Target: `${jiraLink}/browse/${d.id}`, Tooltip: `View ${d.id} in JIRA` }
+                };
+            } else {
+                row['Defect ID'] = d.id;
+            }
+            
+            return row;
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
         
-        const worksheet = XLSX.utils.json_to_sheet(dataWithJiraLink.map(d => ({
-            'Defect ID': d.id,
-            'Summary': d.summary,
-            'Description': d.description,
-            'Domain': d.domain,
-            'Reported By': d.reported_by,
-            'Status': d.status,
-            'Reason for Attention': d.reasonForAttention,
-        })));
-        
+        // This ensures the columns appear in the correct order
+        worksheet['!cols'] = [
+            { wch: 15 }, // Defect ID
+            { wch: 50 }, // Summary
+            { wch: 60 }, // Description
+            { wch: 20 }, // Domain
+            { wch: 20 }, // Reported By
+            { wch: 15 }, // Status
+            { wch: 50 }, // Reason for Attention
+        ];
+
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Defects');
         XLSX.writeFile(workbook, 'defects_requiring_attention.xlsx');
@@ -1048,3 +1071,5 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
+
+    
