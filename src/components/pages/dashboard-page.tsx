@@ -439,18 +439,13 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const uniqueDomains = useMemo(() => {
     const domains = new Set<string>();
-    let hasBlankDomain = false;
     defects.forEach(defect => {
         if (defect.domain) {
             domains.add(defect.domain);
-        } else {
-            hasBlankDomain = true;
         }
     });
     const domainArray = Array.from(domains).sort();
-    if (hasBlankDomain || domainArray.length === 0) {
-        domainArray.unshift('N/A');
-    }
+    domainArray.unshift('N/A');
     return domainArray;
   }, [defects]);
 
@@ -465,18 +460,13 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
     const uniqueStatuses = useMemo(() => {
         const statuses = new Set<string>();
-        let hasBlankStatus = false;
         defects.forEach(defect => {
             if (defect.status) {
                 statuses.add(defect.status);
-            } else {
-                hasBlankStatus = true;
             }
         });
         const statusArray = Array.from(statuses).sort();
-        if (hasBlankStatus) {
-            statusArray.unshift('N/A');
-        }
+        statusArray.unshift('N/A');
         return statusArray;
     }, [defects]);
 
@@ -487,7 +477,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         let domainMatch = true;
         if (filterDomain !== 'all') {
             if (filterDomain === 'N/A') {
-                domainMatch = !defect.domain;
+                domainMatch = !defect.domain || defect.domain.trim() === '';
             } else {
                 domainMatch = defect.domain === filterDomain;
             }
@@ -498,7 +488,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         let statusMatch = true;
         if (filterStatus !== 'all') {
             if (filterStatus === 'N/A') {
-                statusMatch = !defect.status;
+                statusMatch = !defect.status || defect.status.trim() === '';
             } else {
                 statusMatch = defect.status === filterStatus;
             }
@@ -535,10 +525,17 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         const hasCucumberSteps = cucumberCount >= 2;
 
         const isDomainBlank = !defect.domain || defect.domain.trim() === '';
+        
+        const bugCategory = (defect as any).custom_field_bug_category_ || '';
+        const isBugCategoryBlank = !bugCategory || bugCategory.trim() === '';
+
 
         const missingInfo: string[] = [];
         if (isDomainBlank) {
           missingInfo.push("Blank domain");
+        }
+        if (isBugCategoryBlank) {
+          missingInfo.push("Bug Category is missing");
         }
         if (!hasExpected) {
           missingInfo.push("Missing 'Expected'");
@@ -885,3 +882,4 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
+
