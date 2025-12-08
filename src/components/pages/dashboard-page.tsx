@@ -979,19 +979,10 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline">
-                                            <Download className="mr-2 h-4 w-4" />
-                                            Export
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => handleExport('csv')}>Export as CSV</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleExport('excel')}>Export as Excel</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleExport('pdf')}>Export as PDF</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                <Button variant="outline" onClick={() => handleExport('excel')}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export to Excel
+                                </Button>
                             </div>
                         </div>
                     </CardHeader>
