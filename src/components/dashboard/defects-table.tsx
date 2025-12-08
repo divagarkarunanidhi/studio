@@ -116,8 +116,8 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                     </TableCell>
                   )}
                   {showReasonColumn && (
-                    <TableCell className="text-xs text-destructive max-w-sm">
-                      {defect.reasonForAttention}
+                    <TableCell className="text-xs text-destructive max-w-sm whitespace-pre-wrap">
+                      {defect.reasonForAttention?.split(', ').join('\n')}
                     </TableCell>
                   )}
                   <TableCell>
