@@ -981,7 +981,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                                 </Select>
                                 <Button variant="outline" onClick={() => handleExport('excel')}>
                                     <Download className="mr-2 h-4 w-4" />
-                                    Excel
+                                    Export
                                 </Button>
                             </div>
                         </div>
