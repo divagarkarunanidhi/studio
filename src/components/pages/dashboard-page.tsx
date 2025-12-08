@@ -438,17 +438,18 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   };
 
   const uniqueDomains = useMemo(() => {
-    if (!defects) return [];
     const domains = new Set<string>();
+    let hasBlankDomain = false;
     defects.forEach(defect => {
-      if (defect.domain) {
-        domains.add(defect.domain);
-      }
+        if (defect.domain) {
+            domains.add(defect.domain);
+        } else {
+            hasBlankDomain = true;
+        }
     });
     const domainArray = Array.from(domains).sort();
-    // Always ensure "N/A" is an option
-    if (!domainArray.includes('N/A')) {
-      domainArray.unshift('N/A');
+    if (hasBlankDomain || domainArray.length === 0) {
+        domainArray.unshift('N/A');
     }
     return domainArray;
   }, [defects]);
@@ -463,7 +464,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     }, [defects]);
 
     const uniqueStatuses = useMemo(() => {
-        if (!defects) return [];
         const statuses = new Set<string>();
         let hasBlankStatus = false;
         defects.forEach(defect => {
@@ -534,7 +534,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         const cucumberCount = [hasGiven, hasWhen, hasThen].filter(Boolean).length;
         const hasCucumberSteps = cucumberCount >= 2;
 
+        const isDomainBlank = !defect.domain || defect.domain.trim() === '';
+
         const missingInfo: string[] = [];
+        if (isDomainBlank) {
+          missingInfo.push("Blank domain");
+        }
         if (!hasExpected) {
           missingInfo.push("Missing 'Expected'");
         }
@@ -545,7 +550,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
           missingInfo.push("Missing Test Data ID");
         }
         if (hasCucumberSteps) {
-            missingInfo.push("cucumber steps present");
+            missingInfo.push("Cucumber steps present");
         }
         
         if (missingInfo.length === 0) {
@@ -863,7 +868,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                             <div>
                                 <CardTitle>{viewTitles['required-attention']} ({attentionDefects.length})</CardTitle>
                                 <CardDescription>
-                                    These defects have a status other than "Done" and are missing one or more of the following: "Expected" and "Actual" keywords, or a test data ID in their description.
+                                    These defects have a status other than "Done" and are missing one or more of the following: a valid domain, "Expected" and "Actual" keywords, or a test data ID in their description.
                                 </CardDescription>
                             </div>
                         </div>
