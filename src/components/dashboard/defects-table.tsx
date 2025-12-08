@@ -93,7 +93,7 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                       {defect.id}
                     </a>
                   </TableCell>
-                  <TableCell className="font-medium max-w-xs truncate">
+                  <TableCell className={cn("font-medium truncate", isAttentionView ? "max-w-[150px]" : "max-w-xs")}>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className={cn(isUrgent && 'text-destructive font-semibold')}>{defect.summary}</span>
@@ -104,7 +104,7 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                     </Tooltip>
                   </TableCell>
                   {showDescription && (
-                    <TableCell className="text-xs text-muted-foreground max-w-sm truncate">
+                    <TableCell className={cn("text-xs text-muted-foreground truncate", isAttentionView ? "max-w-[200px]" : "max-w-sm")}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>{defect.description || 'null'}</span>
@@ -116,7 +116,7 @@ export function DefectsTable({ defects, showAll = false, showDescription = false
                     </TableCell>
                   )}
                   {showReasonColumn && (
-                    <TableCell className="text-xs text-destructive max-w-sm whitespace-pre-wrap">
+                    <TableCell className="text-xs text-destructive whitespace-pre-wrap max-w-md">
                       {defect.reasonForAttention?.split(', ').join('\n')}
                     </TableCell>
                   )}
