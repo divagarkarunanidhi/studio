@@ -456,20 +456,39 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     }, [defects]);
 
     const uniqueStatuses = useMemo(() => {
-    if (!defects) return [];
-    const statuses = new Set<string>();
-    defects.forEach(defect => {
-        if (defect.status) statuses.add(defect.status);
-    });
-    return Array.from(statuses).filter(Boolean).sort();
+        if (!defects) return [];
+        const statuses = new Set<string>();
+        let hasBlankStatus = false;
+        defects.forEach(defect => {
+            if (defect.status) {
+                statuses.add(defect.status);
+            } else {
+                hasBlankStatus = true;
+            }
+        });
+        const statusArray = Array.from(statuses).sort();
+        if (hasBlankStatus) {
+            statusArray.unshift('N/A');
+        }
+        return statusArray;
     }, [defects]);
+
 
   const filteredDefects = useMemo(() => {
     if (!defects) return [];
     return defects.filter(defect => {
         const domainMatch = filterDomain === 'all' || defect.domain === filterDomain;
         const reporterMatch = filterReportedBy === 'all' || defect.reported_by === filterReportedBy;
-        const statusMatch = filterStatus === 'all' || defect.status === filterStatus;
+        
+        let statusMatch = true;
+        if (filterStatus !== 'all') {
+            if (filterStatus === 'N/A') {
+                statusMatch = !defect.status;
+            } else {
+                statusMatch = defect.status === filterStatus;
+            }
+        }
+
         return domainMatch && reporterMatch && statusMatch;
     });
   }, [defects, filterDomain, filterReportedBy, filterStatus]);
