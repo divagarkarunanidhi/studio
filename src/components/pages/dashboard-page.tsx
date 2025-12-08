@@ -433,7 +433,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'resolution-time': 'Analysis of the time taken to resolve defects.',
     'trend-analysis': 'Visualize the creation of defects over time.',
     summary: 'AI-powered summary of defect root cause and functional area.',
-    'required-attention': 'Defects that are missing key information and are not yet done.',
+    'required-attention': 'Defects that are missing key information.',
     'user-management': 'View and manage all users in the system.',
     configuration: 'Manage global application settings and API keys.',
     'feedback-management': 'View, edit, and delete saved few-shot learning examples.'
@@ -508,12 +508,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     return defects
       .map(defect => {
         const description = defect.description?.toLowerCase() || '';
-        const status = defect.status?.toLowerCase() || '';
-  
-        if (status === 'done') {
-          return null;
-        }
-  
+
         const hasExpected = description.includes('expected');
         const hasActual = description.includes('actual');
         const hasKeywordTestData = testDataKeywords.some(kw => description.includes(kw));
