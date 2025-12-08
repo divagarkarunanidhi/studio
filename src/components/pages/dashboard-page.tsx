@@ -228,6 +228,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterAttention, setFilterAttention] = useState<string>('all');
   
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
@@ -439,18 +440,13 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const uniqueDomains = useMemo(() => {
     const domains = new Set<string>();
-    let hasBlankDomain = false;
     defects.forEach(defect => {
         if (defect.domain && defect.domain.trim() !== '') {
             domains.add(defect.domain.trim());
-        } else {
-            hasBlankDomain = true;
         }
     });
     const domainArray = Array.from(domains).sort();
-    if (hasBlankDomain) {
-      domainArray.unshift('N/A');
-    }
+    domainArray.unshift('N/A');
     return domainArray;
   }, [defects]);
 
@@ -465,18 +461,13 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
     const uniqueStatuses = useMemo(() => {
         const statuses = new Set<string>();
-        let hasBlankStatus = false;
         defects.forEach(defect => {
             if (defect.status && defect.status.trim() !== '') {
                 statuses.add(defect.status.trim());
-            } else {
-                hasBlankStatus = true;
             }
         });
         const statusArray = Array.from(statuses).sort();
-        if (hasBlankStatus) {
-            statusArray.unshift('N/A');
-        }
+        statusArray.unshift('N/A');
         return statusArray;
     }, [defects]);
 
@@ -568,6 +559,23 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
       })
       .filter((d): d is Defect & { reasonForAttention: string } => d !== null);
   }, [defects]);
+  
+  const uniqueAttentionReasons = useMemo(() => {
+    const reasons = new Set<string>();
+    attentionDefects.forEach(d => {
+        d.reasonForAttention.split(', ').forEach(reason => {
+            if (reason) reasons.add(reason);
+        });
+    });
+    return Array.from(reasons).sort();
+  }, [attentionDefects]);
+
+  const filteredAttentionDefects = useMemo(() => {
+    if (filterAttention === 'all') {
+        return attentionDefects;
+    }
+    return attentionDefects.filter(d => d.reasonForAttention.includes(filterAttention));
+  }, [attentionDefects, filterAttention]);
 
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
 
@@ -873,15 +881,28 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                     <CardHeader>
                         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                             <div>
-                                <CardTitle>{viewTitles['required-attention']} ({attentionDefects.length})</CardTitle>
+                                <CardTitle>{viewTitles['required-attention']} ({filteredAttentionDefects.length})</CardTitle>
                                 <CardDescription>
-                                    These defects have a status other than "Done" and are missing one or more of the following: a valid domain, "Expected" and "Actual" keywords, or a test data ID in their description.
+                                    These defects have a status other than "Done" and are missing key information.
                                 </CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Select value={filterAttention} onValueChange={setFilterAttention}>
+                                    <SelectTrigger className="w-[240px]">
+                                        <SelectValue placeholder="Filter by Reason" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Reasons</SelectItem>
+                                        {uniqueAttentionReasons.map(reason => (
+                                        <SelectItem key={reason} value={reason}>{reason}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <DefectsTable defects={attentionDefects} showAll showDescription={true} />
+                        <DefectsTable defects={filteredAttentionDefects} showAll showDescription={true} />
                     </CardContent>
                 </Card>
             )}
