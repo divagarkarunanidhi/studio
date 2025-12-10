@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileText } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
+import { Button } from '../ui/button';
 
 type TestCase = {
   [key: string]: string;
@@ -112,7 +113,7 @@ export function TestCaseDetailsPage() {
              </p>
            </div>
            <div className="flex w-full max-w-lg flex-col items-stretch justify-center gap-4">
-            <FileUploader onDataUploaded={handleDataUploaded} />
+            <FileUploader onDataUploaded={handleDataUploaded} templatePath="/test-cases-template.csv" />
            </div>
          </div>
        </div>
