@@ -6,7 +6,7 @@ import { UploadCloud, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '../ui/button';
 
-export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: string) => void; }) {
+export function FileUploader({ onDataUploaded, templatePath = "/defects-template.csv" }: { onDataUploaded: (data: string) => void; templatePath?: string; }) {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
@@ -84,7 +84,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: string
           Click to upload or drag and drop
         </p>
         <p className="text-sm text-muted-foreground">
-          CSV file with defect data
+          CSV file with data
         </p>
         <input
           id="file-upload"
@@ -97,7 +97,7 @@ export function FileUploader({ onDataUploaded }: { onDataUploaded: (data: string
       </label>
       <div className="mt-4">
         <Button variant="outline" asChild>
-          <a href="/defects-template.csv" download>
+          <a href={templatePath} download>
             <Download className="mr-2 h-4 w-4" />
             Download CSV Template
           </a>

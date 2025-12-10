@@ -33,6 +33,7 @@ import {
   Settings,
   Bookmark,
   Download,
+  FileText,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -81,9 +82,10 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { doc, getDoc } from 'firebase/firestore';
+import { TestCaseDetailsPage } from './test-case-details-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-details';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -447,7 +449,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'required-attention': 'Defects Requiring Attention',
     'user-management': 'User Management',
     configuration: 'Application Configuration',
-    'feedback-management': 'Feedback Management'
+    'feedback-management': 'Feedback Management',
+    'test-case-details': 'Test Case Details',
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -461,7 +464,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'required-attention': 'Defects that are missing key information.',
     'user-management': 'View and manage all users in the system.',
     configuration: 'Manage global application settings and API keys.',
-    'feedback-management': 'View, edit, and delete saved few-shot learning examples.'
+    'feedback-management': 'View, edit, and delete saved few-shot learning examples.',
+    'test-case-details': 'Upload and view test case details from a CSV file.',
   };
 
   const uniqueDomains = useMemo(() => {
@@ -627,22 +631,49 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
     const headers = ["Defect ID", "Summary", "Description", "Domain", "Reported By", "Status", "Reason for Attention"];
     const data = dataToExport.map(d => ({
-        id: d.id,
-        summary: d.summary,
-        description: d.description || '',
-        domain: d.domain || 'N/A',
-        reported_by: d.reported_by || 'N/A',
-        status: d.status || 'N/A',
-        reasonForAttention: d.reasonForAttention
+        'Defect ID': d.id,
+        'Summary': d.summary,
+        'Description': d.description || '',
+        'Domain': d.domain || 'N/A',
+        'Reported By': d.reported_by || 'N/A',
+        'Status': d.status || 'N/A',
+        'Reason for Attention': d.reasonForAttention
     }));
+    
+    if (format === 'excel') {
+        const worksheetData = data.map(d => {
+            const row: any = {};
+            headers.forEach(header => {
+                if (header === 'Defect ID') {
+                    row[header] = jiraLink ? { t: 's', v: d[header], l: { Target: `${jiraLink}/browse/${d[header]}`, Tooltip: `View ${d[header]} in JIRA` } } : d[header];
+                } else {
+                    row[header] = d[header as keyof typeof d];
+                }
+            });
+            return row;
+        });
 
-    if (format === 'csv') {
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData, { header: headers });
+        
+        worksheet['!cols'] = [
+            { wch: 15 }, // Defect ID
+            { wch: 50 }, // Summary
+            { wch: 60 }, // Description
+            { wch: 20 }, // Domain
+            { wch: 20 }, // Reported By
+            { wch: 15 }, // Status
+            { wch: 50 }, // Reason for Attention
+        ];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Defects');
+        XLSX.writeFile(workbook, 'defects_requiring_attention.xlsx');
+
+    } else if (format === 'csv') {
         const csvContent = [
             headers.join(','),
             ...data.map(row => headers.map(header => {
-                const key = header.toLowerCase().replace(/ /g, '_') as keyof typeof row;
-                let cellData = String(row[key] || '');
-                // Escape quotes and wrap in quotes if it contains commas
+                let cellData = String(row[header as keyof typeof row] || '');
                 if (cellData.includes('"')) {
                     cellData = cellData.replace(/"/g, '""');
                 }
@@ -663,46 +694,16 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         link.click();
         document.body.removeChild(link);
 
-    } else if (format === 'excel') {
-        const worksheetData = data.map(d => {
-            const row: any = {
-                'Defect ID': jiraLink ? { t: 's', v: d.id, l: { Target: `${jiraLink}/browse/${d.id}`, Tooltip: `View ${d.id} in JIRA` } } : d.id,
-                'Summary': d.summary,
-                'Description': d.description,
-                'Domain': d.domain,
-                'Reported By': d.reported_by,
-                'Status': d.status,
-                'Reason for Attention': d.reasonForAttention,
-            };
-            return row;
-        });
-
-        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-        
-        // This ensures the columns appear in the correct order
-        worksheet['!cols'] = [
-            { wch: 15 }, // Defect ID
-            { wch: 50 }, // Summary
-            { wch: 60 }, // Description
-            { wch: 20 }, // Domain
-            { wch: 20 }, // Reported By
-            { wch: 15 }, // Status
-            { wch: 50 }, // Reason for Attention
-        ];
-
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Defects');
-        XLSX.writeFile(workbook, 'defects_requiring_attention.xlsx');
-
     } else if (format === 'pdf') {
         const doc = new jsPDF();
         (doc as any).autoTable({
             head: [headers],
-            body: data.map(row => headers.map(header => String(row[header.toLowerCase().replace(/ /g, '_') as keyof typeof row] || ''))),
+            body: data.map(row => headers.map(header => String(row[header as keyof typeof row] || ''))),
         });
         doc.save('defects_requiring_attention.pdf');
     }
   };
+
 
   if (isUserLoading || defectsLoading) {
     return (
@@ -731,6 +732,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               <SidebarMenuButton tooltip="Dashboard" isActive={activeView === 'dashboard'} onClick={() => handleViewChange('dashboard')}>
                 <LayoutDashboard />
                 Dashboard
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Test Case Details" isActive={activeView === 'test-case-details'} onClick={() => handleViewChange('test-case-details')}>
+                <FileText />
+                Test Case Details
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -887,6 +894,10 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                   </CardContent>
                 </Card>
               </>
+            )}
+
+            {activeView === 'test-case-details' && (
+                <TestCaseDetailsPage />
             )}
 
             {activeView === 'trend-analysis' && (
@@ -1060,5 +1071,3 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
-
-    

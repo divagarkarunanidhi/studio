@@ -1,0 +1,9 @@
+ID,Summary,Component,Preconditions,Steps,ExpectedResult,Status
+TC-001,Verify user login with valid credentials,Authentication,"User must exist in the system.","1. Navigate to login page.
+2. Enter valid username.
+3. Enter valid password.
+4. Click 'Login' button.","User should be successfully logged in and redirected to the dashboard.","Active"
+TC-002,Verify user login with invalid credentials,Authentication,"None","1. Navigate to login page.
+2. Enter invalid username.
+3. Enter invalid password.
+4. Click 'Login' button.","An error message 'Invalid credentials' should be displayed.","Active"
