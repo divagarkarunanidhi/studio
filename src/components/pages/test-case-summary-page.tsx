@@ -67,7 +67,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
     
     let labelCount = 0;
     const processedHeaders = headerRow.map(h => {
-        if (h.toLowerCase() === 'label') {
+        if (h.toLowerCase() === 'label' || h.toLowerCase() === 'labels') {
             labelCount++;
             return labelCount > 1 ? `Label${labelCount}` : 'Label';
         }
@@ -230,5 +230,3 @@ export function TestCaseSummaryPage() {
     </div>
   );
 }
-
-    
