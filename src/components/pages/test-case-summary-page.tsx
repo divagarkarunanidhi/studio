@@ -13,7 +13,7 @@ import { FileText, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
+import { TestCaseBarChart } from '../dashboard/test-case-bar-chart';
 
 
 type TestCaseData = { [key: string]: string };
@@ -318,19 +318,11 @@ export function TestCaseSummaryPage() {
         </div>
       ) : (
         <>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Test Case Distribution</CardTitle>
-                    <CardDescription>Breakdown of test cases based on the selected filters.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <TestCasePieChart 
-                        data={chartData}
-                        title="Test Case Overview"
-                        description={selectedFilterLabels.length > 0 ? `Filtered by: ${selectedFilterLabels.join(' & ')}` : 'Overall summary'}
-                    />
-                </CardContent>
-            </Card>
+            <TestCaseBarChart 
+                data={chartData}
+                title="Test Case Distribution"
+                description={selectedFilterLabels.length > 0 ? `Filtered by: ${selectedFilterLabels.join(' & ')}` : 'Overall summary'}
+            />
             <Card>
                 <CardHeader>
                     <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
