@@ -164,7 +164,7 @@ export function TestCaseSummaryPage() {
     } else {
         setSelectedFilterLabels([]);
     }
-  }, [testCases, allUniqueLabels]);
+  }, [testCases.length, allUniqueLabels]);
 
 
   const handleLoadFromServer = useCallback(async () => {
@@ -255,21 +255,65 @@ export function TestCaseSummaryPage() {
         return selectedFilterLabels.every(filterLabel => tcLabels.has(filterLabel));
     });
   }, [testCases, selectedFilterLabels, labelColumns]);
-
+  
   const chartData = useMemo(() => {
-    if (testCases.length === 0 || selectedFilterLabels.length === 0) {
-      return [];
+    if (selectedFilterLabels.length === 0 || testCases.length === 0) return [];
+  
+    const getTCLabels = (tc: TestCaseData) => {
+        const labels = new Set<string>();
+        labelColumns.forEach(col => {
+            if (tc[col]) {
+                tc[col].split(',').forEach(l => labels.add(l.trim()));
+            }
+        });
+        return labels;
+    };
+  
+    let matchingAllCount = 0;
+    const uniqueCounts: { [label: string]: number } = {};
+    selectedFilterLabels.forEach(label => uniqueCounts[label] = 0);
+  
+    for (const tc of testCases) {
+        const tcLabels = getTCLabels(tc);
+        const hasAllSelected = selectedFilterLabels.every(l => tcLabels.has(l));
+  
+        if (hasAllSelected) {
+            matchingAllCount++;
+        }
+  
+        // Check for unique presence among selected labels
+        for (const selectedLabel of selectedFilterLabels) {
+            // It has the current selectedLabel
+            const hasCurrent = tcLabels.has(selectedLabel);
+            // It does NOT have any OTHER selected label
+            const hasOtherSelected = selectedFilterLabels.some(otherLabel => {
+                return otherLabel !== selectedLabel && tcLabels.has(otherLabel);
+            });
+  
+            if (hasCurrent && !hasOtherSelected) {
+                uniqueCounts[selectedLabel]++;
+            }
+        }
     }
-    const filteredCount = filteredTestCases.length;
-    const otherCount = testCases.length - filteredCount;
+  
+    const data = [];
+  
+    if (matchingAllCount > 0) {
+      data.push({ name: `Matching all: ${selectedFilterLabels.join(' & ')}`, count: matchingAllCount });
+    }
+  
+    for (const label of selectedFilterLabels) {
+      if (uniqueCounts[label] > 0) {
+        data.push({ name: `Unique '${label}'`, count: uniqueCounts[label] });
+      }
+    }
 
-    const data = [
-        { name: `Matches: ${selectedFilterLabels.join(' & ')}`, count: filteredCount },
-        { name: 'Other Test Cases', count: otherCount },
-    ];
-    
-    return data.filter(d => d.count > 0);
-  }, [filteredTestCases.length, testCases.length, selectedFilterLabels]);
+    if (testCases.length > 0) {
+        data.push({ name: 'Total Test Cases', count: testCases.length });
+    }
+  
+    return data;
+  }, [testCases, selectedFilterLabels, labelColumns]);
 
 
   if (isLoading) {
@@ -303,8 +347,8 @@ export function TestCaseSummaryPage() {
         <>
             <TestCasePieChart 
                 data={chartData}
-                title="Test Case Distribution"
-                description={selectedFilterLabels.length > 0 ? `Filtered by: ${selectedFilterLabels.join(' & ')}` : 'Overall summary'}
+                title="Test Case Overview"
+                description={selectedFilterLabels.length > 0 ? selectedFilterLabels.join(' & ') : 'Overall summary'}
             />
             <Card>
                 <CardHeader>
