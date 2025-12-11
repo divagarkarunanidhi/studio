@@ -256,19 +256,37 @@ export function TestCaseSummaryPage() {
   }, [testCases, selectedFilterLabels, labelColumns]);
 
   const chartData = useMemo(() => {
-    const filteredCount = filteredTestCases.length;
-    const totalCount = testCases.length;
-    const otherCount = totalCount - filteredCount;
-
-    if (totalCount === 0 || selectedFilterLabels.length === 0) {
-        return [];
+    if (testCases.length === 0 || selectedFilterLabels.length === 0) {
+      return [];
     }
-
-    return [
-        { name: 'Filtered Test Cases', count: filteredCount },
-        { name: 'Other Test Cases', count: otherCount },
-    ];
-  }, [filteredTestCases, testCases, selectedFilterLabels]);
+  
+    const data: { name: string; count: number }[] = [];
+  
+    // 1. Total test cases that match all selected labels
+    data.push({
+      name: 'Total Filtered',
+      count: filteredTestCases.length,
+    });
+  
+    // 2. Unique count for each selected label
+    selectedFilterLabels.forEach(label => {
+      const count = testCases.filter(tc => {
+        const tcLabels = new Set<string>();
+        labelColumns.forEach(col => {
+          if (tc[col]) {
+            tc[col].split(',').forEach(l => tcLabels.add(l.trim()));
+          }
+        });
+        return tcLabels.has(label);
+      }).length;
+      data.push({ name: `Unique ${label}`, count });
+    });
+  
+    // 3. Total defect count
+    data.push({ name: 'Total Defects', count: testCases.length });
+  
+    return data;
+  }, [filteredTestCases, testCases, selectedFilterLabels, labelColumns]);
 
 
   if (isLoading) {
