@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -294,7 +293,7 @@ export function TestCaseSummaryPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>ID</TableHead>
+                                        <TableHead>Defect ID</TableHead>
                                         <TableHead>Summary</TableHead>
                                         <TableHead>Labels</TableHead>
                                     </TableRow>
@@ -307,8 +306,8 @@ export function TestCaseSummaryPage() {
                                             .join(', ');
                                         
                                         return (
-                                            <TableRow key={tc.ID || index}>
-                                                <TableCell>{tc.ID || 'N/A'}</TableCell>
+                                            <TableRow key={tc['Issue key'] || index}>
+                                                <TableCell>{tc['Issue key'] || 'N/A'}</TableCell>
                                                 <TableCell>{tc.Summary || 'N/A'}</TableCell>
                                                 <TableCell className="max-w-md truncate">{allLabels || 'N/A'}</TableCell>
                                             </TableRow>
@@ -338,4 +337,3 @@ export function TestCaseSummaryPage() {
     </div>
   );
 }
-
