@@ -47,7 +47,7 @@ export function TestCasePieChart({
 }: TestCasePieChartProps) {
 
   const chartConfig = React.useMemo(() => {
-    if (!data) return {};
+    if (!data || data.length === 0) return {};
     return data.reduce((acc, item, index) => {
       acc[item.name] = {
         label: item.name,
@@ -58,8 +58,13 @@ export function TestCasePieChart({
   }, [data]);
 
   const totalCount = React.useMemo(() => {
+    if (!data) return 0;
     return data.reduce((acc, item) => acc + item.count, 0);
   }, [data]);
+  
+  if (!data || data.length === 0) {
+    return null; // Don't render anything if there's no data
+  }
 
   return (
     <Card className="flex flex-col items-center">
