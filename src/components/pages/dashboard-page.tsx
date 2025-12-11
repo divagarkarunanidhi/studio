@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -628,30 +627,32 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     }
 
     const worksheetData = dataToExport.map(d => ({
-        'Defect ID': { t: 's', v: d.id, l: { Target: `${jiraLink}/browse/${d.id}`, Tooltip: `View ${d.id} in JIRA` } },
-        'Summary': d.summary,
-        'Description': d.description || '',
-        'Domain': d.domain || 'N/A',
-        'Reported By': d.reported_by || 'N/A',
-        'Status': d.status || 'N/A',
-        'Reason for Attention': d.reasonForAttention
-    }));
+      'Defect ID': { t: 's', v: d.id, l: { Target: `${jiraLink}/browse/${d.id}`, Tooltip: `View ${d.id} in JIRA` } },
+      'Summary': d.summary,
+      'Description': d.description || '',
+      'Domain': d.domain || 'N/A',
+      'Reported By': d.reported_by || 'N/A',
+      'Status': d.status || 'N/A',
+      'Reason for Attention': d.reasonForAttention
+  }));
 
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    
-    worksheet['!cols'] = [
-        { wch: 15 }, // Defect ID
-        { wch: 50 }, // Summary
-        { wch: 60 }, // Description
-        { wch: 20 }, // Domain
-        { wch: 20 }, // Reported By
-        { wch: 15 }, // Status
-        { wch: 50 }, // Reason for Attention
-    ];
+  const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+  
+  worksheet['!cols'] = [
+      { wch: 15 }, // Defect ID
+      { wch: 50 }, // Summary
+      { wch: 60 }, // Description
+      { wch: 20 }, // Domain
+      { wch: 20 }, // Reported By
+      { wch: 15 }, // Status
+      { wch: 50 }, // Reason for Attention
+  ];
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Defects');
-    XLSX.writeFile(workbook, 'defects_requiring_attention.xlsx');
+  XLSX.utils.sheet_add_aoa(worksheet, [Object.keys(worksheetData[0])], { origin: 'A1' });
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Defects');
+  XLSX.writeFile(workbook, 'defects_requiring_attention.xlsx');
   };
 
 
@@ -818,7 +819,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               </div>
               <div className="flex w-full max-w-lg flex-col items-stretch justify-center gap-4">
                 {userRole === 'admin' ? (
-                    <FileUploader onDataUploaded={handleDataUploaded} />
+                    <FileUploader onDataUploaded={(csvText) => handleDataUploaded(csvText)} />
                 ) : (
                     <p className="text-destructive">You do not have permission to upload data.</p>
                 )}
@@ -1021,5 +1022,3 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
-
-    

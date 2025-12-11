@@ -1,15 +1,15 @@
-
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { FileUploader } from '../dashboard/file-uploader';
 import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
-import { FileText } from 'lucide-react';
+import { FileText, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Button } from '../ui/button';
 
 type TestCaseData = { [key: string]: string };
 
@@ -67,12 +67,14 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
     
     let labelCount = 0;
     const processedHeaders = headerRow.map(h => {
-        if (h.toLowerCase() === 'label' || h.toLowerCase() === 'labels') {
+        const lowerCaseHeader = h.toLowerCase();
+        if (lowerCaseHeader === 'label' || lowerCaseHeader === 'labels') {
             labelCount++;
             return labelCount > 1 ? `Label${labelCount}` : 'Label';
         }
         return h;
     });
+
 
     const data = dataRows.map(row => {
         const rowData: TestCaseData = {};
@@ -85,6 +87,25 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
     return { headers: processedHeaders, data };
 };
 
+const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void, setSelectedLabelColumn: (l: string) => void) => {
+    if (data.length > 0) {
+        const sampleHeaders = Object.keys(data[0]);
+        let labelCount = 0;
+        const processedHeaders = sampleHeaders.map(h => {
+            const lowerCaseHeader = h.toLowerCase();
+            if (lowerCaseHeader === 'label' || lowerCaseHeader === 'labels') {
+                labelCount++;
+                return labelCount > 1 ? `Label${labelCount}` : 'Label';
+            }
+            return h;
+        });
+        
+        setHeaders(processedHeaders);
+        setTestCases(data);
+        const firstLabel = processedHeaders.find(h => h.toLowerCase().startsWith('label'));
+        setSelectedLabelColumn(firstLabel || '');
+    }
+}
 
 export function TestCaseSummaryPage() {
   const { user } = useUser();
@@ -92,12 +113,35 @@ export function TestCaseSummaryPage() {
   const [testCases, setTestCases] = useState<TestCaseData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [selectedLabelColumn, setSelectedLabelColumn] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
 
   const labelColumns = useMemo(() => {
     return headers.filter(h => h.toLowerCase().startsWith('label'));
   }, [headers]);
 
-  const handleDataUploaded = useCallback(async (csvText: string) => {
+  const handleLoadFromServer = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/test-cases/latest');
+      if (!response.ok) throw new Error('Failed to fetch latest data.');
+      const data = await response.json();
+      if (data && data.testCases) {
+          processAndSetData(data.testCases, setHeaders, setTestCases, setSelectedLabelColumn);
+      }
+    } catch (error) {
+      // It's okay if it fails, it just means no data is there yet.
+      console.log("No initial test case data found on server.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    handleLoadFromServer();
+  }, [handleLoadFromServer]);
+
+
+  const handleDataUploaded = useCallback(async (csvText: string, fileName: string) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -106,6 +150,7 @@ export function TestCaseSummaryPage() {
       });
       return;
     }
+    setIsLoading(true);
     try {
       const { headers: parsedHeaders, data: parsedData } = parseCSV(csvText);
 
@@ -113,19 +158,13 @@ export function TestCaseSummaryPage() {
         throw new Error('No data found in the CSV file.');
       }
       
-      setHeaders(parsedHeaders);
-      setTestCases(parsedData);
-      
-      const firstLabel = parsedHeaders.find(h => h.toLowerCase().startsWith('label'));
-      setSelectedLabelColumn(firstLabel || '');
-
       const response = await fetch('/api/test-cases/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           testCases: parsedData,
           uploaderId: user.uid,
-          fileName: 'test-case-summary.csv' // Or derive from the file object if available
+          fileName: fileName,
         }),
       });
 
@@ -133,6 +172,9 @@ export function TestCaseSummaryPage() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to save data to the server.');
       }
+      
+      // After successful upload, immediately process and display the data
+      processAndSetData(parsedData, setHeaders, setTestCases, setSelectedLabelColumn);
 
       toast({
         title: 'Success!',
@@ -147,6 +189,8 @@ export function TestCaseSummaryPage() {
         title: 'Error Processing File',
         description: error.message,
       });
+    } finally {
+        setIsLoading(false);
     }
   }, [toast, user]);
 
@@ -166,6 +210,17 @@ export function TestCaseSummaryPage() {
     }));
   }, [testCases, selectedLabelColumn]);
 
+  if (isLoading) {
+    return (
+        <div className="flex flex-1 flex-col items-center justify-center p-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <p>Loading test case data...</p>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {testCases.length === 0 ? (
@@ -177,7 +232,7 @@ export function TestCaseSummaryPage() {
                     <CardDescription>To get started, please upload a CSV file containing your test case details.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <FileUploader onDataUploaded={handleDataUploaded} templatePath="/test-cases-template.csv" />
+                    <FileUploader onDataUploaded={(csv, file) => handleDataUploaded(csv, file.name)} templatePath="/test-cases-template.csv" />
                 </CardContent>
             </Card>
           </div>
@@ -185,7 +240,7 @@ export function TestCaseSummaryPage() {
       ) : (
         <>
             <Card>
-                <CardHeader className="flex-row items-center justify-between">
+                <CardHeader className="flex-row items-start justify-between">
                     <div>
                         <CardTitle>Test Case Summary</CardTitle>
                         <CardDescription>
@@ -224,6 +279,11 @@ export function TestCaseSummaryPage() {
                         </Alert>
                     )}
                 </CardContent>
+                <CardFooter className='justify-center'>
+                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedLabelColumn(''); }}>
+                        Clear &amp; Upload New
+                    </Button>
+                </CardFooter>
             </Card>
         </>
       )}

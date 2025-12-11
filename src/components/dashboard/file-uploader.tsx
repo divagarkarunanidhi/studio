@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useCallback } from 'react';
@@ -6,17 +5,17 @@ import { UploadCloud, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '../ui/button';
 
-export function FileUploader({ onDataUploaded, templatePath = "/defects-template.csv" }: { onDataUploaded: (data: string) => void; templatePath?: string; }) {
+export function FileUploader({ onDataUploaded, templatePath = "/defects-template.csv" }: { onDataUploaded: (data: string, file: File) => void; templatePath?: string; }) {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
   const handleFile = useCallback(async (file: File) => {
-    if (file && file.type === 'text/csv') {
+    if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
           const text = event.target?.result as string;
-          onDataUploaded(text);
+          onDataUploaded(text, file);
         } catch (error) {
           toast({
             variant: 'destructive',
@@ -57,7 +56,9 @@ export function FileUploader({ onDataUploaded, templatePath = "/defects-template
     e.stopPropagation();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    handleFile(file);
+    if (file) {
+      handleFile(file);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
