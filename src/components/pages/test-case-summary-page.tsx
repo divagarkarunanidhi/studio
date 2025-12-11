@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -259,7 +258,7 @@ export function TestCaseSummaryPage() {
   const chartData = useMemo(() => {
     if (selectedFilterLabels.length === 0 || testCases.length === 0) return [];
   
-    const getTCLabels = (tc: TestCaseData) => {
+    const getTCLabels = (tc: TestCaseData): Set<string> => {
         const labels = new Set<string>();
         labelColumns.forEach(col => {
             if (tc[col]) {
@@ -269,45 +268,27 @@ export function TestCaseSummaryPage() {
         return labels;
     };
   
-    let matchingAllCount = 0;
-    const uniqueCounts: { [label: string]: number } = {};
-    selectedFilterLabels.forEach(label => uniqueCounts[label] = 0);
-  
-    for (const tc of testCases) {
-        const tcLabels = getTCLabels(tc);
-        const hasAllSelected = selectedFilterLabels.every(l => tcLabels.has(l));
-  
-        if (hasAllSelected) {
-            matchingAllCount++;
-        }
-  
-        // Check for unique presence among selected labels
-        for (const selectedLabel of selectedFilterLabels) {
-            // It has the current selectedLabel
-            const hasCurrent = tcLabels.has(selectedLabel);
-            // It does NOT have any OTHER selected label
-            const hasOtherSelected = selectedFilterLabels.some(otherLabel => {
-                return otherLabel !== selectedLabel && tcLabels.has(otherLabel);
-            });
-  
-            if (hasCurrent && !hasOtherSelected) {
-                uniqueCounts[selectedLabel]++;
-            }
-        }
-    }
-  
     const data = [];
   
+    // 1. "Matching All" count
+    const matchingAllCount = testCases.filter(tc => {
+        const tcLabels = getTCLabels(tc);
+        return selectedFilterLabels.every(l => tcLabels.has(l));
+    }).length;
+
     if (matchingAllCount > 0) {
-      data.push({ name: `Matching all: ${selectedFilterLabels.join(' & ')}`, count: matchingAllCount });
-    }
-  
-    for (const label of selectedFilterLabels) {
-      if (uniqueCounts[label] > 0) {
-        data.push({ name: `Unique '${label}'`, count: uniqueCounts[label] });
-      }
+        data.push({ name: `Matching all: ${selectedFilterLabels.join(' & ')}`, count: matchingAllCount });
     }
 
+    // 2. Total count for each selected label
+    selectedFilterLabels.forEach(label => {
+        const count = testCases.filter(tc => getTCLabels(tc).has(label)).length;
+        if (count > 0) {
+            data.push({ name: `${label}`, count: count });
+        }
+    });
+  
+    // 3. Total test cases
     if (testCases.length > 0) {
         data.push({ name: 'Total Test Cases', count: testCases.length });
     }
