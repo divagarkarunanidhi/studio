@@ -1,9 +1,12 @@
 
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import type { AppConfiguration } from '@/lib/types';
 import { FileUploader } from '../dashboard/file-uploader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
@@ -104,10 +107,25 @@ const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => vo
 export function TestCaseSummaryPage() {
   const { user } = useUser();
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const [jiraLink, setJiraLink] = useState<string>('');
   const [testCases, setTestCases] = useState<TestCaseData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+        if (!firestore) return;
+        const configRef = doc(firestore, 'appConfiguration', 'global');
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+            const configData = configSnap.data() as AppConfiguration;
+            setJiraLink(configData.jiraLink);
+        }
+    };
+    fetchConfig();
+  }, [firestore]);
 
   const labelColumns = useMemo(() => {
     return headers.filter(h => h.toLowerCase().startsWith('label')).sort();
@@ -304,9 +322,24 @@ export function TestCaseSummaryPage() {
                                         .filter(Boolean)
                                         .join(', ');
                                     
+                                    const defectId = tc['Issue key'] || 'N/A';
+
                                     return (
-                                        <TableRow key={tc['Issue key'] || index}>
-                                            <TableCell>{tc['Issue key'] || 'N/A'}</TableCell>
+                                        <TableRow key={defectId !== 'N/A' ? defectId : index}>
+                                            <TableCell>
+                                              {defectId !== 'N/A' && jiraLink ? (
+                                                <a
+                                                  href={`${jiraLink}/browse/${defectId}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-primary hover:underline"
+                                                >
+                                                  {defectId}
+                                                </a>
+                                              ) : (
+                                                defectId
+                                              )}
+                                            </TableCell>
                                             <TableCell>{tc.Summary || 'N/A'}</TableCell>
                                             <TableCell className="max-w-md truncate">{allLabels || 'N/A'}</TableCell>
                                         </TableRow>
@@ -326,7 +359,7 @@ export function TestCaseSummaryPage() {
                 )}
             </CardContent>
             <CardFooter className='justify-center'>
-                <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabels([]); }}>
+                <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabels([]); handleLoadFromServer(); }}>
                     Clear &amp; Upload New
                 </Button>
             </CardFooter>
