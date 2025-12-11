@@ -264,7 +264,7 @@ export function TestCaseSummaryPage() {
   
     // 1. Total test cases that match all selected labels
     data.push({
-      name: 'Total Filtered',
+      name: `Matching all: ${selectedFilterLabels.join(' & ')}`,
       count: filteredTestCases.length,
     });
   
@@ -279,14 +279,14 @@ export function TestCaseSummaryPage() {
         });
         return tcLabels.has(label);
       }).length;
-      data.push({ name: `Unique ${label}`, count });
+      data.push({ name: `Unique '${label}'`, count });
     });
   
     // 3. Total defect count
-    data.push({ name: 'Total Defects', count: testCases.length });
+    data.push({ name: 'Total Test Cases', count: testCases.length });
   
     return data;
-  }, [filteredTestCases, testCases, selectedFilterLabels, labelColumns]);
+  }, [filteredTestCases.length, testCases, selectedFilterLabels, labelColumns]);
 
 
   if (isLoading) {
@@ -402,7 +402,7 @@ export function TestCaseSummaryPage() {
                             <FileText className="h-4 w-4" />
                             <AlertTitle>No Test Cases Match Filter</AlertTitle>
                             <AlertDescription>
-                                No test cases were found with the selected labels.
+                                No test cases were found that contain all of the selected labels.
                             </AlertDescription>
                         </Alert>
                     )}
