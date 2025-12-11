@@ -104,17 +104,38 @@ export function TestCaseSummaryPage() {
   const [testCases, setTestCases] = useState<TestCaseData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedLabel, setSelectedLabel] = useState<string>('');
+  const [selectedFilterLabel, setSelectedFilterLabel] = useState<string>('all');
 
   const labelColumns = useMemo(() => {
     return headers.filter(h => h.toLowerCase().startsWith('label')).sort();
   }, [headers]);
 
-  useEffect(() => {
-    if (labelColumns.length > 0 && !selectedLabel) {
-      setSelectedLabel(labelColumns[0]);
+  const allUniqueLabels = useMemo(() => {
+    if (testCases.length === 0 || labelColumns.length === 0) {
+      return [];
     }
-  }, [labelColumns, selectedLabel]);
+    const uniqueLabels = new Set<string>();
+    for (const testCase of testCases) {
+      for (const col of labelColumns) {
+        const value = testCase[col];
+        if (value && value.trim() !== '') {
+          const labels = value.split(',').map(l => l.trim());
+          for (const label of labels) {
+            if (label) {
+              uniqueLabels.add(label);
+            }
+          }
+        }
+      }
+    }
+    return Array.from(uniqueLabels).sort();
+  }, [testCases, labelColumns]);
+
+
+  useEffect(() => {
+    // Reset filter when data changes
+    setSelectedFilterLabel('all');
+  }, [testCases]);
 
   const handleLoadFromServer = useCallback(async () => {
     setIsLoading(true);
@@ -191,31 +212,62 @@ export function TestCaseSummaryPage() {
   }, [toast, user]);
 
   const chartData = useMemo(() => {
-    if (testCases.length === 0 || !selectedLabel) {
+    if (testCases.length === 0 || labelColumns.length === 0) {
       return [];
     }
-
+  
     const counts: { [key: string]: number } = {};
-
-    for (const testCase of testCases) {
-      const value = testCase[selectedLabel];
-      if (value && value.trim() !== '') {
-        const labels = value.split(',').map(l => l.trim());
-        for (const label of labels) {
-            if(label) {
-                counts[label] = (counts[label] || 0) + 1;
-            }
+  
+    let casesToProcess = testCases;
+  
+    // If a filter is selected, find all test cases that have that label.
+    if (selectedFilterLabel !== 'all') {
+      casesToProcess = testCases.filter(testCase => {
+        for (const col of labelColumns) {
+          const value = testCase[col];
+          if (value && value.split(',').map(l => l.trim()).includes(selectedFilterLabel)) {
+            return true;
+          }
         }
-      } else {
-        counts['Unassigned'] = (counts['Unassigned'] || 0) + 1;
+        return false;
+      });
+    }
+  
+    // Count all labels within the filtered (or unfiltered) test cases.
+    for (const testCase of casesToProcess) {
+      for (const col of labelColumns) {
+        const value = testCase[col];
+        if (value && value.trim() !== '') {
+          const labels = value.split(',').map(l => l.trim());
+          for (const label of labels) {
+            // If filtering, don't count the filter label itself.
+            if (label && (selectedFilterLabel === 'all' || label !== selectedFilterLabel)) {
+              counts[label] = (counts[label] || 0) + 1;
+            }
+          }
+        }
       }
     }
-
+    
+    // If no filter is applied and a case has no labels, count it as 'Unassigned'.
+    if (selectedFilterLabel === 'all') {
+        let unassignedCount = 0;
+        for (const testCase of testCases) {
+            const hasAnyLabel = labelColumns.some(col => testCase[col] && testCase[col].trim() !== '');
+            if (!hasAnyLabel) {
+                unassignedCount++;
+            }
+        }
+        if (unassignedCount > 0) {
+            counts['Unassigned'] = unassignedCount;
+        }
+    }
+  
     return Object.entries(counts).map(([name, count]) => ({
       name,
       count,
     }));
-  }, [testCases, selectedLabel]);
+  }, [testCases, labelColumns, selectedFilterLabel]);
 
   if (isLoading) {
     return (
@@ -255,13 +307,14 @@ export function TestCaseSummaryPage() {
                             Displaying a summary of {testCases.length} uploaded test cases.
                             </CardDescription>
                         </div>
-                        {labelColumns.length > 0 && (
-                            <Select value={selectedLabel} onValueChange={setSelectedLabel}>
+                        {allUniqueLabels.length > 0 && (
+                            <Select value={selectedFilterLabel} onValueChange={setSelectedFilterLabel}>
                                 <SelectTrigger className="w-full sm:w-[240px]">
-                                    <SelectValue placeholder="Select a Label to Display" />
+                                    <SelectValue placeholder="Filter by a specific label" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {labelColumns.map(label => (
+                                    <SelectItem value="all">All Labels</SelectItem>
+                                    {allUniqueLabels.map(label => (
                                         <SelectItem key={label} value={label}>{label}</SelectItem>
                                     ))}
                                 </SelectContent>
@@ -273,21 +326,21 @@ export function TestCaseSummaryPage() {
                     {chartData.length > 0 ? (
                          <TestCasePieChart
                             data={chartData}
-                            title={`Distribution by ${selectedLabel}`}
-                            description={`A breakdown of test cases by the '${selectedLabel}' column.`}
+                            title={selectedFilterLabel === 'all' ? `Overall Label Distribution` : `Label Distribution for "${selectedFilterLabel}"`}
+                            description={selectedFilterLabel === 'all' ? `A breakdown of all test cases by label.` : `A breakdown of other labels on test cases that also have "${selectedFilterLabel}".`}
                         />
                     ) : (
                         <Alert>
                             <FileText className="h-4 w-4" />
                             <AlertTitle>No Data to Display</AlertTitle>
                             <AlertDescription>
-                                Could not generate chart. Please ensure that columns starting with 'Label' exist and have values in the uploaded CSV.
+                                No labels found for the current selection. This may happen if the selected label has no co-existing labels on any test case.
                             </AlertDescription>
                         </Alert>
                     )}
                 </CardContent>
                 <CardFooter className='justify-center'>
-                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedLabel('') }}>
+                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabel('all'); }}>
                         Clear &amp; Upload New
                     </Button>
                 </CardFooter>
