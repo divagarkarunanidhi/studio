@@ -78,14 +78,12 @@ import { UserManagementPage } from './user-management-page';
 import type { UserProfile } from '@/app/page';
 import { ConfigurationPage } from './configuration-page';
 import { FeedbackManagementPage } from './feedback-management-page';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { doc, getDoc } from 'firebase/firestore';
-import { TestCaseDetailsPage } from './test-case-details-page';
+import { TestCaseSummaryPage } from './test-case-summary-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -450,6 +448,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'user-management': 'User Management',
     configuration: 'Application Configuration',
     'feedback-management': 'Feedback Management',
+    'test-case-summary': 'Test Case Summary',
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -464,6 +463,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'user-management': 'View and manage all users in the system.',
     configuration: 'Manage global application settings and API keys.',
     'feedback-management': 'View, edit, and delete saved few-shot learning examples.',
+    'test-case-summary': 'Upload and visualize test case data by label.',
   };
 
   const uniqueDomains = useMemo(() => {
@@ -616,7 +616,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     return filteredAttentionDefects.slice(startIndex, endIndex);
   }, [filteredAttentionDefects, attentionCurrentPage]);
 
-  const handleExport = (format: 'excel') => {
+  const handleExport = () => {
     const dataToExport = filteredAttentionDefects;
     if (dataToExport.length === 0) {
         toast({
@@ -626,39 +626,32 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         });
         return;
     }
+
+    const worksheetData = dataToExport.map(d => ({
+        'Defect ID': { t: 's', v: d.id, l: { Target: `${jiraLink}/browse/${d.id}`, Tooltip: `View ${d.id} in JIRA` } },
+        'Summary': d.summary,
+        'Description': d.description || '',
+        'Domain': d.domain || 'N/A',
+        'Reported By': d.reported_by || 'N/A',
+        'Status': d.status || 'N/A',
+        'Reason for Attention': d.reasonForAttention
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     
-    if (format === 'excel') {
-        const worksheetData = dataToExport.map(d => {
-            const row: any = {};
-            const headers = ["Defect ID", "Summary", "Description", "Domain", "Reported By", "Status", "Reason for Attention"];
-            
-            // Manually set the order of properties
-            row['Defect ID'] = jiraLink ? { t: 's', v: d.id, l: { Target: `${jiraLink}/browse/${d.id}`, Tooltip: `View ${d.id} in JIRA` } } : d.id;
-            row['Summary'] = d.summary;
-            row['Description'] = d.description || '';
-            row['Domain'] = d.domain || 'N/A';
-            row['Reported By'] = d.reported_by || 'N/A';
-            row['Status'] = d.status || 'N/A';
-            row['Reason for Attention'] = d.reasonForAttention;
-            return row;
-        });
+    worksheet['!cols'] = [
+        { wch: 15 }, // Defect ID
+        { wch: 50 }, // Summary
+        { wch: 60 }, // Description
+        { wch: 20 }, // Domain
+        { wch: 20 }, // Reported By
+        { wch: 15 }, // Status
+        { wch: 50 }, // Reason for Attention
+    ];
 
-        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-        
-        worksheet['!cols'] = [
-            { wch: 15 }, // Defect ID
-            { wch: 50 }, // Summary
-            { wch: 60 }, // Description
-            { wch: 20 }, // Domain
-            { wch: 20 }, // Reported By
-            { wch: 15 }, // Status
-            { wch: 50 }, // Reason for Attention
-        ];
-
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Defects');
-        XLSX.writeFile(workbook, 'defects_requiring_attention.xlsx');
-    }
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Defects');
+    XLSX.writeFile(workbook, 'defects_requiring_attention.xlsx');
   };
 
 
@@ -701,6 +694,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               <SidebarMenuButton tooltip="Defect Summary" isActive={activeView === 'summary'} onClick={() => handleViewChange('summary')}>
                 <PieChart />
                 Defect Summary
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Test Case Summary" isActive={activeView === 'test-case-summary'} onClick={() => handleViewChange('test-case-summary')}>
+                <FileText />
+                Test Case Summary
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -855,6 +854,10 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               <SummaryPage defects={defects} uniqueDomains={uniqueDomains} />
             )}
 
+            {activeView === 'test-case-summary' && (
+              <TestCaseSummaryPage />
+            )}
+
             {activeView === 'analysis' && (
               <AnalysisPage defects={defects} uniqueDomains={uniqueDomains} />
             )}
@@ -975,7 +978,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <Button variant="outline" onClick={() => handleExport('excel')}>
+                                <Button variant="outline" onClick={handleExport}>
                                     <Download className="mr-2 h-4 w-4" />
                                     Export
                                 </Button>
@@ -1018,3 +1021,5 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
+
+    
