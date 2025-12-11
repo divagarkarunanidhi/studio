@@ -233,7 +233,7 @@ export function TestCaseSummaryPage() {
                 tc[col].split(',').forEach(l => tcLabels.add(l.trim()));
             }
         });
-        return selectedFilterLabels.some(filterLabel => tcLabels.has(filterLabel));
+        return selectedFilterLabels.every(filterLabel => tcLabels.has(filterLabel));
     });
   }, [testCases, selectedFilterLabels, labelColumns]);
 
@@ -266,73 +266,71 @@ export function TestCaseSummaryPage() {
           </div>
         </div>
       ) : (
-        <>
-            <Card>
-                <CardHeader>
-                    <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
-                        <div>
-                            <CardTitle>Test Case Summary</CardTitle>
-                            <CardDescription>
-                                Displaying {filteredTestCases.length} of {testCases.length} uploaded test cases.
-                            </CardDescription>
-                        </div>
-                        {allUniqueLabels.length > 0 && (
-                            <MultiSelect 
-                                options={uniqueLabelOptions}
-                                defaultValue={selectedFilterLabels}
-                                onValueChange={setSelectedFilterLabels}
-                                placeholder="Filter by labels..."
-                                className="w-full sm:w-[300px]"
-                            />
-                        )}
+        <Card>
+            <CardHeader>
+                <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
+                    <div>
+                        <CardTitle>Test Case Summary</CardTitle>
+                        <CardDescription>
+                            Displaying {filteredTestCases.length} of {testCases.length} uploaded test cases.
+                        </CardDescription>
                     </div>
-                </CardHeader>
-                <CardContent>
-                    {filteredTestCases.length > 0 ? (
-                         <div className="overflow-x-auto rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Defect ID</TableHead>
-                                        <TableHead>Summary</TableHead>
-                                        <TableHead>Labels</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredTestCases.map((tc, index) => {
-                                        const allLabels = labelColumns
-                                            .map(col => tc[col])
-                                            .filter(Boolean)
-                                            .join(', ');
-                                        
-                                        return (
-                                            <TableRow key={tc['Issue key'] || index}>
-                                                <TableCell>{tc['Issue key'] || 'N/A'}</TableCell>
-                                                <TableCell>{tc.Summary || 'N/A'}</TableCell>
-                                                <TableCell className="max-w-md truncate">{allLabels || 'N/A'}</TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                         </div>
-                    ) : (
-                        <Alert>
-                            <FileText className="h-4 w-4" />
-                            <AlertTitle>No Test Cases Match Filter</AlertTitle>
-                            <AlertDescription>
-                                No test cases were found with the selected labels.
-                            </AlertDescription>
-                        </Alert>
+                    {allUniqueLabels.length > 0 && (
+                        <MultiSelect 
+                            options={uniqueLabelOptions}
+                            defaultValue={selectedFilterLabels}
+                            onValueChange={setSelectedFilterLabels}
+                            placeholder="Filter by labels..."
+                            className="w-full sm:w-[300px]"
+                        />
                     )}
-                </CardContent>
-                <CardFooter className='justify-center'>
-                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabels([]); }}>
-                        Clear &amp; Upload New
-                    </Button>
-                </CardFooter>
-            </Card>
-        </>
+                </div>
+            </CardHeader>
+            <CardContent>
+                {filteredTestCases.length > 0 ? (
+                     <div className="overflow-x-auto rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Defect ID</TableHead>
+                                    <TableHead>Summary</TableHead>
+                                    <TableHead>Labels</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredTestCases.map((tc, index) => {
+                                    const allLabels = labelColumns
+                                        .map(col => tc[col])
+                                        .filter(Boolean)
+                                        .join(', ');
+                                    
+                                    return (
+                                        <TableRow key={tc['Issue key'] || index}>
+                                            <TableCell>{tc['Issue key'] || 'N/A'}</TableCell>
+                                            <TableCell>{tc.Summary || 'N/A'}</TableCell>
+                                            <TableCell className="max-w-md truncate">{allLabels || 'N/A'}</TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                     </div>
+                ) : (
+                    <Alert>
+                        <FileText className="h-4 w-4" />
+                        <AlertTitle>No Test Cases Match Filter</AlertTitle>
+                        <AlertDescription>
+                            No test cases were found with the selected labels.
+                        </AlertDescription>
+                    </Alert>
+                )}
+            </CardContent>
+            <CardFooter className='justify-center'>
+                <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabels([]); }}>
+                    Clear &amp; Upload New
+                </Button>
+            </CardFooter>
+        </Card>
       )}
     </div>
   );
