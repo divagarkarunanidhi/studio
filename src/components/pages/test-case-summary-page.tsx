@@ -11,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter }
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { FileText, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 
 
 type TestCaseData = { [key: string]: string };
@@ -105,7 +105,7 @@ export function TestCaseSummaryPage() {
   const [testCases, setTestCases] = useState<TestCaseData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedFilterLabel, setSelectedFilterLabel] = useState<string>('all');
+  const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
 
   const labelColumns = useMemo(() => {
     return headers.filter(h => h.toLowerCase().startsWith('label')).sort();
@@ -132,10 +132,14 @@ export function TestCaseSummaryPage() {
     return Array.from(uniqueLabels).sort();
   }, [testCases, labelColumns]);
 
+  const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
+    return allUniqueLabels.map(label => ({ value: label, label: label }));
+  }, [allUniqueLabels]);
+
 
   useEffect(() => {
     // Reset filter when data changes
-    setSelectedFilterLabel('all');
+    setSelectedFilterLabels([]);
   }, [testCases]);
 
   const handleLoadFromServer = useCallback(async () => {
@@ -219,7 +223,7 @@ export function TestCaseSummaryPage() {
   
     const counts: { [key: string]: number } = {};
   
-    if (selectedFilterLabel === 'all') {
+    if (selectedFilterLabels.length === 0) {
       // Original logic: Count all labels across all test cases.
       for (const testCase of testCases) {
         let hasAnyLabel = false;
@@ -240,35 +244,33 @@ export function TestCaseSummaryPage() {
         }
       }
     } else {
-        // New logic: When a filter is selected, count cases with that label vs. cases without.
-        let selectedCount = 0;
-        let otherCount = 0;
-
-        for (const testCase of testCases) {
-            let hasSelectedLabel = false;
-            for (const col of labelColumns) {
-                const value = testCase[col];
-                if (value && value.split(',').map(l => l.trim()).includes(selectedFilterLabel)) {
-                    hasSelectedLabel = true;
-                    break; 
-                }
-            }
-            if (hasSelectedLabel) {
-                selectedCount++;
-            } else {
-                otherCount++;
-            }
-        }
+        // When one or more labels are selected, show counts for each and an "Other" group.
+        let otherCount = testCases.length;
         
-        counts[selectedFilterLabel] = selectedCount;
-        counts['Other Test Cases'] = otherCount;
+        selectedFilterLabels.forEach(selectedLabel => {
+            const countForLabel = testCases.filter(tc => {
+                for (const col of labelColumns) {
+                    const value = tc[col];
+                    if (value && value.split(',').map(l => l.trim()).includes(selectedLabel)) {
+                        return true;
+                    }
+                }
+                return false;
+            }).length;
+
+            counts[selectedLabel] = countForLabel;
+            otherCount -= countForLabel; // Decrement from total to find remainder
+        });
+
+        // Ensure "Other" is non-negative
+        counts['Other Test Cases'] = Math.max(0, otherCount);
     }
   
     return Object.entries(counts).map(([name, count]) => ({
       name,
       count,
-    }));
-  }, [testCases, labelColumns, selectedFilterLabel]);
+    })).filter(item => item.count > 0); // Do not display slices with 0 count
+  }, [testCases, labelColumns, selectedFilterLabels]);
 
   if (isLoading) {
     return (
@@ -309,17 +311,13 @@ export function TestCaseSummaryPage() {
                             </CardDescription>
                         </div>
                         {allUniqueLabels.length > 0 && (
-                            <Select value={selectedFilterLabel} onValueChange={setSelectedFilterLabel}>
-                                <SelectTrigger className="w-full sm:w-[240px]">
-                                    <SelectValue placeholder="Filter by a specific label" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Labels</SelectItem>
-                                    {allUniqueLabels.map(label => (
-                                        <SelectItem key={label} value={label}>{label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <MultiSelect 
+                                options={uniqueLabelOptions}
+                                defaultValue={selectedFilterLabels}
+                                onValueChange={setSelectedFilterLabels}
+                                placeholder="Filter by labels..."
+                                className="w-full sm:w-[300px]"
+                            />
                         )}
                     </div>
                 </CardHeader>
@@ -327,8 +325,8 @@ export function TestCaseSummaryPage() {
                     {chartData.length > 0 ? (
                          <TestCasePieChart
                             data={chartData}
-                            title={selectedFilterLabel === 'all' ? `Overall Label Distribution` : `Test Cases with Label: "${selectedFilterLabel}"`}
-                            description={selectedFilterLabel === 'all' ? `A breakdown of all test cases by label.` : `A count of test cases that include the selected label.`}
+                            title={selectedFilterLabels.length === 0 ? `Overall Label Distribution` : `Filtered Label Distribution`}
+                            description={selectedFilterLabels.length === 0 ? `A breakdown of all test cases by label.` : `A count of test cases for selected labels.`}
                         />
                     ) : (
                         <Alert>
@@ -341,7 +339,7 @@ export function TestCaseSummaryPage() {
                     )}
                 </CardContent>
                 <CardFooter className='justify-center'>
-                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabel('all'); }}>
+                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabels([]); }}>
                         Clear &amp; Upload New
                     </Button>
                 </CardFooter>
