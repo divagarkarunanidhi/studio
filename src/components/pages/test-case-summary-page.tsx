@@ -244,7 +244,6 @@ export function TestCaseSummaryPage() {
         }
       }
     } else {
-        // When one or more labels are selected, show counts for each and an "Other" group.
         let otherCount = testCases.length;
         
         selectedFilterLabels.forEach(selectedLabel => {
@@ -259,17 +258,28 @@ export function TestCaseSummaryPage() {
             }).length;
 
             counts[selectedLabel] = countForLabel;
-            otherCount -= countForLabel; // Decrement from total to find remainder
         });
 
-        // Ensure "Other" is non-negative
-        counts['Other Test Cases'] = Math.max(0, otherCount);
+        // Calculate "Other Test Cases" count, which represents test cases that DO NOT have ANY of the selected labels.
+        const testCasesWithSelectedLabels = new Set<number>();
+        selectedFilterLabels.forEach(selectedLabel => {
+            testCases.forEach((tc, index) => {
+                for (const col of labelColumns) {
+                    const value = tc[col];
+                    if (value && value.split(',').map(l => l.trim()).includes(selectedLabel)) {
+                        testCasesWithSelectedLabels.add(index);
+                    }
+                }
+            });
+        });
+        
+        counts['Other Test Cases'] = testCases.length - testCasesWithSelectedLabels.size;
     }
   
     return Object.entries(counts).map(([name, count]) => ({
       name,
       count,
-    })).filter(item => item.count > 0); // Do not display slices with 0 count
+    })).filter(item => item.count > 0);
   }, [testCases, labelColumns, selectedFilterLabels]);
 
   if (isLoading) {
