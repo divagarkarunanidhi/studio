@@ -15,6 +15,8 @@ import {
   ChartContainer,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { PieChart as PieChartIcon } from "lucide-react";
 
 interface ChartPoint {
   name: string;
@@ -63,7 +65,15 @@ export function TestCasePieChart({
   }, [data]);
   
   if (!data || data.length === 0) {
-    return null; // Don't render anything if there's no data
+    return (
+        <Alert>
+            <PieChartIcon className="h-4 w-4" />
+            <AlertTitle>No Chart Data</AlertTitle>
+            <AlertDescription>
+                There is no data to display in the chart. Please select one or more labels to see a distribution.
+            </AlertDescription>
+        </Alert>
+    );
   }
 
   return (

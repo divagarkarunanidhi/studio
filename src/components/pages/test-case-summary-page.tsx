@@ -282,11 +282,11 @@ export function TestCaseSummaryPage() {
       data.push({ name: `Unique '${label}'`, count });
     });
   
-    // 3. Total defect count
+    // 3. Total test case count
     data.push({ name: 'Total Test Cases', count: testCases.length });
   
     return data;
-  }, [filteredTestCases.length, testCases, selectedFilterLabels, labelColumns]);
+  }, [filteredTestCases, testCases, selectedFilterLabels, labelColumns]);
 
 
   if (isLoading) {
@@ -318,21 +318,19 @@ export function TestCaseSummaryPage() {
         </div>
       ) : (
         <>
-            {chartData.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Test Case Distribution</CardTitle>
-                        <CardDescription>Breakdown of test cases based on the selected filters.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <TestCasePieChart 
-                            data={chartData}
-                            title="Test Case Overview"
-                            description={`${selectedFilterLabels.join(' & ')}`}
-                        />
-                    </CardContent>
-                </Card>
-            )}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Test Case Distribution</CardTitle>
+                    <CardDescription>Breakdown of test cases based on the selected filters.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <TestCasePieChart 
+                        data={chartData}
+                        title="Test Case Overview"
+                        description={selectedFilterLabels.length > 0 ? `Filtered by: ${selectedFilterLabels.join(' & ')}` : 'Overall summary'}
+                    />
+                </CardContent>
+            </Card>
             <Card>
                 <CardHeader>
                     <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
