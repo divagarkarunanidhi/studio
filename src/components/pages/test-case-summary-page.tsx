@@ -6,12 +6,12 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { FileUploader } from '../dashboard/file-uploader';
-import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { FileText, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 
 type TestCaseData = { [key: string]: string };
@@ -67,7 +67,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
 
     const headerRow = nonEmptyRows[0].map(h => h.trim());
     const dataRows = nonEmptyRows.slice(1);
-
+    
     const uniqueHeaders: string[] = [];
     const headerMap: { [key: string]: number[] } = {};
 
@@ -222,76 +222,21 @@ export function TestCaseSummaryPage() {
     }
   }, [toast, user]);
 
-  const chartData = useMemo(() => {
-    if (testCases.length === 0 || labelColumns.length === 0) {
-        return [];
-    }
-    
+  const filteredTestCases = useMemo(() => {
     if (selectedFilterLabels.length === 0) {
-        // Default behavior: show all labels if no filter is selected
-        const counts: { [key: string]: number } = {};
-        for (const testCase of testCases) {
-            let hasAnyLabel = false;
-            for (const col of labelColumns) {
-                const value = testCase[col];
-                if (value && value.trim() !== '') {
-                    hasAnyLabel = true;
-                    const labels = value.split(',').map(l => l.trim());
-                    for (const label of labels) {
-                        if (label) {
-                            counts[label] = (counts[label] || 0) + 1;
-                        }
-                    }
-                }
-            }
-            if (!hasAnyLabel) {
-                counts['Unassigned'] = (counts['Unassigned'] || 0) + 1;
-            }
-        }
-        return Object.entries(counts).map(([name, count]) => ({
-            name,
-            count,
-        })).filter(item => item.count > 0);
-    } else {
-        // Filtered behavior: show count for each selected label and 'Other'
-        const counts: { [key: string]: number } = {};
-        
-        selectedFilterLabels.forEach(selectedLabel => {
-            const countForLabel = testCases.filter(tc => {
-                for (const col of labelColumns) {
-                    const value = tc[col];
-                    if (value && value.split(',').map(l => l.trim()).includes(selectedLabel)) {
-                        return true;
-                    }
-                }
-                return false;
-            }).length;
-            counts[selectedLabel] = countForLabel;
-        });
-
-        const testCasesWithSelectedLabels = new Set<number>();
-        selectedFilterLabels.forEach(selectedLabel => {
-            testCases.forEach((tc, index) => {
-                for (const col of labelColumns) {
-                    const value = tc[col];
-                    if (value && value.split(',').map(l => l.trim()).includes(selectedLabel)) {
-                        testCasesWithSelectedLabels.add(index);
-                    }
-                }
-            });
-        });
-        
-        const otherCount = testCases.length - testCasesWithSelectedLabels.size;
-        if (otherCount > 0) {
-            counts['Other Test Cases'] = otherCount;
-        }
-        
-        return Object.entries(counts).map(([name, count]) => ({
-            name,
-            count,
-        })).filter(item => item.count > 0);
+        return testCases;
     }
-  }, [testCases, labelColumns, selectedFilterLabels]);
+
+    return testCases.filter(tc => {
+        const tcLabels = new Set<string>();
+        labelColumns.forEach(col => {
+            if (tc[col]) {
+                tc[col].split(',').forEach(l => tcLabels.add(l.trim()));
+            }
+        });
+        return selectedFilterLabels.some(filterLabel => tcLabels.has(filterLabel));
+    });
+  }, [testCases, selectedFilterLabels, labelColumns]);
 
 
   if (isLoading) {
@@ -329,7 +274,7 @@ export function TestCaseSummaryPage() {
                         <div>
                             <CardTitle>Test Case Summary</CardTitle>
                             <CardDescription>
-                            Displaying a summary of {testCases.length} uploaded test cases.
+                                Displaying {filteredTestCases.length} of {testCases.length} uploaded test cases.
                             </CardDescription>
                         </div>
                         {allUniqueLabels.length > 0 && (
@@ -344,18 +289,40 @@ export function TestCaseSummaryPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {chartData.length > 0 ? (
-                         <TestCasePieChart
-                            data={chartData}
-                            title={selectedFilterLabels.length === 0 ? `Overall Label Distribution` : `Filtered Label Distribution`}
-                            description={selectedFilterLabels.length === 0 ? `A breakdown of all test cases by label.` : `A count of test cases for selected labels.`}
-                        />
+                    {filteredTestCases.length > 0 ? (
+                         <div className="overflow-x-auto rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>ID</TableHead>
+                                        <TableHead>Summary</TableHead>
+                                        <TableHead>Labels</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredTestCases.map((tc, index) => {
+                                        const allLabels = labelColumns
+                                            .map(col => tc[col])
+                                            .filter(Boolean)
+                                            .join(', ');
+                                        
+                                        return (
+                                            <TableRow key={tc.ID || index}>
+                                                <TableCell>{tc.ID || 'N/A'}</TableCell>
+                                                <TableCell>{tc.Summary || 'N/A'}</TableCell>
+                                                <TableCell className="max-w-md truncate">{allLabels || 'N/A'}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                         </div>
                     ) : (
                         <Alert>
                             <FileText className="h-4 w-4" />
-                            <AlertTitle>No Data to Display</AlertTitle>
+                            <AlertTitle>No Test Cases Match Filter</AlertTitle>
                             <AlertDescription>
-                                No labels found for the current selection.
+                                No test cases were found with the selected labels.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -371,3 +338,4 @@ export function TestCaseSummaryPage() {
     </div>
   );
 }
+
