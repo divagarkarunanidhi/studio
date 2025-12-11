@@ -67,32 +67,33 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
 
     const headerRow = nonEmptyRows[0].map(h => h.trim());
     const dataRows = nonEmptyRows.slice(1);
-    
-    let labelCount = 0;
-    const processedHeaders = headerRow.map(h => {
-        const lowerCaseHeader = h.toLowerCase();
-        if (lowerCaseHeader === 'label' || lowerCaseHeader === 'labels') {
-            labelCount++;
-            return labelCount > 1 ? `Label${labelCount}` : 'Label';
-        }
-        return h;
-    });
 
+    const uniqueHeaders: string[] = [];
+    const headerMap: { [key: string]: number[] } = {};
+
+    headerRow.forEach((header, index) => {
+        if (!headerMap[header]) {
+            headerMap[header] = [];
+            uniqueHeaders.push(header);
+        }
+        headerMap[header].push(index);
+    });
 
     const data = dataRows.map(row => {
         const rowData: TestCaseData = {};
-        processedHeaders.forEach((header, index) => {
-            rowData[header] = row[index] || '';
+        uniqueHeaders.forEach(header => {
+            const indices = headerMap[header];
+            const values = indices.map(index => row[index]).filter(Boolean); // Filter out empty/null values
+            rowData[header] = values.join(',');
         });
         return rowData;
     });
 
-    return { headers: processedHeaders, data };
+    return { headers: uniqueHeaders, data };
 };
 
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
     if (data.length > 0) {
-        // Since headers might not be stored in DB, recalculate them from the first data object.
         const sampleHeaders = Object.keys(data[0]);
         setHeaders(sampleHeaders);
         setTestCases(data);
@@ -138,7 +139,6 @@ export function TestCaseSummaryPage() {
 
 
   useEffect(() => {
-    // Reset filter when data changes
     setSelectedFilterLabels([]);
   }, [testCases]);
 
@@ -152,7 +152,6 @@ export function TestCaseSummaryPage() {
           processAndSetData(data.testCases, setHeaders, setTestCases);
       }
     } catch (error) {
-      // It's okay if it fails, it just means no data is there yet.
       console.log("No initial test case data found on server.");
     } finally {
       setIsLoading(false);
@@ -218,33 +217,32 @@ export function TestCaseSummaryPage() {
 
   const chartData = useMemo(() => {
     if (testCases.length === 0 || labelColumns.length === 0) {
-      return [];
+        return [];
     }
-  
+
     const counts: { [key: string]: number } = {};
-  
+
     if (selectedFilterLabels.length === 0) {
-      // Original logic: Count all labels across all test cases.
-      for (const testCase of testCases) {
-        let hasAnyLabel = false;
-        for (const col of labelColumns) {
-          const value = testCase[col];
-          if (value && value.trim() !== '') {
-            hasAnyLabel = true;
-            const labels = value.split(',').map(l => l.trim());
-            for (const label of labels) {
-              if (label) {
-                counts[label] = (counts[label] || 0) + 1;
-              }
+        for (const testCase of testCases) {
+            let hasAnyLabel = false;
+            for (const col of labelColumns) {
+                const value = testCase[col];
+                if (value && value.trim() !== '') {
+                    hasAnyLabel = true;
+                    const labels = value.split(',').map(l => l.trim());
+                    for (const label of labels) {
+                        if (label) {
+                            counts[label] = (counts[label] || 0) + 1;
+                        }
+                    }
+                }
             }
-          }
+            if (!hasAnyLabel) {
+                counts['Unassigned'] = (counts['Unassigned'] || 0) + 1;
+            }
         }
-        if (!hasAnyLabel) {
-            counts['Unassigned'] = (counts['Unassigned'] || 0) + 1;
-        }
-      }
     } else {
-        let otherCount = testCases.length;
+        const counts: { [key: string]: number } = {};
         
         selectedFilterLabels.forEach(selectedLabel => {
             const countForLabel = testCases.filter(tc => {
@@ -256,11 +254,9 @@ export function TestCaseSummaryPage() {
                 }
                 return false;
             }).length;
-
             counts[selectedLabel] = countForLabel;
         });
 
-        // Calculate "Other Test Cases" count, which represents test cases that DO NOT have ANY of the selected labels.
         const testCasesWithSelectedLabels = new Set<number>();
         selectedFilterLabels.forEach(selectedLabel => {
             testCases.forEach((tc, index) => {
@@ -274,11 +270,16 @@ export function TestCaseSummaryPage() {
         });
         
         counts['Other Test Cases'] = testCases.length - testCasesWithSelectedLabels.size;
+        
+        return Object.entries(counts).map(([name, count]) => ({
+            name,
+            count,
+        })).filter(item => item.count > 0);
     }
-  
+
     return Object.entries(counts).map(([name, count]) => ({
-      name,
-      count,
+        name,
+        count,
     })).filter(item => item.count > 0);
   }, [testCases, labelColumns, selectedFilterLabels]);
 
