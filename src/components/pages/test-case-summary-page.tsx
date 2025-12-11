@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -13,7 +14,7 @@ import { FileText, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { TestCaseBarChart } from '../dashboard/test-case-bar-chart';
+import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
 
 
 type TestCaseData = { [key: string]: string };
@@ -318,7 +319,7 @@ export function TestCaseSummaryPage() {
         </div>
       ) : (
         <>
-            <TestCaseBarChart 
+            <TestCasePieChart 
                 data={chartData}
                 title="Test Case Distribution"
                 description={selectedFilterLabels.length > 0 ? `Filtered by: ${selectedFilterLabels.join(' & ')}` : 'Overall summary'}
