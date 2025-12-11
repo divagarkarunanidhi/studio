@@ -2,6 +2,14 @@
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '20mb', // Increase the body size limit
+    },
+  },
+};
+
 export async function POST(request: Request) {
   try {
     const { clientPromise, dbName } = await getMongoDetails();
