@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -8,7 +9,6 @@ import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { FileText, Loader2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
 
 type TestCaseData = { [key: string]: string };
@@ -87,7 +87,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
     return { headers: processedHeaders, data };
 };
 
-const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void, setSelectedLabelColumn: (l: string) => void) => {
+const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
     if (data.length > 0) {
         const sampleHeaders = Object.keys(data[0]);
         let labelCount = 0;
@@ -102,8 +102,6 @@ const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => vo
         
         setHeaders(processedHeaders);
         setTestCases(data);
-        const firstLabel = processedHeaders.find(h => h.toLowerCase().startsWith('label'));
-        setSelectedLabelColumn(firstLabel || '');
     }
 }
 
@@ -112,12 +110,7 @@ export function TestCaseSummaryPage() {
   const { toast } = useToast();
   const [testCases, setTestCases] = useState<TestCaseData[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
-  const [selectedLabelColumn, setSelectedLabelColumn] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
-
-  const labelColumns = useMemo(() => {
-    return headers.filter(h => h.toLowerCase().startsWith('label'));
-  }, [headers]);
 
   const handleLoadFromServer = useCallback(async () => {
     setIsLoading(true);
@@ -126,7 +119,7 @@ export function TestCaseSummaryPage() {
       if (!response.ok) throw new Error('Failed to fetch latest data.');
       const data = await response.json();
       if (data && data.testCases) {
-          processAndSetData(data.testCases, setHeaders, setTestCases, setSelectedLabelColumn);
+          processAndSetData(data.testCases, setHeaders, setTestCases);
       }
     } catch (error) {
       // It's okay if it fails, it just means no data is there yet.
@@ -174,7 +167,7 @@ export function TestCaseSummaryPage() {
       }
       
       // After successful upload, immediately process and display the data
-      processAndSetData(parsedData, setHeaders, setTestCases, setSelectedLabelColumn);
+      processAndSetData(parsedData, setHeaders, setTestCases);
 
       toast({
         title: 'Success!',
@@ -195,20 +188,43 @@ export function TestCaseSummaryPage() {
   }, [toast, user]);
 
   const chartData = useMemo(() => {
-    if (!selectedLabelColumn || testCases.length === 0) {
+    if (testCases.length === 0) {
       return [];
     }
-    const counts = testCases.reduce((acc, testCase) => {
-      const value = testCase[selectedLabelColumn] || 'Unassigned';
-      acc[value] = (acc[value] || 0) + 1;
-      return acc;
-    }, {} as { [key: string]: number });
+
+    const labelColumns = headers.filter(h => h.toLowerCase().startsWith('label'));
+    if (labelColumns.length === 0) {
+        return [];
+    }
+
+    const counts: { [key: string]: number } = {};
+
+    for (const testCase of testCases) {
+        for (const col of labelColumns) {
+            const value = testCase[col];
+            if (value && value.trim() !== '') {
+                // Split by comma in case one cell has multiple labels
+                const labels = value.split(',').map(l => l.trim());
+                for (const label of labels) {
+                    if (label) {
+                        counts[label] = (counts[label] || 0) + 1;
+                    }
+                }
+            }
+        }
+    }
+    const unassignedCount = (counts[''] || 0) + (counts['Unassigned'] || 0);
+    delete counts[''];
+    delete counts['Unassigned'];
+    if (unassignedCount > 0) {
+        counts['Unassigned'] = unassignedCount;
+    }
 
     return Object.entries(counts).map(([name, count]) => ({
       name,
       count,
     }));
-  }, [testCases, selectedLabelColumn]);
+  }, [testCases, headers]);
 
   if (isLoading) {
     return (
@@ -240,47 +256,33 @@ export function TestCaseSummaryPage() {
       ) : (
         <>
             <Card>
-                <CardHeader className="flex-row items-start justify-between">
+                <CardHeader>
                     <div>
                         <CardTitle>Test Case Summary</CardTitle>
                         <CardDescription>
                         Displaying a summary of {testCases.length} uploaded test cases.
                         </CardDescription>
                     </div>
-                    {labelColumns.length > 1 && (
-                        <div className="w-[200px]">
-                            <Select value={selectedLabelColumn} onValueChange={setSelectedLabelColumn}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Label Column" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {labelColumns.map(label => (
-                                        <SelectItem key={label} value={label}>{label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
                 </CardHeader>
                 <CardContent>
                     {chartData.length > 0 ? (
                          <TestCasePieChart
                             data={chartData}
-                            title={`Distribution by ${selectedLabelColumn}`}
-                            description={`A breakdown of test cases by the selected label.`}
+                            title={`Distribution by All Labels`}
+                            description={`A breakdown of test cases by all detected label columns.`}
                         />
                     ) : (
                         <Alert>
                             <FileText className="h-4 w-4" />
                             <AlertTitle>No Data to Display</AlertTitle>
                             <AlertDescription>
-                                Could not generate chart. Please ensure the selected column '{selectedLabelColumn}' has values in the uploaded CSV.
+                                Could not generate chart. Please ensure that columns starting with 'Label' exist and have values in the uploaded CSV.
                             </AlertDescription>
                         </Alert>
                     )}
                 </CardContent>
                 <CardFooter className='justify-center'>
-                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedLabelColumn(''); }}>
+                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); }}>
                         Clear &amp; Upload New
                     </Button>
                 </CardFooter>
