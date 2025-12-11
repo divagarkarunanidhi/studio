@@ -260,34 +260,16 @@ export function TestCaseSummaryPage() {
     if (testCases.length === 0 || selectedFilterLabels.length === 0) {
       return [];
     }
-  
-    const data: { name: string; count: number }[] = [];
-  
-    // 1. Total test cases that match all selected labels
-    data.push({
-      name: `Matching all: ${selectedFilterLabels.join(' & ')}`,
-      count: filteredTestCases.length,
-    });
-  
-    // 2. Unique count for each selected label
-    selectedFilterLabels.forEach(label => {
-      const count = testCases.filter(tc => {
-        const tcLabels = new Set<string>();
-        labelColumns.forEach(col => {
-          if (tc[col]) {
-            tc[col].split(',').forEach(l => tcLabels.add(l.trim()));
-          }
-        });
-        return tcLabels.has(label);
-      }).length;
-      data.push({ name: `Unique '${label}'`, count });
-    });
-  
-    // 3. Total test case count
-    data.push({ name: 'Total Test Cases', count: testCases.length });
-  
-    return data;
-  }, [filteredTestCases, testCases, selectedFilterLabels, labelColumns]);
+    const filteredCount = filteredTestCases.length;
+    const otherCount = testCases.length - filteredCount;
+
+    const data = [
+        { name: `Matches: ${selectedFilterLabels.join(' & ')}`, count: filteredCount },
+        { name: 'Other Test Cases', count: otherCount },
+    ];
+    
+    return data.filter(d => d.count > 0);
+  }, [filteredTestCases.length, testCases.length, selectedFilterLabels]);
 
 
   if (isLoading) {
