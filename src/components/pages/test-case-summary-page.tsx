@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -14,6 +13,7 @@ import { FileText, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
 
 
 type TestCaseData = { [key: string]: string };
@@ -255,6 +255,21 @@ export function TestCaseSummaryPage() {
     });
   }, [testCases, selectedFilterLabels, labelColumns]);
 
+  const chartData = useMemo(() => {
+    const filteredCount = filteredTestCases.length;
+    const totalCount = testCases.length;
+    const otherCount = totalCount - filteredCount;
+
+    if (totalCount === 0 || selectedFilterLabels.length === 0) {
+        return [];
+    }
+
+    return [
+        { name: 'Filtered Test Cases', count: filteredCount },
+        { name: 'Other Test Cases', count: otherCount },
+    ];
+  }, [filteredTestCases, testCases, selectedFilterLabels]);
+
 
   if (isLoading) {
     return (
@@ -284,86 +299,103 @@ export function TestCaseSummaryPage() {
           </div>
         </div>
       ) : (
-        <Card>
-            <CardHeader>
-                <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
-                    <div>
-                        <CardTitle>Test Case Summary</CardTitle>
-                        <CardDescription>
-                            Displaying {filteredTestCases.length} of {testCases.length} uploaded test cases.
-                        </CardDescription>
-                    </div>
-                    {allUniqueLabels.length > 0 && (
-                        <MultiSelect 
-                            options={uniqueLabelOptions}
-                            defaultValue={selectedFilterLabels}
-                            onValueChange={setSelectedFilterLabels}
-                            placeholder="Filter by labels..."
-                            className="w-full sm:w-[300px]"
+        <>
+            {chartData.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Test Case Distribution</CardTitle>
+                        <CardDescription>Breakdown of test cases based on the selected filters.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <TestCasePieChart 
+                            data={chartData}
+                            title="Test Case Overview"
+                            description={`${selectedFilterLabels.join(' & ')}`}
                         />
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent>
-                {filteredTestCases.length > 0 ? (
-                     <div className="overflow-x-auto rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Defect ID</TableHead>
-                                    <TableHead>Summary</TableHead>
-                                    <TableHead>Labels</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredTestCases.map((tc, index) => {
-                                    const allLabels = labelColumns
-                                        .map(col => tc[col])
-                                        .filter(Boolean)
-                                        .join(', ');
-                                    
-                                    const defectId = tc['Issue key'] || 'N/A';
+                    </CardContent>
+                </Card>
+            )}
+            <Card>
+                <CardHeader>
+                    <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
+                        <div>
+                            <CardTitle>Test Case Details</CardTitle>
+                            <CardDescription>
+                                Displaying {filteredTestCases.length} of {testCases.length} uploaded test cases.
+                            </CardDescription>
+                        </div>
+                        {allUniqueLabels.length > 0 && (
+                            <MultiSelect 
+                                options={uniqueLabelOptions}
+                                defaultValue={selectedFilterLabels}
+                                onValueChange={setSelectedFilterLabels}
+                                placeholder="Filter by labels..."
+                                className="w-full sm:w-[300px]"
+                            />
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {filteredTestCases.length > 0 ? (
+                        <div className="overflow-x-auto rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Defect ID</TableHead>
+                                        <TableHead>Summary</TableHead>
+                                        <TableHead>Labels</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredTestCases.map((tc, index) => {
+                                        const allLabels = labelColumns
+                                            .flatMap(col => tc[col]?.split(',').map(l => l.trim()) || [])
+                                            .filter(Boolean)
+                                            .join(', ');
+                                        
+                                        const defectId = tc['Issue key'] || 'N/A';
 
-                                    return (
-                                        <TableRow key={defectId !== 'N/A' ? defectId : index}>
-                                            <TableCell>
-                                              {defectId !== 'N/A' && jiraLink ? (
-                                                <a
-                                                  href={`${jiraLink}/browse/${defectId}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="text-primary hover:underline"
-                                                >
-                                                  {defectId}
-                                                </a>
-                                              ) : (
-                                                defectId
-                                              )}
-                                            </TableCell>
-                                            <TableCell>{tc.Summary || 'N/A'}</TableCell>
-                                            <TableCell className="max-w-md truncate">{allLabels || 'N/A'}</TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                     </div>
-                ) : (
-                    <Alert>
-                        <FileText className="h-4 w-4" />
-                        <AlertTitle>No Test Cases Match Filter</AlertTitle>
-                        <AlertDescription>
-                            No test cases were found with the selected labels.
-                        </AlertDescription>
-                    </Alert>
-                )}
-            </CardContent>
-            <CardFooter className='justify-center'>
-                <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabels([]); handleLoadFromServer(); }}>
-                    Clear &amp; Upload New
-                </Button>
-            </CardFooter>
-        </Card>
+                                        return (
+                                            <TableRow key={defectId !== 'N/A' ? defectId : index}>
+                                                <TableCell>
+                                                {defectId !== 'N/A' && jiraLink ? (
+                                                    <a
+                                                    href={`${jiraLink}/browse/${defectId}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline"
+                                                    >
+                                                    {defectId}
+                                                    </a>
+                                                ) : (
+                                                    defectId
+                                                )}
+                                                </TableCell>
+                                                <TableCell>{tc.Summary || 'N/A'}</TableCell>
+                                                <TableCell className="max-w-md truncate">{allLabels || 'N/A'}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : (
+                        <Alert>
+                            <FileText className="h-4 w-4" />
+                            <AlertTitle>No Test Cases Match Filter</AlertTitle>
+                            <AlertDescription>
+                                No test cases were found with the selected labels.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                </CardContent>
+                <CardFooter className='justify-center'>
+                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabels([]); handleLoadFromServer(); }}>
+                        Clear &amp; Upload New
+                    </Button>
+                </CardFooter>
+            </Card>
+        </>
       )}
     </div>
   );
