@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -218,49 +219,49 @@ export function TestCaseSummaryPage() {
   
     const counts: { [key: string]: number } = {};
   
-    let casesToProcess = testCases;
-  
-    // If a filter is selected, find all test cases that have that label.
-    if (selectedFilterLabel !== 'all') {
-      casesToProcess = testCases.filter(testCase => {
+    if (selectedFilterLabel === 'all') {
+      // Original logic: Count all labels across all test cases.
+      for (const testCase of testCases) {
+        let hasAnyLabel = false;
         for (const col of labelColumns) {
           const value = testCase[col];
-          if (value && value.split(',').map(l => l.trim()).includes(selectedFilterLabel)) {
-            return true;
-          }
-        }
-        return false;
-      });
-    }
-  
-    // Count all labels within the filtered (or unfiltered) test cases.
-    for (const testCase of casesToProcess) {
-      for (const col of labelColumns) {
-        const value = testCase[col];
-        if (value && value.trim() !== '') {
-          const labels = value.split(',').map(l => l.trim());
-          for (const label of labels) {
-            // If filtering, don't count the filter label itself.
-            if (label && (selectedFilterLabel === 'all' || label !== selectedFilterLabel)) {
-              counts[label] = (counts[label] || 0) + 1;
+          if (value && value.trim() !== '') {
+            hasAnyLabel = true;
+            const labels = value.split(',').map(l => l.trim());
+            for (const label of labels) {
+              if (label) {
+                counts[label] = (counts[label] || 0) + 1;
+              }
             }
           }
+        }
+        if (!hasAnyLabel) {
+            counts['Unassigned'] = (counts['Unassigned'] || 0) + 1;
         }
       }
-    }
-    
-    // If no filter is applied and a case has no labels, count it as 'Unassigned'.
-    if (selectedFilterLabel === 'all') {
-        let unassignedCount = 0;
+    } else {
+        // New logic: When a filter is selected, count cases with that label vs. cases without.
+        let selectedCount = 0;
+        let otherCount = 0;
+
         for (const testCase of testCases) {
-            const hasAnyLabel = labelColumns.some(col => testCase[col] && testCase[col].trim() !== '');
-            if (!hasAnyLabel) {
-                unassignedCount++;
+            let hasSelectedLabel = false;
+            for (const col of labelColumns) {
+                const value = testCase[col];
+                if (value && value.split(',').map(l => l.trim()).includes(selectedFilterLabel)) {
+                    hasSelectedLabel = true;
+                    break; 
+                }
+            }
+            if (hasSelectedLabel) {
+                selectedCount++;
+            } else {
+                otherCount++;
             }
         }
-        if (unassignedCount > 0) {
-            counts['Unassigned'] = unassignedCount;
-        }
+        
+        counts[selectedFilterLabel] = selectedCount;
+        counts['Other Test Cases'] = otherCount;
     }
   
     return Object.entries(counts).map(([name, count]) => ({
@@ -326,15 +327,15 @@ export function TestCaseSummaryPage() {
                     {chartData.length > 0 ? (
                          <TestCasePieChart
                             data={chartData}
-                            title={selectedFilterLabel === 'all' ? `Overall Label Distribution` : `Label Distribution for "${selectedFilterLabel}"`}
-                            description={selectedFilterLabel === 'all' ? `A breakdown of all test cases by label.` : `A breakdown of other labels on test cases that also have "${selectedFilterLabel}".`}
+                            title={selectedFilterLabel === 'all' ? `Overall Label Distribution` : `Test Cases with Label: "${selectedFilterLabel}"`}
+                            description={selectedFilterLabel === 'all' ? `A breakdown of all test cases by label.` : `A count of test cases that include the selected label.`}
                         />
                     ) : (
                         <Alert>
                             <FileText className="h-4 w-4" />
                             <AlertTitle>No Data to Display</AlertTitle>
                             <AlertDescription>
-                                No labels found for the current selection. This may happen if the selected label has no co-existing labels on any test case.
+                                No labels found for the current selection.
                             </AlertDescription>
                         </Alert>
                     )}
