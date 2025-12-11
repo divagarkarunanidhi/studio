@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  ChartConfig,
   ChartContainer,
   ChartTooltipContent,
 } from "@/components/ui/chart";
@@ -45,6 +46,17 @@ export function TestCasePieChart({
   description,
 }: TestCasePieChartProps) {
 
+  const chartConfig = React.useMemo(() => {
+    if (!data) return {};
+    return data.reduce((acc, item, index) => {
+      acc[item.name] = {
+        label: item.name,
+        color: COLORS[index % COLORS.length],
+      };
+      return acc;
+    }, {} as ChartConfig);
+  }, [data]);
+
   const totalCount = React.useMemo(() => {
     return data.reduce((acc, item) => acc + item.count, 0);
   }, [data]);
@@ -57,7 +69,7 @@ export function TestCasePieChart({
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer
-          config={{}}
+          config={chartConfig}
           className="mx-auto aspect-square max-h-[300px]"
         >
           <PieChart>
@@ -107,5 +119,3 @@ export function TestCasePieChart({
     </Card>
   );
 }
-
-    
