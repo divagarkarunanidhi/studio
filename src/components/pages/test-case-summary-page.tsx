@@ -92,6 +92,8 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
     return { headers: uniqueHeaders, data };
 };
 
+const DEFAULT_PILOT_LABELS = ['FordKOCPilot', 'ToshibaPilot', 'FradleyPilot'];
+
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
     if (data.length > 0) {
         const sampleHeaders = Object.keys(data[0]);
@@ -137,10 +139,15 @@ export function TestCaseSummaryPage() {
     return allUniqueLabels.map(label => ({ value: label, label: label }));
   }, [allUniqueLabels]);
 
-
   useEffect(() => {
-    setSelectedFilterLabels([]);
-  }, [testCases]);
+    if (testCases.length > 0 && allUniqueLabels.length > 0) {
+        const availableDefaultLabels = DEFAULT_PILOT_LABELS.filter(label => allUniqueLabels.includes(label));
+        setSelectedFilterLabels(availableDefaultLabels);
+    } else {
+        setSelectedFilterLabels([]);
+    }
+  }, [testCases, allUniqueLabels]);
+
 
   const handleLoadFromServer = useCallback(async () => {
     setIsLoading(true);
@@ -219,10 +226,10 @@ export function TestCaseSummaryPage() {
     if (testCases.length === 0 || labelColumns.length === 0) {
         return [];
     }
-
-    const counts: { [key: string]: number } = {};
-
+    
     if (selectedFilterLabels.length === 0) {
+        // Default behavior: show all labels if no filter is selected
+        const counts: { [key: string]: number } = {};
         for (const testCase of testCases) {
             let hasAnyLabel = false;
             for (const col of labelColumns) {
@@ -241,7 +248,12 @@ export function TestCaseSummaryPage() {
                 counts['Unassigned'] = (counts['Unassigned'] || 0) + 1;
             }
         }
+        return Object.entries(counts).map(([name, count]) => ({
+            name,
+            count,
+        })).filter(item => item.count > 0);
     } else {
+        // Filtered behavior: show count for each selected label and 'Other'
         const counts: { [key: string]: number } = {};
         
         selectedFilterLabels.forEach(selectedLabel => {
@@ -269,19 +281,18 @@ export function TestCaseSummaryPage() {
             });
         });
         
-        counts['Other Test Cases'] = testCases.length - testCasesWithSelectedLabels.size;
+        const otherCount = testCases.length - testCasesWithSelectedLabels.size;
+        if (otherCount > 0) {
+            counts['Other Test Cases'] = otherCount;
+        }
         
         return Object.entries(counts).map(([name, count]) => ({
             name,
             count,
         })).filter(item => item.count > 0);
     }
-
-    return Object.entries(counts).map(([name, count]) => ({
-        name,
-        count,
-    })).filter(item => item.count > 0);
   }, [testCases, labelColumns, selectedFilterLabels]);
+
 
   if (isLoading) {
     return (
