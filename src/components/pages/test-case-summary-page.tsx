@@ -118,6 +118,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
 
 const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
 const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
+const DEFAULT_OVERVIEW_LABELS = ['FradleyPilot', 'ToshibaPilot', 'FordKOCPilot'];
 
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
     if (data.length > 0) {
@@ -201,7 +202,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
 
   useEffect(() => {
     if (testCases.length > 0 && allUniqueLabels.length > 0) {
-        const availableDefaultLabels = ['FordKOCPilot', 'FradleyPilot', 'ToshibaPilot'].filter(label => allUniqueLabels.includes(label));
+        const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => allUniqueLabels.includes(label));
         setSelectedFilterLabels(availableDefaultLabels);
     } else {
         setSelectedFilterLabels([]);
@@ -438,10 +439,9 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
       handleRunAnalysis(distributionDataString, reusabilityPayloadString);
     }
   }, [
-      testCases.length,
       distributionDataString,
       reusabilityPayloadString,
-      handleRunAnalysis // This is now stable
+      handleRunAnalysis
   ]);
 
   if (isLoading) {
@@ -476,6 +476,32 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   return (
     <div className="space-y-6">
         <>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Test Case Overview</CardTitle>
+                    <CardDescription>Select labels to filter the test case distribution.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <MultiSelect
+                        options={uniqueLabelOptions}
+                        defaultValue={selectedFilterLabels}
+                        onValueChange={setSelectedFilterLabels}
+                        placeholder="Select labels to analyze..."
+                        className="w-full"
+                    />
+                </CardContent>
+                <CardFooter>
+                    <TestCasePieChart
+                        data={chartData}
+                        title="Test Case Distribution"
+                        description="Based on selected labels"
+                        allHeaders={headers}
+                        onExport={handleExport}
+                        jiraLink={jiraLink}
+                    />
+                </CardFooter>
+            </Card>
+
             <Card>
                 <CardHeader>
                     <CardTitle>Test Case Reusability</CardTitle>
@@ -618,33 +644,9 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                     )}
                 </CardContent>
             </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Test Case Overview</CardTitle>
-                    <CardDescription>Select labels to filter the test case distribution.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     <MultiSelect
-                        options={uniqueLabelOptions}
-                        defaultValue={selectedFilterLabels}
-                        onValueChange={setSelectedFilterLabels}
-                        placeholder="Select labels to analyze..."
-                        className="w-full"
-                    />
-                </CardContent>
-                <CardFooter>
-                    <TestCasePieChart
-                        data={chartData}
-                        title="Test Case Distribution"
-                        description="Based on selected labels"
-                        allHeaders={headers}
-                        onExport={handleExport}
-                        jiraLink={jiraLink}
-                    />
-                </CardFooter>
-            </Card>
         </>
     </div>
   );
 }
+
+    
