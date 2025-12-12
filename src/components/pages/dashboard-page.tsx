@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -246,6 +247,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const { toast } = useToast();
 
   const [showUploader, setShowUploader] = useState(false);
+  const [testCaseDataPresent, setTestCaseDataPresent] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -402,6 +404,10 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const handleClearData = () => {
     setActiveView('dashboard');
     setShowUploader(true);
+  };
+
+  const handleClearTestCaseData = () => {
+    setTestCaseDataPresent(false);
   };
   
   const handleLogout = async () => {
@@ -805,6 +811,28 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                     </AlertDialogContent>
                 </AlertDialog>
               )}
+               {userRole === 'admin' && activeView === 'test-case-summary' && testCaseDataPresent && (
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="outline">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload New Data
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Upload a new test case file?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will clear the current test case data and allow you to upload a new file.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleClearTestCaseData}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+              )}
           </div>
         </header>
 
@@ -856,7 +884,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             )}
 
             {activeView === 'test-case-summary' && (
-              <TestCaseSummaryPage />
+              <TestCaseSummaryPage onDataPresentChange={setTestCaseDataPresent} showUploaderInitially={!testCaseDataPresent} />
             )}
 
             {activeView === 'analysis' && (

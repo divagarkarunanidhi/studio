@@ -31,6 +31,12 @@ import { ScrollArea } from '../ui/scroll-area';
 
 type TestCaseData = { [key: string]: string };
 
+interface TestCaseSummaryPageProps {
+  onDataPresentChange: (isPresent: boolean) => void;
+  showUploaderInitially: boolean;
+}
+
+
 const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => {
     const rows: string[][] = [];
     let currentRow: string[] = [];
@@ -118,7 +124,7 @@ const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => vo
     }
 }
 
-export function TestCaseSummaryPage() {
+export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially }: TestCaseSummaryPageProps) {
   const { user } = useUser();
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -133,6 +139,10 @@ export function TestCaseSummaryPage() {
   const [reusedInLabel, setReusedInLabel] = useState<string>(DEFAULT_REUSED_IN_LABEL);
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
+
+  useEffect(() => {
+    onDataPresentChange(testCases.length > 0);
+  }, [testCases.length, onDataPresentChange]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -395,13 +405,6 @@ export function TestCaseSummaryPage() {
     return totalSavingHours / 8;
   }, [totalSavingHours]);
 
-  const handleClearAndUpload = () => {
-    setTestCases([]);
-    setHeaders([]);
-    // Any other state reset if needed
-  };
-
-
   if (isLoading) {
     return (
         <div className="flex flex-1 flex-col items-center justify-center p-4">
@@ -413,23 +416,26 @@ export function TestCaseSummaryPage() {
     );
   }
 
+  if (showUploaderInitially) {
+    return (
+        <div className="flex flex-1 flex-col items-center justify-center p-4">
+            <div className="flex w-full max-w-lg flex-col items-center justify-center gap-4 text-center">
+                <Card className="w-full">
+                    <CardHeader>
+                        <CardTitle>Upload Test Case Data</CardTitle>
+                        <CardDescription>To get started, please upload a CSV file containing your test case details.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FileUploader onDataUploaded={(csv, file) => handleDataUploaded(csv, file.name)} templatePath="/test-cases-template.csv" />
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
   return (
     <div className="space-y-6">
-      {testCases.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center p-4">
-          <div className="flex w-full max-w-lg flex-col items-center justify-center gap-4 text-center">
-            <Card className="w-full">
-                <CardHeader>
-                    <CardTitle>Upload Test Case Data</CardTitle>
-                    <CardDescription>To get started, please upload a CSV file containing your test case details.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <FileUploader onDataUploaded={(csv, file) => handleDataUploaded(csv, file.name)} templatePath="/test-cases-template.csv" />
-                </CardContent>
-            </Card>
-          </div>
-        </div>
-      ) : (
         <>
             <Card>
                 <CardHeader>
@@ -568,13 +574,7 @@ export function TestCaseSummaryPage() {
                     />
                 </CardFooter>
             </Card>
-             <div className="flex justify-center py-4">
-                <Button variant="outline" onClick={handleClearAndUpload}>
-                    Change File
-                </Button>
-            </div>
         </>
-      )}
     </div>
   );
 }
