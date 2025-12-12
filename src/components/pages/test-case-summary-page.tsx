@@ -401,13 +401,30 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     return totalSavingHours / 8;
   }, [totalSavingHours]);
 
-  const handleRunAnalysis = useCallback(async () => {
-    if (isAnalysisLoading) return;
+  const handleRunAnalysis = useCallback(async (
+    distributionData: string, 
+    reusabilityDataString: string
+) => {
     setIsAnalysisLoading(true);
     setAnalysis(null);
     setAnalysisError(null);
 
     try {
+        const result = await analyzeTestCases({
+            distributionData: distributionData,
+            reusabilityData: reusabilityDataString,
+        });
+        setAnalysis(result);
+    } catch (e: any) {
+        setAnalysisError(e.message || "An unknown error occurred while generating the analysis.");
+        console.error(e);
+    } finally {
+        setIsAnalysisLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (testCases.length > 0) {
         const distributionData = JSON.stringify(chartData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
         
         const reusabilityPayload = {
@@ -419,28 +436,22 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         };
         const reusabilityDataString = JSON.stringify(reusabilityPayload, null, 2);
 
-        const result = await analyzeTestCases({
-            distributionData: distributionData,
-            reusabilityData: reusabilityDataString,
-        });
-
-        setAnalysis(result);
-    } catch (e: any) {
-        setAnalysisError(e.message || "An unknown error occurred while generating the analysis.");
-        console.error(e);
-    } finally {
-        setIsAnalysisLoading(false);
-    }
-  }, [chartData, reusabilityData.count, reusedFromLabels, reusedInLabel, totalSavingHours, totalSavingDays, isAnalysisLoading]);
-
-  useEffect(() => {
-    if (testCases.length > 0) {
         const timer = setTimeout(() => {
-            handleRunAnalysis();
+            handleRunAnalysis(distributionData, reusabilityDataString);
         }, 500); // Debounce to avoid rapid calls
         return () => clearTimeout(timer);
     }
-  }, [testCases, chartData, reusabilityData, totalSavingHours, totalSavingDays, handleRunAnalysis]);
+  }, [
+      testCases.length,
+      // Stringify complex objects for stable dependency check
+      JSON.stringify(chartData), 
+      JSON.stringify(reusabilityData),
+      totalSavingHours, 
+      totalSavingDays,
+      handleRunAnalysis,
+      JSON.stringify(reusedFromLabels),
+      reusedInLabel
+  ]);
 
   if (isLoading) {
     return (
