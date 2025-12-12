@@ -117,7 +117,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
 };
 
 const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
-const DEFAULT_REUSED_IN_LABEL = 'FordKocPilot';
+const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
 
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
     if (data.length > 0) {
@@ -435,9 +435,12 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
 
   useEffect(() => {
     if (testCases.length > 0) {
-        handleRunAnalysis();
+        const timer = setTimeout(() => {
+            handleRunAnalysis();
+        }, 500); // Debounce to avoid rapid calls
+        return () => clearTimeout(timer);
     }
-  }, [testCases, chartData, reusabilityData, totalSavingHours, totalSavingDays]);
+  }, [testCases, chartData, reusabilityData, totalSavingHours, totalSavingDays, handleRunAnalysis]);
 
   if (isLoading) {
     return (
@@ -643,5 +646,3 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     </div>
   );
 }
-
-    
