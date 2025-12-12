@@ -134,7 +134,7 @@ export function TestCaseSummaryPage() {
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
 
   // State for reusability section
-  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
+  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(['FradleyPilot', 'ToshibaPilot']);
   const [reusedInLabel, setReusedInLabel] = useState<string>('');
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
@@ -279,40 +279,46 @@ export function TestCaseSummaryPage() {
     if (testCases.length === 0 || selectedFilterLabels.length === 0) {
       return [];
     }
-
-    const dataMap: Map<string, { count: number; testCases: TestCaseData[] }> = new Map();
-
+  
+    const dataMap: { name: string; count: number; testCases: TestCaseData[] }[] = [];
+  
+    // 1. "Matching All" count
     const allMatchingTcs = testCases.filter(tc => {
-        const tcLabels = getTCLabelsAsSet(tc);
-        return selectedFilterLabels.every(l => tcLabels.has(l));
+      const tcLabels = getTCLabelsAsSet(tc);
+      return selectedFilterLabels.every(l => tcLabels.has(l));
     });
-
+  
     if (allMatchingTcs.length > 0) {
-        dataMap.set(`Matching all (${selectedFilterLabels.join(' & ')})`, {
-            count: allMatchingTcs.length,
-            testCases: allMatchingTcs
-        });
+      dataMap.push({
+        name: `Matching all (${selectedFilterLabels.join(' & ')})`,
+        count: allMatchingTcs.length,
+        testCases: allMatchingTcs
+      });
     }
-    
+  
+    // 2. Total count for each selected label
     selectedFilterLabels.forEach(label => {
-        const tcsWithLabel = testCases.filter(tc => getTCLabelsAsSet(tc).has(label));
-        if (tcsWithLabel.length > 0) {
-            dataMap.set(`Total for '${label}'`, {
-                count: tcsWithLabel.length,
-                testCases: tcsWithLabel
-            });
-        }
-    });
-
-    if (testCases.length > 0) {
-        dataMap.set('Total Test Cases in File', {
-            count: testCases.length,
-            testCases: testCases
+      const tcsWithLabel = testCases.filter(tc => getTCLabelsAsSet(tc).has(label));
+      if (tcsWithLabel.length > 0) {
+        dataMap.push({
+          name: `Total for '${label}'`,
+          count: tcsWithLabel.length,
+          testCases: tcsWithLabel
         });
+      }
+    });
+  
+    // 3. Overall total
+    if (testCases.length > 0) {
+      dataMap.push({
+        name: 'Total Test Cases in File',
+        count: testCases.length,
+        testCases: testCases
+      });
     }
-
-    return Array.from(dataMap.entries()).map(([name, { count, testCases }]) => ({ name, count, testCases }));
-
+  
+    return dataMap;
+  
   }, [testCases, selectedFilterLabels, getTCLabelsAsSet]);
 
 
@@ -554,7 +560,6 @@ export function TestCaseSummaryPage() {
                         data={chartData}
                         title="Test Case Distribution"
                         description="Based on selected labels"
-                        jiraLink={jiraLink}
                         allHeaders={headers}
                         onExport={handleExport}
                     />
