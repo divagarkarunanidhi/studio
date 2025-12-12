@@ -44,6 +44,7 @@ interface TestCasePieChartProps {
   description: string;
   jiraLink?: string;
   allHeaders: string[];
+  onExport: (testCasesToExport: TestCaseData[], sliceName: string) => void;
 }
 
 const COLORS = [
@@ -66,6 +67,7 @@ export function TestCasePieChart({
   description,
   jiraLink,
   allHeaders,
+  onExport
 }: TestCasePieChartProps) {
 
   const chartConfig = React.useMemo(() => {
@@ -81,7 +83,6 @@ export function TestCasePieChart({
 
   const totalCount = React.useMemo(() => {
     if (!data) return 0;
-    // Find the 'Total Test Cases' slice to display its count, otherwise sum all slices.
     const totalSlice = data.find(d => d.name === 'Total Test Cases');
     return totalSlice ? totalSlice.count : data.reduce((acc, item) => acc + item.count, 0);
   }, [data]);
@@ -97,38 +98,6 @@ export function TestCasePieChart({
         </Alert>
     );
   }
-
-  const handleExport = (testCasesToExport: TestCaseData[], sliceName: string) => {
-    if (testCasesToExport.length === 0) return;
-
-    const worksheetData = testCasesToExport.map(tc => {
-        const row: { [key: string]: any } = {};
-        allHeaders.forEach(header => {
-            if (header === 'Issue key' && jiraLink) {
-                row[header] = {
-                    t: 's',
-                    v: tc[header],
-                    l: { Target: `${jiraLink}/browse/${tc[header]}`, Tooltip: `View ${tc[header]} in JIRA` }
-                };
-            } else {
-                row[header] = tc[header] || '';
-            }
-        });
-        return row;
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData, { header: allHeaders });
-
-    // Set column widths
-    const colWidths = allHeaders.map(header => ({ wch: Math.max(header.length, 20) }));
-    worksheet['!cols'] = colWidths;
-    
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Cases');
-
-    const fileName = `test_cases_${sliceName.replace(/ /g, '_')}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-  };
 
   return (
     <Card className="flex flex-col">
@@ -217,7 +186,7 @@ export function TestCasePieChart({
                     </div>
                 </ScrollArea>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => handleExport(item.testCases, item.name)} disabled={!item.testCases || item.testCases.length === 0}>
+                    <Button variant="outline" onClick={() => onExport(item.testCases, item.name)} disabled={!item.testCases || item.testCases.length === 0}>
                         <Download className="mr-2 h-4 w-4" />
                         Export to Excel
                     </Button>

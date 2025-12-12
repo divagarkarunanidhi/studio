@@ -6,14 +6,33 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { AppConfiguration } from '@/lib/types';
+import * as XLSX from 'xlsx';
 import { FileUploader } from '../dashboard/file-uploader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText, Loader2, Download } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Badge } from '../ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
 
 
 type TestCaseData = { [key: string]: string };
@@ -113,6 +132,10 @@ export function TestCaseSummaryPage() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
+
+  // State for reusability section
+  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
+  const [reusedInLabel, setReusedInLabel] = useState<string>('');
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -239,78 +262,117 @@ export function TestCaseSummaryPage() {
     }
   }, [toast, user]);
 
-  const filteredTestCases = useMemo(() => {
-    if (selectedFilterLabels.length === 0) {
-        return testCases;
-    }
-
-    return testCases.filter(tc => {
-        const tcLabels = new Set<string>();
-        labelColumns.forEach(col => {
-            if (tc[col]) {
-                tc[col].split(',').forEach(l => tcLabels.add(l.trim()));
-            }
-        });
-        return selectedFilterLabels.every(filterLabel => tcLabels.has(filterLabel));
-    });
-  }, [testCases, selectedFilterLabels, labelColumns]);
-  
-  const chartData = useMemo(() => {
-    if (testCases.length === 0) return [];
-  
-    const getTCLabels = (tc: TestCaseData): Set<string> => {
-        const labels = new Set<string>();
-        labelColumns.forEach(col => {
-            if (tc[col]) {
-                tc[col].split(',').forEach(l => labels.add(l.trim()));
-            }
-        });
-        return labels;
-    };
-  
-    const data: { name: string; count: number; testCases: TestCaseData[] }[] = [];
-  
-    // 1. "Matching All"
-    if (selectedFilterLabels.length > 0) {
-        const matchingAllTcs = testCases.filter(tc => {
-            const tcLabels = getTCLabels(tc);
-            return selectedFilterLabels.every(l => tcLabels.has(l));
-        });
-        if (matchingAllTcs.length > 0) {
-            data.push({
-                name: `Matching all: ${selectedFilterLabels.join(' & ')}`,
-                count: matchingAllTcs.length,
-                testCases: matchingAllTcs
-            });
+  const getTCLabelsAsSet = useCallback((tc: TestCaseData): Set<string> => {
+    const labels = new Set<string>();
+    labelColumns.forEach(col => {
+        if (tc[col]) {
+            tc[col].split(',').forEach(l => labels.add(l.trim()));
         }
+    });
+    return labels;
+  }, [labelColumns]);
+
+
+  const chartData = useMemo(() => {
+    if (testCases.length === 0 || selectedFilterLabels.length === 0) return [];
+  
+    const dataMap: Map<string, { count: number; testCases: TestCaseData[] }> = new Map();
+  
+    const matchingAllTcs = testCases.filter(tc => {
+        const tcLabels = getTCLabelsAsSet(tc);
+        return selectedFilterLabels.every(l => tcLabels.has(l));
+    });
+
+    if (matchingAllTcs.length > 0) {
+        dataMap.set(`Matching all (${selectedFilterLabels.join(' & ')})`, {
+            count: matchingAllTcs.length,
+            testCases: matchingAllTcs
+        });
     }
   
-    // 2. Total count for each selected label
     selectedFilterLabels.forEach(label => {
-        const tcsWithLabel = testCases.filter(tc => getTCLabels(tc).has(label));
+        const tcsWithLabel = testCases.filter(tc => getTCLabelsAsSet(tc).has(label));
         if (tcsWithLabel.length > 0) {
-            data.push({
-                name: `Total for '${label}'`,
+            dataMap.set(`Total for '${label}'`, {
                 count: tcsWithLabel.length,
                 testCases: tcsWithLabel
             });
         }
     });
     
-    // 3. Total test cases
     if (testCases.length > 0) {
-        data.push({
-            name: 'Total Test Cases',
+        dataMap.set('Total Test Cases', {
             count: testCases.length,
             testCases: testCases
         });
     }
   
-    // Remove duplicates by name
-    const uniqueData = Array.from(new Map(data.map(item => [item.name, item])).values());
-    return uniqueData;
+    return Array.from(dataMap.entries()).map(([name, { count, testCases }]) => ({ name, count, testCases }));
 
-  }, [testCases, selectedFilterLabels, labelColumns]);
+  }, [testCases, selectedFilterLabels, getTCLabelsAsSet]);
+
+
+  const filteredTestCases = useMemo(() => {
+    if (selectedFilterLabels.length === 0) {
+        return testCases;
+    }
+
+    return testCases.filter(tc => {
+        const tcLabels = getTCLabelsAsSet(tc);
+        return selectedFilterLabels.every(filterLabel => tcLabels.has(filterLabel));
+    });
+  }, [testCases, selectedFilterLabels, getTCLabelsAsSet]);
+
+
+  const reusabilityData = useMemo(() => {
+    if (!reusedInLabel || reusedFromLabels.length === 0) {
+      return { count: 0, testCases: [] };
+    }
+
+    const matchingTestCases = testCases.filter(tc => {
+      const tcLabels = getTCLabelsAsSet(tc);
+      const hasReusedInLabel = tcLabels.has(reusedInLabel);
+      const hasReusedFromLabel = reusedFromLabels.some(fromLabel => tcLabels.has(fromLabel));
+      
+      return hasReusedInLabel && hasReusedFromLabel;
+    });
+
+    return {
+      count: matchingTestCases.length,
+      testCases: matchingTestCases,
+    };
+  }, [testCases, reusedFromLabels, reusedInLabel, getTCLabelsAsSet]);
+
+  const handleExport = (testCasesToExport: TestCaseData[], sliceName: string) => {
+    if (!testCasesToExport || testCasesToExport.length === 0) return;
+
+    const worksheetData = testCasesToExport.map(tc => {
+        const row: { [key: string]: any } = {};
+        headers.forEach(header => {
+            if (header === 'Issue key' && jiraLink) {
+                row[header] = {
+                    t: 's',
+                    v: tc[header],
+                    l: { Target: `${jiraLink}/browse/${tc[header]}`, Tooltip: `View ${tc[header]} in JIRA` }
+                };
+            } else {
+                row[header] = tc[header] || '';
+            }
+        });
+        return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData, { header: headers });
+
+    const colWidths = headers.map(header => ({ wch: Math.max(header.length, 20) }));
+    worksheet['!cols'] = colWidths;
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Cases');
+
+    const fileName = `test_cases_${sliceName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
 
 
   if (isLoading) {
@@ -348,7 +410,90 @@ export function TestCaseSummaryPage() {
                 description="Distribution of test cases based on selected labels."
                 jiraLink={jiraLink}
                 allHeaders={headers}
+                onExport={handleExport}
             />
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Test Case Reusability</CardTitle>
+                    <CardDescription>Analyze how test cases are reused across different labels.</CardDescription>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                    <div className='flex flex-col sm:flex-row gap-4'>
+                        <div className="w-full sm:w-1/2">
+                            <label className="text-sm font-medium mb-1 block">Reused from</label>
+                            <MultiSelect 
+                                options={uniqueLabelOptions}
+                                defaultValue={reusedFromLabels}
+                                onValueChange={setReusedFromLabels}
+                                placeholder="Select source labels..."
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="w-full sm:w-1/2">
+                            <label className="text-sm font-medium mb-1 block">Reused in</label>
+                             <Select value={reusedInLabel} onValueChange={setReusedInLabel}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select target label..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {allUniqueLabels.map(label => (
+                                        <SelectItem key={label} value={label}>{label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className='text-center pt-4'>
+                        <h3 className="text-lg font-medium text-muted-foreground">Reusability Count</h3>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <button className="text-4xl font-bold text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50" disabled={reusabilityData.count === 0}>
+                                    {reusabilityData.count}
+                                </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle>Reusable Test Cases ({reusabilityData.count})</DialogTitle>
+                                    <DialogDescription>
+                                        Test cases in '{reusedInLabel}' that are also in '{reusedFromLabels.join(', ')}'.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <ScrollArea className="h-72 w-full rounded-md border">
+                                    <div className="p-4 flex flex-wrap gap-2">
+                                        {reusabilityData.testCases.map((tc, idx) => {
+                                            const id = tc['Issue key'] || `item-${idx}`;
+                                            return (
+                                                <Badge key={id} variant="secondary">
+                                                    {jiraLink && id !== 'N/A' ? (
+                                                        <a
+                                                            href={`${jiraLink}/browse/${id}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="hover:underline"
+                                                        >
+                                                            {id}
+                                                        </a>
+                                                    ) : (
+                                                        id
+                                                    )}
+                                                </Badge>
+                                            );
+                                        })}
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => handleExport(reusabilityData.testCases, 'reusable_test_cases')} disabled={reusabilityData.testCases.length === 0}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Export to Excel
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                </CardContent>
+            </Card>
+
             <Card>
                 <CardHeader>
                     <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
