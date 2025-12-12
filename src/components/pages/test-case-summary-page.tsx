@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Input } from '@/components/ui/input';
 import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
 import {
     Dialog,
@@ -136,6 +136,8 @@ export function TestCaseSummaryPage() {
   // State for reusability section
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
   const [reusedInLabel, setReusedInLabel] = useState<string>('');
+  const [effortNew, setEffortNew] = useState<number>(0);
+  const [effortReused, setEffortReused] = useState<number>(0);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -274,22 +276,24 @@ export function TestCaseSummaryPage() {
 
 
   const chartData = useMemo(() => {
-    if (testCases.length === 0 || selectedFilterLabels.length === 0) return [];
-  
+    if (testCases.length === 0 || selectedFilterLabels.length === 0) {
+      return [];
+    }
+
     const dataMap: Map<string, { count: number; testCases: TestCaseData[] }> = new Map();
-  
-    const matchingAllTcs = testCases.filter(tc => {
+
+    const allMatchingTcs = testCases.filter(tc => {
         const tcLabels = getTCLabelsAsSet(tc);
         return selectedFilterLabels.every(l => tcLabels.has(l));
     });
 
-    if (matchingAllTcs.length > 0) {
+    if (allMatchingTcs.length > 0) {
         dataMap.set(`Matching all (${selectedFilterLabels.join(' & ')})`, {
-            count: matchingAllTcs.length,
-            testCases: matchingAllTcs
+            count: allMatchingTcs.length,
+            testCases: allMatchingTcs
         });
     }
-  
+    
     selectedFilterLabels.forEach(label => {
         const tcsWithLabel = testCases.filter(tc => getTCLabelsAsSet(tc).has(label));
         if (tcsWithLabel.length > 0) {
@@ -299,14 +303,14 @@ export function TestCaseSummaryPage() {
             });
         }
     });
-    
+
     if (testCases.length > 0) {
-        dataMap.set('Total Test Cases', {
+        dataMap.set('Total Test Cases in File', {
             count: testCases.length,
             testCases: testCases
         });
     }
-  
+
     return Array.from(dataMap.entries()).map(([name, { count, testCases }]) => ({ name, count, testCases }));
 
   }, [testCases, selectedFilterLabels, getTCLabelsAsSet]);
@@ -373,6 +377,18 @@ export function TestCaseSummaryPage() {
     const fileName = `test_cases_${sliceName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   };
+  
+  const savedEffort = useMemo(() => {
+    return (effortNew > 0 && effortReused >= 0 && effortNew > effortReused) ? (effortNew - effortReused) : 0;
+  }, [effortNew, effortReused]);
+
+  const totalSavingHours = useMemo(() => {
+    return reusabilityData.count * savedEffort;
+  }, [reusabilityData.count, savedEffort]);
+
+  const totalSavingDays = useMemo(() => {
+    return totalSavingHours / 8;
+  }, [totalSavingHours]);
 
 
   if (isLoading) {
@@ -407,12 +423,12 @@ export function TestCaseSummaryPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Test Case Reusability</CardTitle>
-                    <CardDescription>Analyze how test cases are reused across different labels.</CardDescription>
+                    <CardDescription>Analyze how test cases are reused across different labels and calculate effort savings.</CardDescription>
                 </CardHeader>
-                <CardContent className='space-y-4'>
+                <CardContent className='space-y-6'>
                     <div className='flex flex-col sm:flex-row gap-4'>
-                        <div className="w-full sm:w-1/2">
-                            <label className="text-sm font-medium mb-1 block">Reused from</label>
+                        <div className="w-full sm:w-1/2 space-y-2">
+                            <label className="text-sm font-medium">Reused from</label>
                             <MultiSelect 
                                 options={uniqueLabelOptions}
                                 defaultValue={reusedFromLabels}
@@ -421,8 +437,8 @@ export function TestCaseSummaryPage() {
                                 className="w-full"
                             />
                         </div>
-                        <div className="w-full sm:w-1/2">
-                            <label className="text-sm font-medium mb-1 block">Reused in</label>
+                        <div className="w-full sm:w-1/2 space-y-2">
+                            <label className="text-sm font-medium">Reused in</label>
                              <Select value={reusedInLabel} onValueChange={setReusedInLabel}>
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Select target label..." />
@@ -435,52 +451,86 @@ export function TestCaseSummaryPage() {
                             </Select>
                         </div>
                     </div>
-                    <div className='text-center pt-4'>
-                        <h3 className="text-lg font-medium text-muted-foreground">Reusability Count</h3>
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <button className="text-4xl font-bold text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50" disabled={reusabilityData.count === 0}>
-                                    {reusabilityData.count}
-                                </button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle>Reusable Test Cases ({reusabilityData.count})</DialogTitle>
-                                    <DialogDescription>
-                                        Test cases in '{reusedInLabel}' that are also in '{reusedFromLabels.join(', ')}'.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <ScrollArea className="h-72 w-full rounded-md border">
-                                    <div className="p-4 flex flex-wrap gap-2">
-                                        {reusabilityData.testCases.map((tc, idx) => {
-                                            const id = tc['Issue key'] || `item-${idx}`;
-                                            return (
-                                                <Badge key={id} variant="secondary">
-                                                    {jiraLink && id !== 'N/A' ? (
-                                                        <a
-                                                            href={`${jiraLink}/browse/${id}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="hover:underline"
-                                                        >
-                                                            {id}
-                                                        </a>
-                                                    ) : (
-                                                        id
-                                                    )}
-                                                </Badge>
-                                            );
-                                        })}
-                                    </div>
-                                </ScrollArea>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => handleExport(reusabilityData.testCases, 'reusable_test_cases')} disabled={reusabilityData.testCases.length === 0}>
-                                        <Download className="mr-2 h-4 w-4" />
-                                        Export to Excel
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+
+                    <div className='flex flex-col sm:flex-row gap-4'>
+                        <div className="w-full sm:w-1/2 space-y-2">
+                            <label className="text-sm font-medium">Actual effort for new test case (hrs)</label>
+                            <Input
+                                type="number"
+                                value={effortNew}
+                                onChange={(e) => setEffortNew(parseFloat(e.target.value) || 0)}
+                                placeholder="e.g., 4"
+                            />
+                        </div>
+                        <div className="w-full sm:w-1/2 space-y-2">
+                            <label className="text-sm font-medium">Actual effort for reused test case (hrs)</label>
+                            <Input
+                                type="number"
+                                value={effortReused}
+                                onChange={(e) => setEffortReused(parseFloat(e.target.value) || 0)}
+                                placeholder="e.g., 1"
+                            />
+                        </div>
+                    </div>
+
+                    <div className='text-center pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center'>
+                        <div>
+                            <h3 className="text-lg font-medium text-muted-foreground">Reusability Count</h3>
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <button className="text-4xl font-bold text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50" disabled={reusabilityData.count === 0}>
+                                        {reusabilityData.count}
+                                    </button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle>Reusable Test Cases ({reusabilityData.count})</DialogTitle>
+                                        <DialogDescription>
+                                            Test cases in '{reusedInLabel}' that are also in '{reusedFromLabels.join(', ')}'.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <ScrollArea className="h-72 w-full rounded-md border">
+                                        <div className="p-4 flex flex-wrap gap-2">
+                                            {reusabilityData.testCases.map((tc, idx) => {
+                                                const id = tc['Issue key'] || `item-${idx}`;
+                                                return (
+                                                    <Badge key={id} variant="secondary">
+                                                        {jiraLink && id !== 'N/A' ? (
+                                                            <a
+                                                                href={`${jiraLink}/browse/${id}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="hover:underline"
+                                                            >
+                                                                {id}
+                                                            </a>
+                                                        ) : (
+                                                            id
+                                                        )}
+                                                    </Badge>
+                                                );
+                                            })}
+                                        </div>
+                                    </ScrollArea>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => handleExport(reusabilityData.testCases, 'reusable_test_cases')} disabled={reusabilityData.testCases.length === 0}>
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Export to Excel
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+
+                        <div>
+                            <h3 className="text-lg font-medium text-muted-foreground">Saving (Hours)</h3>
+                            <p className="text-4xl font-bold text-primary">{totalSavingHours.toFixed(2)}</p>
+                        </div>
+                        
+                        <div>
+                            <h3 className="text-lg font-medium text-muted-foreground">Saving (Days)</h3>
+                            <p className="text-4xl font-bold text-primary">{totalSavingDays.toFixed(2)}</p>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -493,87 +543,6 @@ export function TestCaseSummaryPage() {
                 allHeaders={headers}
                 onExport={handleExport}
             />
-
-            <Card>
-                <CardHeader>
-                    <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
-                        <div>
-                            <CardTitle>Test Case Details</CardTitle>
-                            <CardDescription>
-                                Displaying {filteredTestCases.length} of {testCases.length} uploaded test cases.
-                            </CardDescription>
-                        </div>
-                        {allUniqueLabels.length > 0 && (
-                            <MultiSelect 
-                                options={uniqueLabelOptions}
-                                defaultValue={selectedFilterLabels}
-                                onValueChange={setSelectedFilterLabels}
-                                placeholder="Filter by labels..."
-                                className="w-full sm:w-[300px]"
-                            />
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {filteredTestCases.length > 0 ? (
-                        <div className="overflow-x-auto rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Issue key</TableHead>
-                                        <TableHead>Summary</TableHead>
-                                        <TableHead>Labels</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredTestCases.map((tc, index) => {
-                                        const allLabels = labelColumns
-                                            .flatMap(col => tc[col]?.split(',').map(l => l.trim()) || [])
-                                            .filter(Boolean)
-                                            .join(', ');
-                                        
-                                        const defectId = tc['Issue key'] || 'N/A';
-
-                                        return (
-                                            <TableRow key={defectId !== 'N/A' ? defectId : index}>
-                                                <TableCell>
-                                                {defectId !== 'N/A' && jiraLink ? (
-                                                    <a
-                                                    href={`${jiraLink}/browse/${defectId}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-primary hover:underline"
-                                                    >
-                                                    {defectId}
-                                                    </a>
-                                                ) : (
-                                                    defectId
-                                                )}
-                                                </TableCell>
-                                                <TableCell>{tc.Summary || 'N/A'}</TableCell>
-                                                <TableCell className="max-w-md truncate">{allLabels || 'N/A'}</TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    ) : (
-                        <Alert>
-                            <FileText className="h-4 w-4" />
-                            <AlertTitle>No Test Cases Match Filter</AlertTitle>
-                            <AlertDescription>
-                                No test cases were found that contain all of the selected labels.
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                </CardContent>
-                <CardFooter className='justify-center'>
-                    <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); setSelectedFilterLabels([]); handleLoadFromServer(); }}>
-                        Clear &amp; Upload New
-                    </Button>
-                </CardFooter>
-            </Card>
         </>
       )}
     </div>
