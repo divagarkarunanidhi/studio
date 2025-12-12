@@ -126,6 +126,9 @@ export function TestCasePieChart({
               innerRadius={60}
               strokeWidth={5}
               isAnimationActive={true}
+              animationBegin={0}
+              animationDuration={800}
+              animationEasing="ease-in-out"
             >
               {chartSlices.map((entry, index) => (
                 <Cell
