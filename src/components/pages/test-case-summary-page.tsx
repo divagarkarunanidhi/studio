@@ -268,10 +268,8 @@ export function TestCaseSummaryPage() {
         return labels;
     };
   
-    const data: { name: string; count: number; testCaseIds: string[] }[] = [];
+    const data: { name: string; count: number; testCases: TestCaseData[] }[] = [];
   
-    const getTestCaseId = (tc: TestCaseData) => tc['Issue key'] || 'N/A';
-
     // 1. "Matching All"
     if (selectedFilterLabels.length > 0) {
         const matchingAllTcs = testCases.filter(tc => {
@@ -282,7 +280,7 @@ export function TestCaseSummaryPage() {
             data.push({
                 name: `Matching all: ${selectedFilterLabels.join(' & ')}`,
                 count: matchingAllTcs.length,
-                testCaseIds: matchingAllTcs.map(getTestCaseId)
+                testCases: matchingAllTcs
             });
         }
     }
@@ -294,7 +292,7 @@ export function TestCaseSummaryPage() {
             data.push({
                 name: `Total for '${label}'`,
                 count: tcsWithLabel.length,
-                testCaseIds: tcsWithLabel.map(getTestCaseId)
+                testCases: tcsWithLabel
             });
         }
     });
@@ -304,7 +302,7 @@ export function TestCaseSummaryPage() {
         data.push({
             name: 'Total Test Cases',
             count: testCases.length,
-            testCaseIds: testCases.map(getTestCaseId)
+            testCases: testCases
         });
     }
   
@@ -349,6 +347,7 @@ export function TestCaseSummaryPage() {
                 title="Test Case Overview"
                 description="Distribution of test cases based on selected labels."
                 jiraLink={jiraLink}
+                allHeaders={headers}
             />
             <Card>
                 <CardHeader>
@@ -376,7 +375,7 @@ export function TestCaseSummaryPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Defect ID</TableHead>
+                                        <TableHead>Issue key</TableHead>
                                         <TableHead>Summary</TableHead>
                                         <TableHead>Labels</TableHead>
                                     </TableRow>

@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import * as XLSX from 'xlsx';
 import { Pie, PieChart, Cell, Tooltip } from "recharts";
 import {
   Card,
@@ -16,28 +17,33 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { PieChart as PieChartIcon } from "lucide-react";
+import { PieChart as PieChartIcon, Download } from "lucide-react";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-    DialogDescription
+    DialogDescription,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+
+type TestCaseData = { [key: string]: string };
 
 interface ChartPoint {
   name: string;
   count: number;
-  testCaseIds?: string[];
+  testCases: TestCaseData[];
 }
 interface TestCasePieChartProps {
   data: ChartPoint[];
   title: string;
   description: string;
   jiraLink?: string;
+  allHeaders: string[];
 }
 
 const COLORS = [
@@ -59,6 +65,7 @@ export function TestCasePieChart({
   title,
   description,
   jiraLink,
+  allHeaders,
 }: TestCasePieChartProps) {
 
   const chartConfig = React.useMemo(() => {
@@ -74,7 +81,9 @@ export function TestCasePieChart({
 
   const totalCount = React.useMemo(() => {
     if (!data) return 0;
-    return data.reduce((acc, item) => acc + item.count, 0);
+    // Find the 'Total Test Cases' slice to display its count, otherwise sum all slices.
+    const totalSlice = data.find(d => d.name === 'Total Test Cases');
+    return totalSlice ? totalSlice.count : data.reduce((acc, item) => acc + item.count, 0);
   }, [data]);
   
   if (!data || data.length === 0) {
@@ -83,11 +92,43 @@ export function TestCasePieChart({
             <PieChartIcon className="h-4 w-4" />
             <AlertTitle>No Chart Data</AlertTitle>
             <AlertDescription>
-                There is no data to display in the chart. Please select one or more labels to see a distribution.
+                There is no data to display in the chart. Please upload data or adjust filters to see a distribution.
             </AlertDescription>
         </Alert>
     );
   }
+
+  const handleExport = (testCasesToExport: TestCaseData[], sliceName: string) => {
+    if (testCasesToExport.length === 0) return;
+
+    const worksheetData = testCasesToExport.map(tc => {
+        const row: { [key: string]: any } = {};
+        allHeaders.forEach(header => {
+            if (header === 'Issue key' && jiraLink) {
+                row[header] = {
+                    t: 's',
+                    v: tc[header],
+                    l: { Target: `${jiraLink}/browse/${tc[header]}`, Tooltip: `View ${tc[header]} in JIRA` }
+                };
+            } else {
+                row[header] = tc[header] || '';
+            }
+        });
+        return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData, { header: allHeaders });
+
+    // Set column widths
+    const colWidths = allHeaders.map(header => ({ wch: Math.max(header.length, 20) }));
+    worksheet['!cols'] = colWidths;
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Test Cases');
+
+    const fileName = `test_cases_${sliceName.replace(/ /g, '_')}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
 
   return (
     <Card className="flex flex-col">
@@ -125,7 +166,7 @@ export function TestCasePieChart({
       </CardContent>
       <CardContent className="mt-2 flex-col gap-2 text-sm">
         <div className="flex items-center justify-center font-semibold">
-          Total: {totalCount}
+          Total Test Cases in File: {totalCount}
         </div>
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {data.map((item, index) => (
@@ -145,7 +186,7 @@ export function TestCasePieChart({
                   </span>
                 </div>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Test Cases for: {item.name}</DialogTitle>
                   <DialogDescription>
@@ -154,24 +195,33 @@ export function TestCasePieChart({
                 </DialogHeader>
                 <ScrollArea className="h-72 w-full rounded-md border">
                     <div className="p-4 flex flex-wrap gap-2">
-                        {item.testCaseIds && item.testCaseIds.map((id, idx) => (
-                            <Badge key={`${id}-${idx}`} variant="secondary">
-                                {jiraLink && id !== 'N/A' ? (
-                                    <a
-                                        href={`${jiraLink}/browse/${id}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="hover:underline"
-                                    >
-                                        {id}
-                                    </a>
-                                ) : (
-                                    id
-                                )}
-                            </Badge>
-                        ))}
+                        {item.testCases && item.testCases.map((tc, idx) => {
+                            const id = tc['Issue key'] || `item-${idx}`;
+                            return (
+                                <Badge key={id} variant="secondary">
+                                    {jiraLink && id !== 'N/A' ? (
+                                        <a
+                                            href={`${jiraLink}/browse/${id}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="hover:underline"
+                                        >
+                                            {id}
+                                        </a>
+                                    ) : (
+                                        id
+                                    )}
+                                </Badge>
+                            );
+                        })}
                     </div>
                 </ScrollArea>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => handleExport(item.testCases, item.name)} disabled={!item.testCases || item.testCases.length === 0}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export to Excel
+                    </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           ))}
