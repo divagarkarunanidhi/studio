@@ -116,7 +116,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
     return { headers: uniqueHeaders, data };
 };
 
-const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
+const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot', 'FordKOCPilot'];
 const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
 
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
@@ -436,14 +436,10 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         };
         const reusabilityDataString = JSON.stringify(reusabilityPayload, null, 2);
 
-        const timer = setTimeout(() => {
-            handleRunAnalysis(distributionData, reusabilityDataString);
-        }, 500); // Debounce to avoid rapid calls
-        return () => clearTimeout(timer);
+        handleRunAnalysis(distributionData, reusabilityDataString);
     }
   }, [
       testCases.length,
-      // Stringify complex objects for stable dependency check
       JSON.stringify(chartData), 
       JSON.stringify(reusabilityData),
       totalSavingHours, 
