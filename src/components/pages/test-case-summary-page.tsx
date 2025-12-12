@@ -201,7 +201,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
 
   useEffect(() => {
     if (testCases.length > 0 && allUniqueLabels.length > 0) {
-        const availableDefaultLabels = ['FordKocPilot', 'FradleyPilot', 'ToshibaPilot'].filter(label => allUniqueLabels.includes(label));
+        const availableDefaultLabels = ['FordKOCPilot', 'FradleyPilot', 'ToshibaPilot'].filter(label => allUniqueLabels.includes(label));
         setSelectedFilterLabels(availableDefaultLabels);
     } else {
         setSelectedFilterLabels([]);
@@ -423,30 +423,24 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     }
   }, []);
 
+  const distributionDataString = JSON.stringify(chartData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
+  const reusabilityPayloadString = JSON.stringify({
+      reused_from_labels: reusedFromLabels,
+      reused_in_label: reusedInLabel,
+      reusability_count: reusabilityData.count,
+      effort_saving_hours: totalSavingHours,
+      effort_saving_days: totalSavingDays.toFixed(2)
+  }, null, 2);
+
   useEffect(() => {
     if (testCases.length > 0) {
-        const distributionData = JSON.stringify(chartData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
-        
-        const reusabilityPayload = {
-            reused_from_labels: reusedFromLabels,
-            reused_in_label: reusedInLabel,
-            reusability_count: reusabilityData.count,
-            effort_saving_hours: totalSavingHours,
-            effort_saving_days: totalSavingDays.toFixed(2)
-        };
-        const reusabilityDataString = JSON.stringify(reusabilityPayload, null, 2);
-
-        handleRunAnalysis(distributionData, reusabilityDataString);
+      handleRunAnalysis(distributionDataString, reusabilityPayloadString);
     }
   }, [
       testCases.length,
-      JSON.stringify(chartData), 
-      JSON.stringify(reusabilityData),
-      totalSavingHours, 
-      totalSavingDays,
-      handleRunAnalysis,
-      JSON.stringify(reusedFromLabels),
-      reusedInLabel
+      distributionDataString,
+      reusabilityPayloadString,
+      handleRunAnalysis
   ]);
 
   if (isLoading) {
