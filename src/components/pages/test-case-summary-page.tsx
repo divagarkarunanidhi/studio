@@ -277,48 +277,47 @@ export function TestCaseSummaryPage() {
 
   const chartData = useMemo(() => {
     if (testCases.length === 0 || selectedFilterLabels.length === 0) {
-      return [];
+        return [];
     }
-  
-    const dataMap: { name: string; count: number; testCases: TestCaseData[] }[] = [];
-  
+
+    const dataMap: { name: string; count: number, testCases: TestCaseData[] }[] = [];
+
     // 1. "Matching All" count
     const allMatchingTcs = testCases.filter(tc => {
-      const tcLabels = getTCLabelsAsSet(tc);
-      return selectedFilterLabels.every(l => tcLabels.has(l));
+        const tcLabels = getTCLabelsAsSet(tc);
+        return selectedFilterLabels.every(l => tcLabels.has(l));
     });
-  
+
     if (allMatchingTcs.length > 0) {
-      dataMap.push({
-        name: `Matching all (${selectedFilterLabels.join(' & ')})`,
-        count: allMatchingTcs.length,
-        testCases: allMatchingTcs
-      });
-    }
-  
-    // 2. Total count for each selected label
-    selectedFilterLabels.forEach(label => {
-      const tcsWithLabel = testCases.filter(tc => getTCLabelsAsSet(tc).has(label));
-      if (tcsWithLabel.length > 0) {
         dataMap.push({
-          name: `Total for '${label}'`,
-          count: tcsWithLabel.length,
-          testCases: tcsWithLabel
+            name: `Matching all (${selectedFilterLabels.join(' & ')})`,
+            count: allMatchingTcs.length,
+            testCases: allMatchingTcs
         });
-      }
+    }
+
+    // 2. Total count for each selected label (not unique to that label, just total)
+    selectedFilterLabels.forEach(label => {
+        const tcsWithLabel = testCases.filter(tc => getTCLabelsAsSet(tc).has(label));
+        if (tcsWithLabel.length > 0) {
+            dataMap.push({
+                name: `Total for '${label}'`,
+                count: tcsWithLabel.length,
+                testCases: tcsWithLabel
+            });
+        }
     });
-  
+
     // 3. Overall total
     if (testCases.length > 0) {
-      dataMap.push({
-        name: 'Total Test Cases in File',
-        count: testCases.length,
-        testCases: testCases
-      });
+        dataMap.push({
+            name: 'Total Test Cases in File',
+            count: testCases.length,
+            testCases: testCases
+        });
     }
-  
+
     return dataMap;
-  
   }, [testCases, selectedFilterLabels, getTCLabelsAsSet]);
 
 
@@ -395,6 +394,12 @@ export function TestCaseSummaryPage() {
   const totalSavingDays = useMemo(() => {
     return totalSavingHours / 8;
   }, [totalSavingHours]);
+
+  const handleClearAndUpload = () => {
+    setTestCases([]);
+    setHeaders([]);
+    // Any other state reset if needed
+  };
 
 
   if (isLoading) {
@@ -563,8 +568,11 @@ export function TestCaseSummaryPage() {
                     />
                 </CardFooter>
             </Card>
-
-            
+             <div className="flex justify-center py-4">
+                <Button variant="outline" onClick={handleClearAndUpload}>
+                    Change File
+                </Button>
+            </div>
         </>
       )}
     </div>
