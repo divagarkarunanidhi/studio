@@ -119,7 +119,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
 };
 
 const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
-const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
+const DEFAULT_REUSED_IN_LABEL = 'FordKocPilot';
 const DEFAULT_OVERVIEW_LABELS = ['FradleyPilot', 'ToshibaPilot', 'FordKOCPilot'];
 
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
@@ -208,7 +208,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => allUniqueLabels.includes(label));
         setSelectedFilterLabels(availableDefaultLabels);
 
-        const availableReusedFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => allUniqueLabels.includes(label));
+        const availableReusedFrom = DEFAULT_REUSED_FROM_LABels.filter(label => allUniqueLabels.includes(label));
         setReusedFromLabels(availableReusedFrom);
 
         if (allUniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
@@ -413,18 +413,24 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     return totalSavingHours / 8;
   }, [totalSavingHours]);
 
-  const handleRunAnalysis = useCallback(async (
-    distributionData: string, 
-    reusabilityDataString: string
-  ) => {
+  const handleRunAnalysis = useCallback(async () => {
     setIsAnalysisLoading(true);
     setAnalysis(null);
     setAnalysisError(null);
 
+    const distributionDataString = JSON.stringify(chartData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
+    const reusabilityPayloadString = JSON.stringify({
+        reused_from_labels: reusedFromLabels,
+        reused_in_label: reusedInLabel,
+        reusability_count: reusabilityData.count,
+        effort_saving_hours: totalSavingHours,
+        effort_saving_days: totalSavingDays.toFixed(2)
+    }, null, 2);
+
     try {
         const result = await analyzeTestCases({
-            distributionData: distributionData,
-            reusabilityData: reusabilityDataString,
+            distributionData: distributionDataString,
+            reusabilityData: reusabilityPayloadString,
         });
         setAnalysis(result);
     } catch (e: any) {
@@ -433,28 +439,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     } finally {
         setIsAnalysisLoading(false);
     }
-  }, []);
+  }, [chartData, reusedFromLabels, reusedInLabel, reusabilityData.count, totalSavingHours, totalSavingDays]);
 
-  const distributionDataString = useMemo(() => JSON.stringify(chartData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2), [chartData]);
-  
-  const reusabilityPayloadString = useMemo(() => JSON.stringify({
-      reused_from_labels: reusedFromLabels,
-      reused_in_label: reusedInLabel,
-      reusability_count: reusabilityData.count,
-      effort_saving_hours: totalSavingHours,
-      effort_saving_days: totalSavingDays.toFixed(2)
-  }, null, 2), [reusedFromLabels, reusedInLabel, reusabilityData.count, totalSavingHours, totalSavingDays]);
-
-  useEffect(() => {
-    if (testCases.length > 0 && !isAnalysisLoading) {
-      handleRunAnalysis(distributionDataString, reusabilityPayloadString);
-    }
-  }, [
-      distributionDataString,
-      reusabilityPayloadString,
-      handleRunAnalysis,
-      isAnalysisLoading
-  ]);
 
   if (isLoading) {
     return (
@@ -650,31 +636,39 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
             <Card>
                 <CardHeader>
                     <CardTitle>AI-Powered Summary</CardTitle>
-                    <CardDescription>A high-level analysis of your test case distribution and reusability. Updates automatically when filters change.</CardDescription>
+                    <CardDescription>A high-level analysis of your test case distribution and reusability.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {analysisError && (
-                        <Alert variant="destructive">
-                            <AlertTriangle className="h-4 w-4" />
-                            <AlertTitle>Analysis Failed</AlertTitle>
-                            <AlertDescription>{analysisError}</AlertDescription>
-                        </Alert>
-                    )}
-                    {isAnalysisLoading ? (
-                        <div className='space-y-2'>
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-3/4" />
-                        </div>
-                    ) : analysis ? (
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysis.analysis}</p>
-                    ) : (
-                        <Alert>
-                            <FileText className="h-4 w-4" />
-                            <AlertTitle>Ready to Analyze</AlertTitle>
-                            <AlertDescription>The AI summary of your current test case data will be displayed here.</AlertDescription>
-                        </Alert>
-                    )}
+                    <div className="flex flex-col items-start gap-4">
+                         <Button onClick={handleRunAnalysis} disabled={isAnalysisLoading}>
+                            <Wand2 className="mr-2 h-4 w-4" />
+                            {isAnalysisLoading ? 'Generating...' : 'Generate Summary'}
+                        </Button>
+                        {analysisError && (
+                            <Alert variant="destructive">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertTitle>Analysis Failed</AlertTitle>
+                                <AlertDescription>{analysisError}</AlertDescription>
+                            </Alert>
+                        )}
+                        {isAnalysisLoading ? (
+                            <div className='space-y-2 w-full'>
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-3/4" />
+                            </div>
+                        ) : analysis ? (
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysis.analysis}</p>
+                        ) : (
+                           !analysisError && (
+                             <Alert>
+                                <FileText className="h-4 w-4" />
+                                <AlertTitle>Ready to Analyze</AlertTitle>
+                                <AlertDescription>Click the button to generate an AI summary of your current test case data.</AlertDescription>
+                            </Alert>
+                           )
+                        )}
+                    </div>
                 </CardContent>
             </Card>
         </>
