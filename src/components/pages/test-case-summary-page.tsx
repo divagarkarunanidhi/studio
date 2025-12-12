@@ -404,15 +404,6 @@ export function TestCaseSummaryPage() {
         </div>
       ) : (
         <>
-            <TestCasePieChart 
-                data={chartData}
-                title="Test Case Overview"
-                description="Distribution of test cases based on selected labels."
-                jiraLink={jiraLink}
-                allHeaders={headers}
-                onExport={handleExport}
-            />
-
             <Card>
                 <CardHeader>
                     <CardTitle>Test Case Reusability</CardTitle>
@@ -493,6 +484,15 @@ export function TestCaseSummaryPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <TestCasePieChart 
+                data={chartData}
+                title="Test Case Overview"
+                description="Distribution of test cases based on selected labels."
+                jiraLink={jiraLink}
+                allHeaders={headers}
+                onExport={handleExport}
+            />
 
             <Card>
                 <CardHeader>
