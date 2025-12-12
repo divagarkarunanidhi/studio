@@ -19,6 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { Badge } from "./badge"
 
 export type ComboboxOption = {
   value: string;
@@ -27,7 +28,7 @@ export type ComboboxOption = {
 
 interface ComboboxProps {
     options: ComboboxOption[];
-    value: string;
+    value?: string;
     onValueChange: (value: string) => void;
     placeholder?: string;
     emptyMessage?: string;
@@ -37,6 +38,8 @@ interface ComboboxProps {
 export function Combobox({ options, value, onValueChange, placeholder = "Select an option...", emptyMessage = "No options found.", className }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
+  const selectedOption = options.find((option) => option.value === value)
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -44,11 +47,20 @@ export function Combobox({ options, value, onValueChange, placeholder = "Select 
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between", className)}
+          className={cn("w-full justify-between h-auto min-h-10 p-1 bg-inherit hover:bg-card", className)}
         >
-          {value
-            ? options.find((option) => option.value === value)?.label
-            : placeholder}
+          {selectedOption ? (
+             <Badge
+                key={selectedOption.value}
+                className="m-1 transition-all duration-300 ease-in-out border-foreground/10 text-foreground bg-card hover:bg-card/80"
+             >
+                {selectedOption.label}
+             </Badge>
+          ) : (
+            <span className="text-sm text-muted-foreground mx-3">
+                {placeholder}
+            </span>
+          )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>

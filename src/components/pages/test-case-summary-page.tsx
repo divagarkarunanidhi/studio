@@ -14,7 +14,8 @@ import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { FileText, Loader2, Download, Wand2, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
-import { SingleSelect, type SingleSelectOption } from '../ui/single-select';
+import { SingleSelect } from '../ui/single-select';
+import type { ComboboxOption as SingleSelectOption } from '../ui/combobox';
 import { Input } from '@/components/ui/input';
 import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
 import {
@@ -116,7 +117,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
 };
 
 const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
-const DEFAULT_REUSED_IN_LABEL = 'FordKocPilot';
+const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
 
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
     if (data.length > 0) {
