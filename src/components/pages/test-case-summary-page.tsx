@@ -29,12 +29,9 @@ import {
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Skeleton } from '../ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { TestCaseBarChart } from '../dashboard/test-case-bar-chart';
 
 
 type TestCaseData = { [key: string]: string };
-type ChartType = 'pie' | 'bar';
 
 interface TestCaseSummaryPageProps {
   onDataPresentChange: (isPresent: boolean) => void;
@@ -139,7 +136,6 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [headers, setHeaders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
-  const [overviewChartType, setOverviewChartType] = useState<ChartType>('pie');
 
   // State for reusability section
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(DEFAULT_REUSED_FROM_LABELS);
@@ -473,207 +469,182 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
 
   return (
     <div className="space-y-6">
-        <>
-             <Card>
-                <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+        <Card>
+            <CardHeader>
+                <CardTitle>Test Case Overview</CardTitle>
+                <CardDescription>Select labels to filter the test case distribution.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                    <MultiSelect
+                    options={uniqueLabelOptions}
+                    defaultValue={selectedFilterLabels}
+                    onValueChange={setSelectedFilterLabels}
+                    placeholder="Select labels to analyze..."
+                    className="w-full"
+                />
+            </CardContent>
+            <CardFooter>
+                <TestCasePieChart
+                    data={chartData}
+                    title="Test Case Distribution"
+                    description="Based on selected labels"
+                    allHeaders={headers}
+                    onExport={handleExport}
+                    jiraLink={jiraLink}
+                />
+            </CardFooter>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Test Case Reusability</CardTitle>
+                <CardDescription>Analyze how test cases are reused across different labels and calculate effort savings.</CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-6'>
+                <div className='flex flex-col sm:flex-row gap-4'>
+                    <div className="w-full sm:w-1/2 space-y-2">
+                        <label className="text-sm font-medium">Reused from</label>
+                        <MultiSelect 
+                            options={uniqueLabelOptions}
+                            defaultValue={reusedFromLabels}
+                            onValueChange={setReusedFromLabels}
+                            placeholder="Select source labels..."
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="w-full sm:w-1/2 space-y-2">
+                        <label className="text-sm font-medium">Reused in</label>
+                        <SingleSelect
+                            options={uniqueLabelOptionsSingle}
+                            value={reusedInLabel}
+                            onValueChange={setReusedInLabel}
+                            placeholder="Select target label..."
+                            emptyMessage="No labels found."
+                            />
+                    </div>
+                </div>
+
+                <div className='flex flex-col sm:flex-row gap-4'>
+                    <div className="w-full sm:w-1/2 space-y-2">
+                        <label className="text-sm font-medium">Actual effort for new test case (hrs)</label>
+                        <Input
+                            type="number"
+                            value={effortNew}
+                            onChange={(e) => setEffortNew(parseFloat(e.target.value) || 0)}
+                            placeholder="e.g., 4"
+                        />
+                    </div>
+                    <div className="w-full sm:w-1/2 space-y-2">
+                        <label className="text-sm font-medium">Actual effort for reused test case (hrs)</label>
+                        <Input
+                            type="number"
+                            value={effortReused}
+                            onChange={(e) => setEffortReused(parseFloat(e.target.value) || 0)}
+                            placeholder="e.g., 1"
+                        />
+                    </div>
+                </div>
+
+                <div className='text-center pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center'>
                     <div>
-                        <CardTitle>Test Case Overview</CardTitle>
-                        <CardDescription>Select labels to filter the test case distribution.</CardDescription>
+                        <h3 className="text-lg font-medium text-muted-foreground">Reusability Count</h3>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <button className="text-4xl font-bold text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50" disabled={reusabilityData.count === 0}>
+                                    {reusabilityData.count}
+                                </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle>Reusable Test Cases ({reusabilityData.count})</DialogTitle>
+                                    <DialogDescription>
+                                        Test cases in '{reusedInLabel}' that are also in '{reusedFromLabels.join(', ')}'.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <ScrollArea className="h-72 w-full rounded-md border">
+                                    <div className="p-4 flex flex-wrap gap-2">
+                                        {reusabilityData.testCases.map((tc, idx) => {
+                                            const id = tc['Issue key'] || `item-${idx}`;
+                                            return (
+                                                <Badge key={id} variant="secondary">
+                                                    {jiraLink && id !== 'N/A' && !id.startsWith('item-') ? (
+                                                        <a
+                                                            href={`${jiraLink}/browse/${id}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="hover:underline"
+                                                        >
+                                                            {id}
+                                                        </a>
+                                                    ) : (
+                                                        id
+                                                    )}
+                                                </Badge>
+                                            );
+                                        })}
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => handleExport(reusabilityData.testCases, 'reusable_test_cases')} disabled={reusabilityData.testCases.length === 0}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Export to Excel
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
-                    <div className="w-40">
-                         <Select value={overviewChartType} onValueChange={(value) => setOverviewChartType(value as ChartType)}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Chart Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="pie">Pie Chart</SelectItem>
-                                <SelectItem value="bar">Bar Chart</SelectItem>
-                            </SelectContent>
-                        </Select>
+
+                    <div>
+                        <h3 className="text-lg font-medium text-muted-foreground">Saving (Hours)</h3>
+                        <p className="text-4xl font-bold text-primary">{totalSavingHours.toFixed(2)}</p>
                     </div>
-                </CardHeader>
-                <CardContent>
-                     <MultiSelect
-                        options={uniqueLabelOptions}
-                        defaultValue={selectedFilterLabels}
-                        onValueChange={setSelectedFilterLabels}
-                        placeholder="Select labels to analyze..."
-                        className="w-full"
-                    />
-                </CardContent>
-                <CardFooter>
-                    {overviewChartType === 'pie' ? (
-                        <TestCasePieChart
-                            data={chartData}
-                            title="Test Case Distribution"
-                            description="Based on selected labels"
-                            allHeaders={headers}
-                            onExport={handleExport}
-                            jiraLink={jiraLink}
-                        />
-                    ) : (
-                        <TestCaseBarChart 
-                            data={chartData.filter(d => d.name !== 'Total Test Cases in File')}
-                            title="Test Case Distribution"
-                            description="Based on selected labels"
-                        />
+                    
+                    <div>
+                        <h3 className="text-lg font-medium text-muted-foreground">Saving (Days)</h3>
+                        <p className="text-4xl font-bold text-primary">{totalSavingDays.toFixed(2)}</p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>AI-Powered Summary</CardTitle>
+                <CardDescription>A high-level analysis of your test case distribution and reusability.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-col items-start gap-4">
+                        <Button onClick={handleRunAnalysis} disabled={isAnalysisLoading}>
+                        <Wand2 className="mr-2 h-4 w-4" />
+                        {isAnalysisLoading ? 'Generating...' : 'Generate Summary'}
+                    </Button>
+                    {analysisError && (
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Analysis Failed</AlertTitle>
+                            <AlertDescription>{analysisError}</AlertDescription>
+                        </Alert>
                     )}
-                </CardFooter>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Test Case Reusability</CardTitle>
-                    <CardDescription>Analyze how test cases are reused across different labels and calculate effort savings.</CardDescription>
-                </CardHeader>
-                <CardContent className='space-y-6'>
-                    <div className='flex flex-col sm:flex-row gap-4'>
-                        <div className="w-full sm:w-1/2 space-y-2">
-                            <label className="text-sm font-medium">Reused from</label>
-                            <MultiSelect 
-                                options={uniqueLabelOptions}
-                                defaultValue={reusedFromLabels}
-                                onValueChange={setReusedFromLabels}
-                                placeholder="Select source labels..."
-                                className="w-full"
-                            />
+                    {isAnalysisLoading ? (
+                        <div className='space-y-2 w-full'>
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
                         </div>
-                        <div className="w-full sm:w-1/2 space-y-2">
-                            <label className="text-sm font-medium">Reused in</label>
-                            <SingleSelect
-                                options={uniqueLabelOptionsSingle}
-                                value={reusedInLabel}
-                                onValueChange={setReusedInLabel}
-                                placeholder="Select target label..."
-                                emptyMessage="No labels found."
-                             />
-                        </div>
-                    </div>
-
-                    <div className='flex flex-col sm:flex-row gap-4'>
-                        <div className="w-full sm:w-1/2 space-y-2">
-                            <label className="text-sm font-medium">Actual effort for new test case (hrs)</label>
-                            <Input
-                                type="number"
-                                value={effortNew}
-                                onChange={(e) => setEffortNew(parseFloat(e.target.value) || 0)}
-                                placeholder="e.g., 4"
-                            />
-                        </div>
-                        <div className="w-full sm:w-1/2 space-y-2">
-                            <label className="text-sm font-medium">Actual effort for reused test case (hrs)</label>
-                            <Input
-                                type="number"
-                                value={effortReused}
-                                onChange={(e) => setEffortReused(parseFloat(e.target.value) || 0)}
-                                placeholder="e.g., 1"
-                            />
-                        </div>
-                    </div>
-
-                    <div className='text-center pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center'>
-                        <div>
-                            <h3 className="text-lg font-medium text-muted-foreground">Reusability Count</h3>
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button className="text-4xl font-bold text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50" disabled={reusabilityData.count === 0}>
-                                        {reusabilityData.count}
-                                    </button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-md">
-                                    <DialogHeader>
-                                        <DialogTitle>Reusable Test Cases ({reusabilityData.count})</DialogTitle>
-                                        <DialogDescription>
-                                            Test cases in '{reusedInLabel}' that are also in '{reusedFromLabels.join(', ')}'.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <ScrollArea className="h-72 w-full rounded-md border">
-                                        <div className="p-4 flex flex-wrap gap-2">
-                                            {reusabilityData.testCases.map((tc, idx) => {
-                                                const id = tc['Issue key'] || `item-${idx}`;
-                                                return (
-                                                    <Badge key={id} variant="secondary">
-                                                        {jiraLink && id !== 'N/A' && !id.startsWith('item-') ? (
-                                                            <a
-                                                                href={`${jiraLink}/browse/${id}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="hover:underline"
-                                                            >
-                                                                {id}
-                                                            </a>
-                                                        ) : (
-                                                            id
-                                                        )}
-                                                    </Badge>
-                                                );
-                                            })}
-                                        </div>
-                                    </ScrollArea>
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => handleExport(reusabilityData.testCases, 'reusable_test_cases')} disabled={reusabilityData.testCases.length === 0}>
-                                            <Download className="mr-2 h-4 w-4" />
-                                            Export to Excel
-                                        </Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-
-                        <div>
-                            <h3 className="text-lg font-medium text-muted-foreground">Saving (Hours)</h3>
-                            <p className="text-4xl font-bold text-primary">{totalSavingHours.toFixed(2)}</p>
-                        </div>
-                        
-                        <div>
-                            <h3 className="text-lg font-medium text-muted-foreground">Saving (Days)</h3>
-                            <p className="text-4xl font-bold text-primary">{totalSavingDays.toFixed(2)}</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>AI-Powered Summary</CardTitle>
-                    <CardDescription>A high-level analysis of your test case distribution and reusability.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col items-start gap-4">
-                         <Button onClick={handleRunAnalysis} disabled={isAnalysisLoading}>
-                            <Wand2 className="mr-2 h-4 w-4" />
-                            {isAnalysisLoading ? 'Generating...' : 'Generate Summary'}
-                        </Button>
-                        {analysisError && (
-                            <Alert variant="destructive">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertTitle>Analysis Failed</AlertTitle>
-                                <AlertDescription>{analysisError}</AlertDescription>
-                            </Alert>
-                        )}
-                        {isAnalysisLoading ? (
-                            <div className='space-y-2 w-full'>
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-3/4" />
-                            </div>
-                        ) : analysis ? (
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysis.analysis}</p>
-                        ) : (
-                           !analysisError && (
-                             <Alert>
-                                <FileText className="h-4 w-4" />
-                                <AlertTitle>Ready to Analyze</AlertTitle>
-                                <AlertDescription>Click the button to generate an AI summary of your current test case data.</AlertDescription>
-                            </Alert>
-                           )
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-        </>
+                    ) : analysis ? (
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysis.analysis}</p>
+                    ) : (
+                        !analysisError && (
+                            <Alert>
+                            <FileText className="h-4 w-4" />
+                            <AlertTitle>Ready to Analyze</AlertTitle>
+                            <AlertDescription>Click the button to generate an AI summary of your current test case data.</AlertDescription>
+                        </Alert>
+                        )
+                    )}
+                </div>
+            </CardContent>
+        </Card>
     </div>
   );
 }
-
-    
