@@ -136,8 +136,8 @@ export function TestCaseSummaryPage() {
   // State for reusability section
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
   const [reusedInLabel, setReusedInLabel] = useState<string>('');
-  const [effortNew, setEffortNew] = useState<number>(0);
-  const [effortReused, setEffortReused] = useState<number>(0);
+  const [effortNew, setEffortNew] = useState<number>(6);
+  const [effortReused, setEffortReused] = useState<number>(3);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -535,14 +535,33 @@ export function TestCaseSummaryPage() {
                 </CardContent>
             </Card>
 
-            <TestCasePieChart 
-                data={chartData}
-                title="Test Case Overview"
-                description="Distribution of test cases based on selected labels."
-                jiraLink={jiraLink}
-                allHeaders={headers}
-                onExport={handleExport}
-            />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Test Case Overview</CardTitle>
+                    <CardDescription>Select labels to filter the test case distribution.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <MultiSelect
+                        options={uniqueLabelOptions}
+                        defaultValue={selectedFilterLabels}
+                        onValueChange={setSelectedFilterLabels}
+                        placeholder="Select labels to analyze..."
+                        className="w-full"
+                    />
+                </CardContent>
+                <CardFooter>
+                    <TestCasePieChart
+                        data={chartData}
+                        title="Test Case Distribution"
+                        description="Based on selected labels"
+                        jiraLink={jiraLink}
+                        allHeaders={headers}
+                        onExport={handleExport}
+                    />
+                </CardFooter>
+            </Card>
+
+            
         </>
       )}
     </div>
