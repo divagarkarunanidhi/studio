@@ -13,13 +13,7 @@ import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { FileText, Loader2, Download } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Combobox, type ComboboxOption } from '../ui/combobox';
 import { Input } from '@/components/ui/input';
 import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
 import {
@@ -113,7 +107,8 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
     return { headers: uniqueHeaders, data };
 };
 
-const DEFAULT_PILOT_LABELS = ['FordKOCPilot', 'ToshibaPilot', 'FradleyPilot'];
+const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
+const DEFAULT_REUSED_IN_LABEL = 'FordKocPilot';
 
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
     if (data.length > 0) {
@@ -134,8 +129,8 @@ export function TestCaseSummaryPage() {
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
 
   // State for reusability section
-  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(['FradleyPilot', 'ToshibaPilot']);
-  const [reusedInLabel, setReusedInLabel] = useState<string>('');
+  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(DEFAULT_REUSED_FROM_LABELS);
+  const [reusedInLabel, setReusedInLabel] = useState<string>(DEFAULT_REUSED_IN_LABEL);
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
 
@@ -180,10 +175,15 @@ export function TestCaseSummaryPage() {
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
     return allUniqueLabels.map(label => ({ value: label, label: label }));
   }, [allUniqueLabels]);
+  
+  const uniqueLabelOptionsCombobox: ComboboxOption[] = useMemo(() => {
+    return allUniqueLabels.map(label => ({ value: label, label: label }));
+  }, [allUniqueLabels]);
+
 
   useEffect(() => {
     if (testCases.length > 0 && allUniqueLabels.length > 0) {
-        const availableDefaultLabels = DEFAULT_PILOT_LABELS.filter(label => allUniqueLabels.includes(label));
+        const availableDefaultLabels = ['FordKOCPilot', 'FradleyPilot', 'ToshibaPilot'].filter(label => allUniqueLabels.includes(label));
         setSelectedFilterLabels(availableDefaultLabels);
     } else {
         setSelectedFilterLabels([]);
@@ -445,16 +445,13 @@ export function TestCaseSummaryPage() {
                         </div>
                         <div className="w-full sm:w-1/2 space-y-2">
                             <label className="text-sm font-medium">Reused in</label>
-                             <Select value={reusedInLabel} onValueChange={setReusedInLabel}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select target label..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {allUniqueLabels.map(label => (
-                                        <SelectItem key={label} value={label}>{label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                options={uniqueLabelOptionsCombobox}
+                                value={reusedInLabel}
+                                onValueChange={setReusedInLabel}
+                                placeholder="Select target label..."
+                                emptyMessage="No labels found."
+                             />
                         </div>
                     </div>
 
@@ -501,7 +498,7 @@ export function TestCaseSummaryPage() {
                                                 const id = tc['Issue key'] || `item-${idx}`;
                                                 return (
                                                     <Badge key={id} variant="secondary">
-                                                        {jiraLink && id !== 'N/A' ? (
+                                                        {jiraLink && id !== 'N/A' && !id.startsWith('item-') ? (
                                                             <a
                                                                 href={`${jiraLink}/browse/${id}`}
                                                                 target="_blank"
@@ -562,6 +559,7 @@ export function TestCaseSummaryPage() {
                         description="Based on selected labels"
                         allHeaders={headers}
                         onExport={handleExport}
+                        jiraLink={jiraLink}
                     />
                 </CardFooter>
             </Card>
