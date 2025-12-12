@@ -83,8 +83,8 @@ export function TestCasePieChart({
 
   const totalCount = React.useMemo(() => {
     if (!data) return 0;
-    const totalSlice = data.find(d => d.name === 'Total Test Cases');
-    return totalSlice ? totalSlice.count : data.reduce((acc, item) => acc + item.count, 0);
+    const totalSlice = data.find(d => d.name === 'Total Test Cases in File');
+    return totalSlice ? totalSlice.count : 0;
   }, [data]);
   
   if (!data || data.length === 0) {
@@ -98,6 +98,10 @@ export function TestCasePieChart({
         </Alert>
     );
   }
+
+  // Filter out the 'Total Test Cases in File' slice from being rendered in the chart itself
+  const chartSlices = data.filter(d => d.name !== 'Total Test Cases in File');
+
 
   return (
     <Card className="flex flex-col">
@@ -116,13 +120,13 @@ export function TestCasePieChart({
               content={<ChartTooltipContent hideLabel nameKey="name" />}
             />
             <Pie
-              data={data}
+              data={chartSlices}
               dataKey="count"
               nameKey="name"
               innerRadius={60}
               strokeWidth={5}
             >
-              {data.map((entry, index) => (
+              {chartSlices.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={COLORS[index % COLORS.length]}
@@ -138,7 +142,7 @@ export function TestCasePieChart({
           Total Test Cases in File: {totalCount}
         </div>
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {data.map((item, index) => (
+          {chartSlices.map((item, index) => (
             <Dialog key={item.name}>
               <DialogTrigger asChild>
                 <div className="flex items-center gap-1 cursor-pointer hover:underline">
@@ -168,7 +172,7 @@ export function TestCasePieChart({
                             const id = tc['Issue key'] || `item-${idx}`;
                             return (
                                 <Badge key={id} variant="secondary">
-                                    {jiraLink && id !== 'N/A' ? (
+                                    {jiraLink && id !== 'N/A' && !id.startsWith('item-') ? (
                                         <a
                                             href={`${jiraLink}/browse/${id}`}
                                             target="_blank"
