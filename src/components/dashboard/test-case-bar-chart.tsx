@@ -92,7 +92,7 @@ export function TestCaseBarChart({ data, title, description, isLoading }: TestCa
               cursor={false}
               content={<ChartTooltipContent indicator="dot" />}
             />
-            <Bar dataKey="count" radius={4}>
+            <Bar dataKey="count" radius={4} barSize={30}>
                 {sortedData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
