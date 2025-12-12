@@ -116,7 +116,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
     return { headers: uniqueHeaders, data };
 };
 
-const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot', 'FordKOCPilot'];
+const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
 const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
 
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
@@ -423,14 +423,15 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     }
   }, []);
 
-  const distributionDataString = JSON.stringify(chartData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
-  const reusabilityPayloadString = JSON.stringify({
+  const distributionDataString = useMemo(() => JSON.stringify(chartData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2), [chartData]);
+  
+  const reusabilityPayloadString = useMemo(() => JSON.stringify({
       reused_from_labels: reusedFromLabels,
       reused_in_label: reusedInLabel,
       reusability_count: reusabilityData.count,
       effort_saving_hours: totalSavingHours,
       effort_saving_days: totalSavingDays.toFixed(2)
-  }, null, 2);
+  }, null, 2), [reusedFromLabels, reusedInLabel, reusabilityData.count, totalSavingHours, totalSavingDays]);
 
   useEffect(() => {
     if (testCases.length > 0) {
@@ -440,7 +441,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
       testCases.length,
       distributionDataString,
       reusabilityPayloadString,
-      handleRunAnalysis
+      handleRunAnalysis // This is now stable
   ]);
 
   if (isLoading) {
