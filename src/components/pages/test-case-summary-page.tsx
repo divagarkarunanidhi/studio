@@ -117,7 +117,7 @@ const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => 
 };
 
 const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
-const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
+const DEFAULT_REUSED_IN_LABEL = 'FordKocPilot';
 
 const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
     if (data.length > 0) {
@@ -201,7 +201,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
 
   useEffect(() => {
     if (testCases.length > 0 && allUniqueLabels.length > 0) {
-        const availableDefaultLabels = ['FordKOCPilot', 'FradleyPilot', 'ToshibaPilot'].filter(label => allUniqueLabels.includes(label));
+        const availableDefaultLabels = ['FordKocPilot', 'FradleyPilot', 'ToshibaPilot'].filter(label => allUniqueLabels.includes(label));
         setSelectedFilterLabels(availableDefaultLabels);
     } else {
         setSelectedFilterLabels([]);
@@ -327,7 +327,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     });
 
     // 3. Overall total
-    if (testCases.length > 0) {
+    const totalSlice = dataMap.find(d => d.name === 'Total Test Cases in File');
+    if (!totalSlice && testCases.length > 0) {
         dataMap.push({
             name: 'Total Test Cases in File',
             count: testCases.length,
@@ -401,6 +402,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   }, [totalSavingHours]);
 
   const handleRunAnalysis = useCallback(async () => {
+    if (isAnalysisLoading) return;
     setIsAnalysisLoading(true);
     setAnalysis(null);
     setAnalysisError(null);
@@ -429,7 +431,13 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     } finally {
         setIsAnalysisLoading(false);
     }
-}, [chartData, reusabilityData, reusedFromLabels, reusedInLabel, totalSavingHours, totalSavingDays]);
+  }, [chartData, reusabilityData.count, reusedFromLabels, reusedInLabel, totalSavingHours, totalSavingDays, isAnalysisLoading]);
+
+  useEffect(() => {
+    if (testCases.length > 0) {
+        handleRunAnalysis();
+    }
+  }, [testCases, chartData, reusabilityData, totalSavingHours, totalSavingDays]);
 
   if (isLoading) {
     return (
@@ -578,7 +586,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
             <Card>
                 <CardHeader>
                     <CardTitle>AI-Powered Summary</CardTitle>
-                    <CardDescription>A high-level analysis of your test case distribution and reusability.</CardDescription>
+                    <CardDescription>A high-level analysis of your test case distribution and reusability. Updates automatically when filters change.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {analysisError && (
@@ -600,16 +608,10 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         <Alert>
                             <FileText className="h-4 w-4" />
                             <AlertTitle>Ready to Analyze</AlertTitle>
-                            <AlertDescription>Click the button to generate an AI summary of your current test case data.</AlertDescription>
+                            <AlertDescription>The AI summary of your current test case data will be displayed here.</AlertDescription>
                         </Alert>
                     )}
                 </CardContent>
-                <CardFooter>
-                    <Button onClick={handleRunAnalysis} disabled={isAnalysisLoading}>
-                        <Wand2 className="mr-2 h-4 w-4" />
-                        {isAnalysisLoading ? 'Generating...' : 'Generate Summary'}
-                    </Button>
-                </CardFooter>
             </Card>
 
             <Card>
