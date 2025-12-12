@@ -14,8 +14,7 @@ import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { FileText, Loader2, Download, Wand2, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
-import { SingleSelect } from '../ui/single-select';
-import type { ComboboxOption as SingleSelectOption } from '../ui/combobox';
+import { SingleSelect, type SingleSelectOption } from '../ui/single-select';
 import { Input } from '@/components/ui/input';
 import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
 import {
@@ -30,9 +29,12 @@ import {
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Skeleton } from '../ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { TestCaseBarChart } from '../dashboard/test-case-bar-chart';
 
 
 type TestCaseData = { [key: string]: string };
+type ChartType = 'pie' | 'bar';
 
 interface TestCaseSummaryPageProps {
   onDataPresentChange: (isPresent: boolean) => void;
@@ -137,6 +139,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [headers, setHeaders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
+  const [overviewChartType, setOverviewChartType] = useState<ChartType>('pie');
 
   // State for reusability section
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(DEFAULT_REUSED_FROM_LABELS);
@@ -204,6 +207,14 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     if (testCases.length > 0 && allUniqueLabels.length > 0) {
         const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => allUniqueLabels.includes(label));
         setSelectedFilterLabels(availableDefaultLabels);
+
+        const availableReusedFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => allUniqueLabels.includes(label));
+        setReusedFromLabels(availableReusedFrom);
+
+        if (allUniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+            setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+        }
+
     } else {
         setSelectedFilterLabels([]);
     }
@@ -405,7 +416,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const handleRunAnalysis = useCallback(async (
     distributionData: string, 
     reusabilityDataString: string
-) => {
+  ) => {
     setIsAnalysisLoading(true);
     setAnalysis(null);
     setAnalysisError(null);
@@ -435,13 +446,14 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   }, null, 2), [reusedFromLabels, reusedInLabel, reusabilityData.count, totalSavingHours, totalSavingDays]);
 
   useEffect(() => {
-    if (testCases.length > 0) {
+    if (testCases.length > 0 && !isAnalysisLoading) {
       handleRunAnalysis(distributionDataString, reusabilityPayloadString);
     }
   }, [
       distributionDataString,
       reusabilityPayloadString,
-      handleRunAnalysis
+      handleRunAnalysis,
+      isAnalysisLoading
   ]);
 
   if (isLoading) {
@@ -477,9 +489,22 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     <div className="space-y-6">
         <>
             <Card>
-                <CardHeader>
-                    <CardTitle>Test Case Overview</CardTitle>
-                    <CardDescription>Select labels to filter the test case distribution.</CardDescription>
+                <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                    <div>
+                        <CardTitle>Test Case Overview</CardTitle>
+                        <CardDescription>Select labels to filter the test case distribution.</CardDescription>
+                    </div>
+                    <div className="w-40">
+                         <Select value={overviewChartType} onValueChange={(value) => setOverviewChartType(value as ChartType)}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Chart Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="pie">Pie Chart</SelectItem>
+                                <SelectItem value="bar">Bar Chart</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </CardHeader>
                 <CardContent>
                      <MultiSelect
@@ -491,14 +516,22 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                     />
                 </CardContent>
                 <CardFooter>
-                    <TestCasePieChart
-                        data={chartData}
-                        title="Test Case Distribution"
-                        description="Based on selected labels"
-                        allHeaders={headers}
-                        onExport={handleExport}
-                        jiraLink={jiraLink}
-                    />
+                    {overviewChartType === 'pie' ? (
+                        <TestCasePieChart
+                            data={chartData}
+                            title="Test Case Distribution"
+                            description="Based on selected labels"
+                            allHeaders={headers}
+                            onExport={handleExport}
+                            jiraLink={jiraLink}
+                        />
+                    ) : (
+                        <TestCaseBarChart 
+                            data={chartData.filter(d => d.name !== 'Total Test Cases in File')}
+                            title="Test Case Distribution"
+                            description="Based on selected labels"
+                        />
+                    )}
                 </CardFooter>
             </Card>
 
@@ -648,5 +681,3 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     </div>
   );
 }
-
-    
