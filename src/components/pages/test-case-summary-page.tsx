@@ -256,7 +256,7 @@ export function TestCaseSummaryPage() {
   }, [testCases, selectedFilterLabels, labelColumns]);
   
   const chartData = useMemo(() => {
-    if (selectedFilterLabels.length === 0 || testCases.length === 0) return [];
+    if (testCases.length === 0) return [];
   
     const getTCLabels = (tc: TestCaseData): Set<string> => {
         const labels = new Set<string>();
@@ -268,32 +268,50 @@ export function TestCaseSummaryPage() {
         return labels;
     };
   
-    const data = [];
+    const data: { name: string; count: number; testCaseIds: string[] }[] = [];
   
-    // 1. "Matching All" count
-    const matchingAllCount = testCases.filter(tc => {
-        const tcLabels = getTCLabels(tc);
-        return selectedFilterLabels.every(l => tcLabels.has(l));
-    }).length;
+    const getTestCaseId = (tc: TestCaseData) => tc['Issue key'] || 'N/A';
 
-    if (matchingAllCount > 0) {
-        data.push({ name: `Matching all: ${selectedFilterLabels.join(' & ')}`, count: matchingAllCount });
+    // 1. "Matching All"
+    if (selectedFilterLabels.length > 0) {
+        const matchingAllTcs = testCases.filter(tc => {
+            const tcLabels = getTCLabels(tc);
+            return selectedFilterLabels.every(l => tcLabels.has(l));
+        });
+        if (matchingAllTcs.length > 0) {
+            data.push({
+                name: `Matching all: ${selectedFilterLabels.join(' & ')}`,
+                count: matchingAllTcs.length,
+                testCaseIds: matchingAllTcs.map(getTestCaseId)
+            });
+        }
     }
-
+  
     // 2. Total count for each selected label
     selectedFilterLabels.forEach(label => {
-        const count = testCases.filter(tc => getTCLabels(tc).has(label)).length;
-        if (count > 0) {
-            data.push({ name: `${label}`, count: count });
+        const tcsWithLabel = testCases.filter(tc => getTCLabels(tc).has(label));
+        if (tcsWithLabel.length > 0) {
+            data.push({
+                name: `Total for '${label}'`,
+                count: tcsWithLabel.length,
+                testCaseIds: tcsWithLabel.map(getTestCaseId)
+            });
         }
     });
-  
+    
     // 3. Total test cases
     if (testCases.length > 0) {
-        data.push({ name: 'Total Test Cases', count: testCases.length });
+        data.push({
+            name: 'Total Test Cases',
+            count: testCases.length,
+            testCaseIds: testCases.map(getTestCaseId)
+        });
     }
   
-    return data;
+    // Remove duplicates by name
+    const uniqueData = Array.from(new Map(data.map(item => [item.name, item])).values());
+    return uniqueData;
+
   }, [testCases, selectedFilterLabels, labelColumns]);
 
 
@@ -329,7 +347,8 @@ export function TestCaseSummaryPage() {
             <TestCasePieChart 
                 data={chartData}
                 title="Test Case Overview"
-                description={selectedFilterLabels.length > 0 ? selectedFilterLabels.join(' & ') : 'Overall summary'}
+                description="Distribution of test cases based on selected labels."
+                jiraLink={jiraLink}
             />
             <Card>
                 <CardHeader>
