@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell, Legend, Tooltip } from "recharts";
 
 import {
   Card,
@@ -13,6 +13,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart";
 import { Skeleton } from "../ui/skeleton";
 
@@ -68,33 +70,32 @@ export function TestCaseBarChart({ data, title, description, isLoading }: TestCa
           <BarChart
             accessibilityLayer
             data={sortedData}
+            layout="vertical"
             margin={{
               top: 20,
               right: 20,
-              bottom: 40,
-              left: 20,
+              bottom: 20,
+              left: 120,
             }}
           >
-            <CartesianGrid vertical={false} />
-            <XAxis
+            <CartesianGrid horizontal={false} />
+            <YAxis
               dataKey="name"
+              type="category"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              angle={-45}
-              textAnchor="end"
-              interval={0}
-              height={80} // Adjust height to prevent label cutoff
               tick={{ fontSize: 12 }}
+              className="truncate"
             />
-            <YAxis />
+            <XAxis dataKey="count" type="number" hide />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent indicator="dot" />}
             />
-            <Bar dataKey="count" radius={4} barSize={30}>
+             <Bar dataKey="count" radius={4} barSize={30}>
                 {sortedData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} name={entry.name} />
                 ))}
             </Bar>
           </BarChart>
