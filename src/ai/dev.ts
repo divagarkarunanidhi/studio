@@ -3,3 +3,4 @@
 import './flows/defect-analysis-flow';
 import './flows/defect-prediction-flow';
 import './flows/defect-summary-flow';
+import './flows/test-case-analysis-flow';

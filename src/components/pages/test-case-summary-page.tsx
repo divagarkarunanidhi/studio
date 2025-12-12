@@ -5,12 +5,13 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import type { AppConfiguration } from '@/lib/types';
+import type { AppConfiguration, TestCaseAnalysisInput, TestCaseAnalysisOutput } from '@/lib/types';
+import { analyzeTestCases } from '@/ai/flows/test-case-analysis-flow';
 import * as XLSX from 'xlsx';
 import { FileUploader } from '../dashboard/file-uploader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
-import { FileText, Loader2, Download } from 'lucide-react';
+import { FileText, Loader2, Download, Wand2, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 import { Combobox, type ComboboxOption } from '../ui/combobox';
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { Skeleton } from '../ui/skeleton';
 
 
 type TestCaseData = { [key: string]: string };
@@ -139,6 +141,11 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [reusedInLabel, setReusedInLabel] = useState<string>(DEFAULT_REUSED_IN_LABEL);
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
+  
+  // State for AI analysis
+  const [analysis, setAnalysis] = useState<TestCaseAnalysisOutput | null>(null);
+  const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   useEffect(() => {
     onDataPresentChange(testCases.length > 0);
@@ -306,7 +313,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         });
     }
 
-    // 2. Total count for each selected label (not unique to that label, just total)
+    // 2. Total count for each selected label
     selectedFilterLabels.forEach(label => {
         const tcsWithLabel = testCases.filter(tc => getTCLabelsAsSet(tc).has(label));
         if (tcsWithLabel.length > 0) {
@@ -329,19 +336,6 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
 
     return dataMap;
   }, [testCases, selectedFilterLabels, getTCLabelsAsSet]);
-
-
-  const filteredTestCases = useMemo(() => {
-    if (selectedFilterLabels.length === 0) {
-        return testCases;
-    }
-
-    return testCases.filter(tc => {
-        const tcLabels = getTCLabelsAsSet(tc);
-        return selectedFilterLabels.every(filterLabel => tcLabels.has(filterLabel));
-    });
-  }, [testCases, selectedFilterLabels, getTCLabelsAsSet]);
-
 
   const reusabilityData = useMemo(() => {
     if (!reusedInLabel || reusedFromLabels.length === 0) {
@@ -404,6 +398,37 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const totalSavingDays = useMemo(() => {
     return totalSavingHours / 8;
   }, [totalSavingHours]);
+
+  const handleRunAnalysis = useCallback(async () => {
+    setIsAnalysisLoading(true);
+    setAnalysis(null);
+    setAnalysisError(null);
+
+    try {
+        const distributionData = JSON.stringify(chartData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
+        
+        const reusabilityPayload = {
+            reused_from_labels: reusedFromLabels,
+            reused_in_label: reusedInLabel,
+            reusability_count: reusabilityData.count,
+            effort_saving_hours: totalSavingHours,
+            effort_saving_days: totalSavingDays.toFixed(2)
+        };
+        const reusabilityDataString = JSON.stringify(reusabilityPayload, null, 2);
+
+        const result = await analyzeTestCases({
+            distributionData: distributionData,
+            reusabilityData: reusabilityDataString,
+        });
+
+        setAnalysis(result);
+    } catch (e: any) {
+        setAnalysisError(e.message || "An unknown error occurred while generating the analysis.");
+        console.error(e);
+    } finally {
+        setIsAnalysisLoading(false);
+    }
+}, [chartData, reusabilityData, reusedFromLabels, reusedInLabel, totalSavingHours, totalSavingDays]);
 
   if (isLoading) {
     return (
@@ -547,6 +572,43 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         </div>
                     </div>
                 </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>AI-Powered Summary</CardTitle>
+                    <CardDescription>A high-level analysis of your test case distribution and reusability.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {analysisError && (
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Analysis Failed</AlertTitle>
+                            <AlertDescription>{analysisError}</AlertDescription>
+                        </Alert>
+                    )}
+                    {isAnalysisLoading ? (
+                        <div className='space-y-2'>
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                        </div>
+                    ) : analysis ? (
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{analysis.analysis}</p>
+                    ) : (
+                        <Alert>
+                            <FileText className="h-4 w-4" />
+                            <AlertTitle>Ready to Analyze</AlertTitle>
+                            <AlertDescription>Click the button to generate an AI summary of your current test case data.</AlertDescription>
+                        </Alert>
+                    )}
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={handleRunAnalysis} disabled={isAnalysisLoading}>
+                        <Wand2 className="mr-2 h-4 w-4" />
+                        {isAnalysisLoading ? 'Generating...' : 'Generate Summary'}
+                    </Button>
+                </CardFooter>
             </Card>
 
             <Card>

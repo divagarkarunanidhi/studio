@@ -83,10 +83,22 @@ export const DefectSummaryOutputSchema = z.object({
     defectArea: z.array(ChartDataPointSchema).describe("An array of objects representing defect counts and IDs grouped by their predicted functional area."),
 });
 
-export type DefectSummaryOutput = z_infer<typeof DefectSummaryOutputSchema>;
+export type DefectSummaryOutput = z.infer<typeof DefectSummaryOutputSchema>;
 
 export const DefectSummaryInputSchema = z.object({
     defects: z.array(DefectSchema),
 });
 
 export type DefectSummaryInput = z.infer<typeof DefectSummaryInputSchema>;
+
+// Test Case Analysis Flow Schemas
+export const TestCaseAnalysisInputSchema = z.object({
+    distributionData: z.string().describe("JSON string of test case distribution data."),
+    reusabilityData: z.string().describe("JSON string of test case reusability data."),
+});
+export type TestCaseAnalysisInput = z.infer<typeof TestCaseAnalysisInputSchema>;
+
+export const TestCaseAnalysisOutputSchema = z.object({
+    analysis: z.string().describe("A concise summary of the test case portfolio, including distribution and reusability insights."),
+});
+export type TestCaseAnalysisOutput = z.infer<typeof TestCaseAnalysisOutputSchema>;
