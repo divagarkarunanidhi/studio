@@ -1,0 +1,183 @@
+
+"use client"
+
+import { cn } from "@/lib/utils"
+import { cva, type VariantProps } from "class-variance-authority"
+import { Check, ChevronsUpDown } from "lucide-react"
+import * as React from "react"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+
+export type SingleSelectOption = {
+  value: string
+  label: string
+  icon?: React.ComponentType<{ className?: string }>
+}
+
+const singleSelectVariants = cva(
+  "m-1 transition-all duration-300 ease-in-out border-foreground/10 text-foreground bg-card hover:bg-card/80",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-secondary/10 text-secondary bg-secondary/10 hover:bg-secondary/80",
+        primary:
+          "border-primary/10 text-primary bg-primary/10 hover:bg-primary/80",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+interface SingleSelectProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof singleSelectVariants> {
+  options: SingleSelectOption[]
+  onValueChange: (value: string) => void
+  value: string
+  placeholder?: string
+  emptyMessage?: string
+  className?: string
+}
+
+export const SingleSelect = React.forwardRef<
+  HTMLButtonElement,
+  SingleSelectProps
+>(
+  (
+    {
+      options,
+      onValueChange,
+      variant,
+      value = "",
+      placeholder = "Select an option",
+      emptyMessage = "No results found.",
+      className,
+      ...props
+    },
+    ref
+  ) => {
+    const [isPopoverOpen, setIsPopoverOpen] = React.useState(false)
+
+    const handleInputKeyDown = (
+      event: React.KeyboardEvent<HTMLInputElement>
+    ) => {
+      if (event.key === "Enter") {
+        setIsPopoverOpen(true)
+      }
+    }
+
+    const toggleOption = (selectedValue: string) => {
+      onValueChange(selectedValue === value ? "" : selectedValue);
+      setIsPopoverOpen(false);
+    }
+
+    const selectedOption = options.find((option) => option.value === value);
+
+    return (
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            ref={ref}
+            {...props}
+            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+            className={cn(
+              "flex w-full p-1 rounded-md border min-h-10 h-auto items-center justify-between bg-inherit hover:bg-card",
+              className
+            )}
+          >
+            {selectedOption ? (
+              <div className="flex justify-between items-center w-full">
+                <div className="flex flex-wrap items-center">
+                    <Badge
+                      key={selectedOption.value}
+                      className={cn(singleSelectVariants({ variant }))}
+                    >
+                      {selectedOption.icon && <selectedOption.icon className="h-4 w-4 mr-2" />}
+                      {selectedOption.label}
+                    </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <ChevronsUpDown className="h-4 w-4 ml-2" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between w-full mx-auto">
+                <span className="text-sm text-muted-foreground mx-3">
+                  {placeholder}
+                </span>
+                <ChevronsUpDown className="h-4 w-4 mx-2" />
+              </div>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-full p-0"
+          align="start"
+          onEscapeKeyDown={() => setIsPopoverOpen(false)}
+        >
+          <Command>
+            <CommandInput
+              placeholder="Search..."
+              onKeyDown={handleInputKeyDown}
+            />
+            <CommandList>
+              <CommandEmpty>{emptyMessage}</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => {
+                  const isSelected = value === option.value
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      onSelect={() => toggleOption(option.value)}
+                      style={{
+                        pointerEvents: "auto",
+                        opacity: 1,
+                      }}
+                      className="cursor-pointer"
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
+                      <div
+                        className={cn(
+                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "opacity-50 [&_svg]:invisible"
+                        )}
+                      >
+                        <Check className="h-4 w-4" />
+                      </div>
+                      {option.icon && (
+                        <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span>{option.label}</span>
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    )
+  }
+)
+SingleSelect.displayName = "SingleSelect"
+
+    

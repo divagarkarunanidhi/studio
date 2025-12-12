@@ -14,7 +14,7 @@ import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { FileText, Loader2, Download, Wand2, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
-import { Combobox, type ComboboxOption } from '../ui/combobox';
+import { SingleSelect, type SingleSelectOption } from '../ui/single-select';
 import { Input } from '@/components/ui/input';
 import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
 import {
@@ -193,7 +193,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     return allUniqueLabels.map(label => ({ value: label, label: label }));
   }, [allUniqueLabels]);
   
-  const uniqueLabelOptionsCombobox: ComboboxOption[] = useMemo(() => {
+  const uniqueLabelOptionsSingle: SingleSelectOption[] = useMemo(() => {
     return allUniqueLabels.map(label => ({ value: label, label: label }));
   }, [allUniqueLabels]);
 
@@ -481,8 +481,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         </div>
                         <div className="w-full sm:w-1/2 space-y-2">
                             <label className="text-sm font-medium">Reused in</label>
-                            <Combobox
-                                options={uniqueLabelOptionsCombobox}
+                            <SingleSelect
+                                options={uniqueLabelOptionsSingle}
                                 value={reusedInLabel}
                                 onValueChange={setReusedInLabel}
                                 placeholder="Select target label..."
@@ -640,3 +640,5 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     </div>
   );
 }
+
+    
