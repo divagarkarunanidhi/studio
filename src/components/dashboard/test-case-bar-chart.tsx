@@ -2,14 +2,11 @@
 "use client";
 
 import * as React from "react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell } from "recharts";
 
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   ChartConfig,
@@ -31,27 +28,34 @@ interface TestCaseBarChartProps {
   isLoading?: boolean;
 }
 
-const chartConfig = {
-  count: {
-    label: "Test Cases",
-    color: "hsl(var(--chart-1))",
-  },
-} satisfies ChartConfig;
+const COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+];
 
 export function TestCaseBarChart({ data, title, description, isLoading }: TestCaseBarChartProps) {
     const sortedData = React.useMemo(() => {
         return [...data].sort((a, b) => b.count - a.count);
     }, [data]);
+
+    const chartConfig = React.useMemo(() => {
+        return sortedData.reduce((acc, item, index) => {
+          acc[item.name] = {
+            label: item.name,
+            color: COLORS[index % COLORS.length],
+          };
+          return acc;
+        }, {} as ChartConfig);
+    }, [sortedData]);
     
   if (isLoading) {
     return (
         <Card>
-            <CardHeader>
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-            </CardHeader>
-            <CardContent>
-                <Skeleton className="h-64 w-full" />
+            <CardContent className="p-6">
+                <Skeleton className="h-[250px] w-full" />
             </CardContent>
         </Card>
     )
@@ -60,7 +64,7 @@ export function TestCaseBarChart({ data, title, description, isLoading }: TestCa
   return (
     <Card className="w-full">
       <CardContent className="p-0">
-        <ChartContainer config={chartConfig}>
+        <ChartContainer config={chartConfig} className="h-[250px] w-full">
           <BarChart
             accessibilityLayer
             data={sortedData}
@@ -88,7 +92,11 @@ export function TestCaseBarChart({ data, title, description, isLoading }: TestCa
               cursor={false}
               content={<ChartTooltipContent indicator="dot" />}
             />
-            <Bar dataKey="count" fill="var(--color-count)" radius={4} />
+            <Bar dataKey="count" radius={4}>
+                {sortedData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>
