@@ -114,15 +114,15 @@ export function SeleniumDashboardPage() {
                 throw new Error(errorData.error || 'Failed to save the report to the server.');
             }
             
-            // Immediately update the state with the uploaded data
-            setReport(data);
-            setShowUploader(false);
-            
             toast({
                 title: "Report Uploaded",
                 description: `Successfully processed and saved ${file.name}.`
             });
 
+            // Immediately update the state with the uploaded data to refresh the UI
+            setReport(data);
+            setShowUploader(false);
+            
         } catch (error: any) {
             console.error("Error processing JSON report:", error);
             setReport(null);
