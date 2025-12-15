@@ -94,9 +94,6 @@ export function SeleniumDashboardPage() {
           }
 
         try {
-            if (!file.name.endsWith('.json')) {
-                throw new Error("Invalid file type. Please upload a JSON file.");
-            }
             const data = JSON.parse(fileContent);
             if (!Array.isArray(data) || data.length === 0 || !('uri' in data[0] && 'elements' in data[0])) {
                 throw new Error("JSON file does not appear to be a valid Cucumber report.");
@@ -200,7 +197,7 @@ export function SeleniumDashboardPage() {
                             <CardDescription>To get started, please upload a Cucumber JSON report file.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <FileUploader onDataUploaded={handleDataUploaded} accept=".json" templatePath='' />
+                            <FileUploader onDataUploaded={handleDataUploaded} accept=".json" templatePath="" />
                              <Alert className="mt-4">
                                 <FileJson className="h-4 w-4" />
                                 <AlertTitle>Waiting for file</AlertTitle>
@@ -298,5 +295,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
-    
