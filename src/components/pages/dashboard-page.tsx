@@ -35,6 +35,7 @@ import {
   Download,
   FileText,
   MonitorPlay,
+  ClipboardCheck,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -82,9 +83,10 @@ import { FeedbackManagementPage } from './feedback-management-page';
 import * as XLSX from 'xlsx';
 import { doc, getDoc } from 'firebase/firestore';
 import { TestCaseSummaryPage } from './test-case-summary-page';
+import { SeleniumDashboardPage } from './selenium-dashboard-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -455,6 +457,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     configuration: 'Application Configuration',
     'feedback-management': 'Feedback Management',
     'test-case-summary': 'Test Case Summary',
+    'selenium-dashboard': 'Selenium Dashboard',
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -470,6 +473,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     configuration: 'Manage global application settings and API keys.',
     'feedback-management': 'View, edit, and delete saved few-shot learning examples.',
     'test-case-summary': 'Upload and visualize test case data by label.',
+    'selenium-dashboard': 'Upload and visualize Selenium test reports.',
   };
 
   const uniqueDomains = useMemo(() => {
@@ -711,6 +715,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Selenium Dashboard" isActive={activeView === 'selenium-dashboard'} onClick={() => handleViewChange('selenium-dashboard')}>
+                <ClipboardCheck />
+                Selenium Dashboard
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton tooltip="Defect Analysis" isActive={activeView === 'analysis'} onClick={() => handleViewChange('analysis')}>
                 <FileHeart />
                 Static Analysis
@@ -887,6 +897,10 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             {activeView === 'test-case-summary' && (
               <TestCaseSummaryPage onDataPresentChange={setTestCaseDataPresent} showUploaderInitially={!testCaseDataPresent} />
             )}
+            
+            {activeView === 'selenium-dashboard' && (
+              <SeleniumDashboardPage />
+            )}
 
             {activeView === 'analysis' && (
               <AnalysisPage defects={defects} uniqueDomains={uniqueDomains} />
@@ -1051,5 +1065,3 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     </SidebarProvider>
   );
 }
-
-    
