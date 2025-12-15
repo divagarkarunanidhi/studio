@@ -82,10 +82,9 @@ import { FeedbackManagementPage } from './feedback-management-page';
 import * as XLSX from 'xlsx';
 import { doc, getDoc } from 'firebase/firestore';
 import { TestCaseSummaryPage } from './test-case-summary-page';
-import { SeleniumLiveDashboardPage } from './selenium-live-dashboard-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-live-dashboard';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -456,7 +455,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     configuration: 'Application Configuration',
     'feedback-management': 'Feedback Management',
     'test-case-summary': 'Test Case Summary',
-    'selenium-live-dashboard': 'Selenium Live Dashboard',
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -472,7 +470,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     configuration: 'Manage global application settings and API keys.',
     'feedback-management': 'View, edit, and delete saved few-shot learning examples.',
     'test-case-summary': 'Upload and visualize test case data by label.',
-    'selenium-live-dashboard': 'Live status of Selenium test executions.',
   };
 
   const uniqueDomains = useMemo(() => {
@@ -713,12 +710,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 Test Case Summary
               </SidebarMenuButton>
             </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Selenium Live Dashboard" isActive={activeView === 'selenium-live-dashboard'} onClick={() => handleViewChange('selenium-live-dashboard')}>
-                <MonitorPlay />
-                Selenium Live
-              </SidebarMenuButton>
-            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Defect Analysis" isActive={activeView === 'analysis'} onClick={() => handleViewChange('analysis')}>
                 <FileHeart />
@@ -895,10 +886,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
             {activeView === 'test-case-summary' && (
               <TestCaseSummaryPage onDataPresentChange={setTestCaseDataPresent} showUploaderInitially={!testCaseDataPresent} />
-            )}
-
-            {activeView === 'selenium-live-dashboard' && (
-                <SeleniumLiveDashboardPage />
             )}
 
             {activeView === 'analysis' && (
