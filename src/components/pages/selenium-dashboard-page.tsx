@@ -1,16 +1,20 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
-import { ClipboardCheck, FileJson, CheckCircle2, XCircle, Percent } from 'lucide-react';
+import { ClipboardCheck, FileJson, CheckCircle2, XCircle, Percent, Loader2, Upload } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '../ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+
 
 interface Step {
     result: {
@@ -45,36 +49,90 @@ interface ReportStats {
 
 export function SeleniumDashboardPage() {
     const { toast } = useToast();
+    const { user } = useUser();
     const [report, setReport] = useState<Feature[] | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [showUploader, setShowUploader] = useState(false);
 
-    const handleDataUploaded = useCallback((fileContent: string, file: File) => {
+    const handleLoadFromServer = useCallback(async () => {
+        setIsLoading(true);
+        try {
+          const response = await fetch('/api/selenium/latest');
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.details || 'Failed to fetch data from server.');
+          }
+          const data = await response.json();
+          if (data && data.report) {
+            setReport(data.report);
+            setShowUploader(false);
+          } else {
+            setReport(null);
+            setShowUploader(true); 
+          }
+        } catch (error: any) {
+          toast({ variant: 'destructive', title: 'Error Loading Report', description: error.message });
+          setShowUploader(true); 
+          console.error(error);
+        } finally {
+          setIsLoading(false);
+        }
+      }, [toast]);
+      
+    useEffect(() => {
+        handleLoadFromServer();
+    }, [handleLoadFromServer]);
+
+    const handleDataUploaded = useCallback(async (fileContent: string, file: File) => {
+        if (!user) {
+            toast({
+              variant: 'destructive',
+              title: 'Authentication Error',
+              description: 'You must be logged in to upload a report.',
+            });
+            return;
+          }
+
         try {
             if (!file.name.endsWith('.json')) {
                 throw new Error("Invalid file type. Please upload a JSON file.");
             }
             const data = JSON.parse(fileContent);
-            if (!Array.isArray(data) || data.length === 0) {
-                throw new Error("Invalid or empty JSON report. Expected an array of features.");
-            }
-            // Basic validation for Cucumber JSON structure
-            if (!('uri' in data[0] && 'elements' in data[0])) {
+            if (!Array.isArray(data) || data.length === 0 || !('uri' in data[0] && 'elements' in data[0])) {
                 throw new Error("JSON file does not appear to be a valid Cucumber report.");
             }
+            
+            const response = await fetch('/api/selenium/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  report: data,
+                  uploaderId: user.uid,
+                  fileName: file.name,
+                }),
+              });
+      
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to save the report to the server.');
+            }
+
             setReport(data);
+            setShowUploader(false);
             toast({
-                title: "Report Loaded",
-                description: `Successfully parsed ${data.length} feature(s) from ${file.name}.`
+                title: "Report Uploaded",
+                description: `Successfully parsed and saved ${data.length} feature(s) from ${file.name}.`
             });
         } catch (error: any) {
-            console.error("Error parsing JSON report:", error);
+            console.error("Error processing JSON report:", error);
             setReport(null);
             toast({
                 variant: 'destructive',
                 title: 'Error Loading Report',
-                description: error.message || 'Could not parse the JSON file.',
+                description: error.message || 'Could not parse or upload the JSON file.',
             });
         }
-    }, [toast]);
+    }, [toast, user]);
 
     const reportStats: ReportStats | null = useMemo(() => {
         if (!report) return null;
@@ -120,8 +178,19 @@ export function SeleniumDashboardPage() {
             failedFeatures,
         };
     }, [report]);
+    
+    if (isLoading) {
+        return (
+            <div className="flex flex-1 flex-col items-center justify-center p-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <p>Loading Selenium Dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
-    if (!report || !reportStats) {
+    if (showUploader || !report || !reportStats) {
         return (
             <div className="flex flex-1 flex-col items-center justify-center p-4">
                 <div className="flex w-full max-w-lg flex-col items-center justify-center gap-4 text-center">
@@ -131,7 +200,7 @@ export function SeleniumDashboardPage() {
                             <CardDescription>To get started, please upload a Cucumber JSON report file.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <FileUploader onDataUploaded={handleDataUploaded} templatePath='' />
+                            <FileUploader onDataUploaded={handleDataUploaded} accept=".json" templatePath='' />
                              <Alert className="mt-4">
                                 <FileJson className="h-4 w-4" />
                                 <AlertTitle>Waiting for file</AlertTitle>
@@ -148,6 +217,28 @@ export function SeleniumDashboardPage() {
 
     return (
         <div className="space-y-6">
+             <div className='text-right'>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="outline">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload New Report
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Upload a new Selenium report?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will clear the current view and allow you to upload a new JSON file.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => setShowUploader(true)}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard title="Total Features" value={reportStats.totalFeatures} icon={<FileJson />} />
                 <StatCard title="Total Scenarios" value={reportStats.totalScenarios} icon={<ClipboardCheck />} />
@@ -207,3 +298,5 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
+    
