@@ -114,7 +114,7 @@ export function FileUploader({ onDataUploaded, templatePath = "/defects-template
           Click to upload or drag and drop
         </p>
         <p className="text-sm text-muted-foreground">
-          {accept ? `${accept} file` : 'CSV file with data'}
+          {accept ? `${accept.toUpperCase()} file` : 'CSV file with data'}
         </p>
         <input
           id="file-upload"

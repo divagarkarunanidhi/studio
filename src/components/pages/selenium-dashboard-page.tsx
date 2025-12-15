@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { FileUploader } from '../dashboard/file-uploader';
+import { FileUploader } from '../ui/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
 import { ClipboardCheck, FileJson, CheckCircle2, XCircle, Percent, Loader2, Upload } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
