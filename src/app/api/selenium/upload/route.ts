@@ -6,23 +6,25 @@ export async function POST(request: Request) {
   try {
     const { clientPromise, dbName } = await getMongoDetails();
     const body = await request.json();
-    const { report, uploaderId, fileName } = body;
+    const { fileData, uploaderId, fileName } = body;
 
-    if (!Array.isArray(report) || !uploaderId || !fileName) {
+    // fileData is the entire JSON object from the uploaded file
+    if (!fileData || typeof fileData !== 'object' || !uploaderId || !fileName) {
         return NextResponse.json({ error: "Invalid data format." }, { status: 400 });
     }
-
-    const client = await clientPromise;
-    const db = client.db(dbName);
     
-    const fileDoc = {
+    // We store the entire JSON content in a 'fileData' field
+    const docToInsert = {
         fileName,
-        report,
+        fileData, // The entire JSON object is stored here
         uploaderId,
         uploadedAt: new Date().toISOString(),
     };
 
-    const result = await db.collection("seleniumReports").insertOne(fileDoc);
+    const client = await clientPromise;
+    const db = client.db(dbName);
+
+    const result = await db.collection("seleniumReports").insertOne(docToInsert);
 
     return NextResponse.json({ success: true, fileId: result.insertedId });
   } catch (e: any) {
@@ -33,5 +35,4 @@ export async function POST(request: Request) {
     );
   }
 }
-
     

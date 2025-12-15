@@ -56,9 +56,16 @@ interface ReportStats {
 export function SeleniumDashboardPage() {
     const { toast } = useToast();
     const { user } = useUser();
-    const [report, setReport] = useState<Feature[] | null>(null);
+    const [reportData, setReportData] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
+
+    const report: Feature[] | null = useMemo(() => {
+        if (reportData && Array.isArray(reportData.report)) {
+            return reportData.report;
+        }
+        return null;
+    }, [reportData]);
 
     const handleLoadFromServer = useCallback(async () => {
         setIsLoading(true);
@@ -70,10 +77,10 @@ export function SeleniumDashboardPage() {
           }
           const data = await response.json();
           if (data && data.report) {
-            setReport(data.report);
+            setReportData(data);
             setShowUploader(false);
           } else {
-            setReport(null);
+            setReportData(null);
             setShowUploader(true); 
           }
         } catch (error: any) {
@@ -100,16 +107,17 @@ export function SeleniumDashboardPage() {
           }
 
         try {
-            const data = JSON.parse(fileContent);
-            if (!Array.isArray(data) || data.length === 0 || !('uri' in data[0] && 'elements' in data[0])) {
-                throw new Error("JSON file does not appear to be a valid Cucumber report.");
+            const jsonData = JSON.parse(fileContent);
+
+            if (typeof jsonData !== 'object' || jsonData === null || !Array.isArray(jsonData.report)) {
+                throw new Error("JSON file must be an object containing a 'report' array.");
             }
             
             const response = await fetch('/api/selenium/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  report: data,
+                  fileData: jsonData,
                   uploaderId: user.uid,
                   fileName: file.name,
                 }),
@@ -126,12 +134,12 @@ export function SeleniumDashboardPage() {
             });
 
             // Immediately update the state with the uploaded data to refresh the UI
-            setReport(data);
+            setReportData(jsonData);
             setShowUploader(false);
             
         } catch (error: any) {
             console.error("Error processing JSON report:", error);
-            setReport(null);
+            setReportData(null);
             toast({
                 variant: 'destructive',
                 title: 'Error Loading Report',
