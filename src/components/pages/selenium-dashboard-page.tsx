@@ -25,10 +25,16 @@ interface Step {
     keyword: string;
 }
 
+interface Tag {
+    name: string;
+    line: number;
+}
+
 interface Scenario {
     name: string;
     keyword: string;
     steps: Step[];
+    tags?: Tag[];
 }
 
 interface Feature {
@@ -44,7 +50,7 @@ interface ReportStats {
     passedScenarios: number;
     failedScenarios: number;
     passPercentage: number;
-    failedFeatures: { name: string; scenarios: { name: string; failedStep: string }[] }[];
+    failedFeatures: { name: string; scenarios: { name: string; failedStep: string, tags: string }[] }[];
 }
 
 export function SeleniumDashboardPage() {
@@ -143,7 +149,7 @@ export function SeleniumDashboardPage() {
 
         report.forEach(feature => {
             totalScenarios += feature.elements.length;
-            const featureFails: { name: string; failedStep: string }[] = [];
+            const featureFails: { name: string; failedStep: string, tags: string }[] = [];
 
             feature.elements.forEach(scenario => {
                 const isScenarioPassed = scenario.steps.every(step => step.result.status === 'passed');
@@ -151,9 +157,11 @@ export function SeleniumDashboardPage() {
                     passedScenarios++;
                 } else {
                     const failedStep = scenario.steps.find(step => step.result.status === 'failed');
+                    const tags = (scenario.tags || []).map(tag => tag.name).join(', ');
                     featureFails.push({
                         name: scenario.name,
-                        failedStep: failedStep ? `${failedStep.keyword}${failedStep.name}` : 'Unknown step'
+                        failedStep: failedStep ? `${failedStep.keyword}${failedStep.name}` : 'Unknown step',
+                        tags: tags,
                     });
                 }
             });
@@ -275,6 +283,7 @@ export function SeleniumDashboardPage() {
                                         <TableHead>Feature</TableHead>
                                         <TableHead>Failed Scenario</TableHead>
                                         <TableHead>Failing Step</TableHead>
+                                        <TableHead>Tags</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -285,6 +294,9 @@ export function SeleniumDashboardPage() {
                                                 <TableCell>{scenario.name}</TableCell>
                                                 <TableCell>
                                                     <Badge variant="destructive">{scenario.failedStep}</Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {scenario.tags && <Badge variant="outline">{scenario.tags}</Badge>}
                                                 </TableCell>
                                             </TableRow>
                                         ))
