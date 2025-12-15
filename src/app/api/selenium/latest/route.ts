@@ -19,8 +19,8 @@ export async function GET() {
       return NextResponse.json(null);
     }
     
-    // The report data is now inside the 'fileData' field
-    const { _id, fileData } = latestFile[0];
+    // MongoDB returns _id, so we can remove it if we don't need it.
+    const { _id, ...fileData } = latestFile[0];
 
     return NextResponse.json(fileData);
   } catch (e: any) {

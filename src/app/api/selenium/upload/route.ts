@@ -8,21 +8,19 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { fileData, uploaderId, fileName } = body;
 
-    // fileData is the entire JSON object from the uploaded file
-    if (!fileData || typeof fileData !== 'object' || !uploaderId || !fileName) {
+    if (!Array.isArray(fileData) || !uploaderId || !fileName) {
         return NextResponse.json({ error: "Invalid data format." }, { status: 400 });
     }
-    
-    // We store the entire JSON content in a 'fileData' field
-    const docToInsert = {
-        fileName,
-        fileData, // The entire JSON object is stored here
-        uploaderId,
-        uploadedAt: new Date().toISOString(),
-    };
 
     const client = await clientPromise;
     const db = client.db(dbName);
+    
+    const docToInsert = {
+        fileName,
+        fileData,
+        uploaderId,
+        uploadedAt: new Date().toISOString(),
+    };
 
     const result = await db.collection("seleniumReports").insertOne(docToInsert);
 
@@ -36,3 +34,4 @@ export async function POST(request: Request) {
   }
 }
     
+

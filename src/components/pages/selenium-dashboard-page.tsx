@@ -25,16 +25,10 @@ interface Step {
     keyword: string;
 }
 
-interface Tag {
-    name: string;
-    line: number;
-}
-
 interface Scenario {
     name: string;
     keyword: string;
     steps: Step[];
-    tags?: Tag[];
 }
 
 interface Feature {
@@ -50,22 +44,15 @@ interface ReportStats {
     passedScenarios: number;
     failedScenarios: number;
     passPercentage: number;
-    failedFeatures: { name: string; scenarios: { name: string; failedStep: string, tags: string }[] }[];
+    failedFeatures: { name: string; scenarios: { name: string; failedStep: string }[] }[];
 }
 
 export function SeleniumDashboardPage() {
     const { toast } = useToast();
     const { user } = useUser();
-    const [reportData, setReportData] = useState<any | null>(null);
+    const [report, setReport] = useState<Feature[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
-
-    const report: Feature[] | null = useMemo(() => {
-        if (reportData && Array.isArray(reportData.report)) {
-            return reportData.report;
-        }
-        return null;
-    }, [reportData]);
 
     const handleLoadFromServer = useCallback(async () => {
         setIsLoading(true);
@@ -76,11 +63,11 @@ export function SeleniumDashboardPage() {
             throw new Error(errorData.details || 'Failed to fetch data from server.');
           }
           const data = await response.json();
-          if (data && data.report) {
-            setReportData(data);
+          if (data && data.fileData) {
+            setReport(data.fileData);
             setShowUploader(false);
           } else {
-            setReportData(null);
+            setReport(null);
             setShowUploader(true); 
           }
         } catch (error: any) {
@@ -109,10 +96,10 @@ export function SeleniumDashboardPage() {
         try {
             const jsonData = JSON.parse(fileContent);
 
-            if (typeof jsonData !== 'object' || jsonData === null || !Array.isArray(jsonData.report)) {
-                throw new Error("JSON file must be an object containing a 'report' array.");
+            if (!Array.isArray(jsonData)) {
+                throw new Error("Uploaded file is not a valid JSON array of Cucumber features.");
             }
-            
+
             const response = await fetch('/api/selenium/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -128,22 +115,21 @@ export function SeleniumDashboardPage() {
                 throw new Error(errorData.error || 'Failed to save the report to the server.');
             }
             
+            setReport(jsonData);
+            setShowUploader(false);
+            
             toast({
                 title: "Report Uploaded",
                 description: `Successfully processed and saved ${file.name}.`
             });
-
-            // Immediately update the state with the uploaded data to refresh the UI
-            setReportData(jsonData);
-            setShowUploader(false);
             
         } catch (error: any) {
             console.error("Error processing JSON report:", error);
-            setReportData(null);
+            setReport(null);
             toast({
                 variant: 'destructive',
                 title: 'Error Loading Report',
-                description: error.message || 'Could not parse or upload the JSON file.',
+                description: 'Could not parse the JSON file. Please ensure it is a valid Cucumber report.',
             });
         }
     }, [toast, user]);
@@ -157,7 +143,7 @@ export function SeleniumDashboardPage() {
 
         report.forEach(feature => {
             totalScenarios += feature.elements.length;
-            const featureFails: { name: string; failedStep: string, tags: string }[] = [];
+            const featureFails: { name: string; failedStep: string }[] = [];
 
             feature.elements.forEach(scenario => {
                 const isScenarioPassed = scenario.steps.every(step => step.result.status === 'passed');
@@ -165,11 +151,9 @@ export function SeleniumDashboardPage() {
                     passedScenarios++;
                 } else {
                     const failedStep = scenario.steps.find(step => step.result.status === 'failed');
-                    const tags = (scenario.tags || []).map(tag => tag.name).join(', ');
                     featureFails.push({
                         name: scenario.name,
                         failedStep: failedStep ? `${failedStep.keyword}${failedStep.name}` : 'Unknown step',
-                        tags: tags,
                     });
                 }
             });
@@ -291,7 +275,6 @@ export function SeleniumDashboardPage() {
                                         <TableHead>Feature</TableHead>
                                         <TableHead>Failed Scenario</TableHead>
                                         <TableHead>Failing Step</TableHead>
-                                        <TableHead>Tags</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -302,9 +285,6 @@ export function SeleniumDashboardPage() {
                                                 <TableCell>{scenario.name}</TableCell>
                                                 <TableCell>
                                                     <Badge variant="destructive">{scenario.failedStep}</Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {scenario.tags && <Badge variant="outline">{scenario.tags}</Badge>}
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -318,3 +298,4 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
