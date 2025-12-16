@@ -477,7 +477,6 @@ export function SeleniumDashboardPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Uploaded At</TableHead>
                                     <TableHead>Domain</TableHead>
                                     <TableHead>Environment</TableHead>
                                     <TableHead>Job Name</TableHead>
@@ -491,9 +490,6 @@ export function SeleniumDashboardPage() {
                             <TableBody>
                                 {allReports.map(summary => (
                                     <TableRow key={summary.id}>
-                                         <TableCell className='font-medium text-xs'>
-                                            {summary.uploadedAt ? format(new Date(summary.uploadedAt), "dd MMM yyyy, HH:mm") : "Invalid Date"}
-                                        </TableCell>
                                         <TableCell>{summary.domain}</TableCell>
                                         <TableCell>{summary.environment}</TableCell>
                                         <TableCell className='max-w-xs truncate'>{summary.jobName}</TableCell>
