@@ -26,6 +26,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { ScrollArea } from '../ui/scroll-area';
 
 
 type TestCase = {
@@ -127,15 +128,12 @@ const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: Tes
 
 
 const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
-    const { _id, test_results, uploadedAt } = report;
+    const { _id, test_results, uploadedAt, solution, environment } = report;
     let totalTests = 0;
     let passed = 0;
     let totalExecutionTime = 0;
     const detailedScenarios: DetailedScenario[] = [];
     let jobName = "N/A";
-    const domain = report.solution || "N/A";
-    const environment = report.environment || "N/A";
-
 
     if (test_results && test_results.length > 0) {
         // Extract job name from the feature name
@@ -169,7 +167,7 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
 
     return {
         id: _id,
-        solution: report.solution || 'N/A',
+        solution: solution || 'N/A',
         jobName: jobName,
         totalTests,
         passed,
@@ -178,8 +176,8 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
         totalExecutionTime,
         rawReport: report,
         uploadedAt,
-        domain,
-        environment,
+        domain: solution || "N/A",
+        environment: environment || "N/A",
     };
 };
 
@@ -219,117 +217,121 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
             <DialogHeader>
                 <DialogTitle>Detailed Report for: {report.solution}</DialogTitle>
             </DialogHeader>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Test Case Status</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ChartContainer config={{}} className="mx-auto aspect-square max-h-[250px]">
-                            <PieChart>
-                                <Tooltip content={<ChartTooltipContent hideLabel />} />
-                                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
-                                 {pieData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                                ))}
-                                </Pie>
-                            </PieChart>
-                        </ChartContainer>
-                         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 text-sm">
-                            {pieData.map((entry) => (
-                                <div key={entry.name} className="flex items-center gap-2">
-                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.fill }} />
-                                <span>{entry.name}: <strong className='font-semibold'>{entry.value}</strong></span>
+            <ScrollArea className="max-h-[80vh]">
+                <div className="space-y-6 p-4">
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Test Case Status</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ChartContainer config={{}} className="mx-auto aspect-square max-h-[250px]">
+                                    <PieChart>
+                                        <Tooltip content={<ChartTooltipContent hideLabel />} />
+                                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
+                                        {pieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                        </Pie>
+                                    </PieChart>
+                                </ChartContainer>
+                                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 text-sm">
+                                    {pieData.map((entry) => (
+                                        <div key={entry.name} className="flex items-center gap-2">
+                                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.fill }} />
+                                        <span>{entry.name}: <strong className='font-semibold'>{entry.value}</strong></span>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            </CardContent>
+                        </Card>
+                        <div className='flex flex-col gap-2 text-sm justify-center'>
+                            <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Test Cases:</span> <strong>{report.totalTests}</strong></div>
+                            <div className='flex justify-between p-2 rounded-md text-green-600 bg-green-500/10'><span>Passed:</span> <strong>{report.passed}</strong></div>
+                            <div className='flex justify-between p-2 rounded-md text-red-600 bg-red-500/10'><span>Failed:</span> <strong>{report.failed}</strong></div>
+                            <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Execution Time:</span> <strong>{formatNanosToTime(report.totalExecutionTime)}</strong></div>
                         </div>
-                    </CardContent>
-                </Card>
-                <div className='flex flex-col gap-2 text-sm justify-center'>
-                    <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Test Cases:</span> <strong>{report.totalTests}</strong></div>
-                    <div className='flex justify-between p-2 rounded-md text-green-600 bg-green-500/10'><span>Passed:</span> <strong>{report.passed}</strong></div>
-                    <div className='flex justify-between p-2 rounded-md text-red-600 bg-red-500/10'><span>Failed:</span> <strong>{report.failed}</strong></div>
-                    <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Execution Time:</span> <strong>{formatNanosToTime(report.totalExecutionTime)}</strong></div>
-                </div>
-            </div>
-
-            {failedScenarios.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Failed Test Cases</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Test Case ID</TableHead>
-                                    <TableHead>Test Case Name</TableHead>
-                                    <TableHead>Defect ID</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {failedScenarios.map(scenario => (
-                                    <TableRow key={scenario.id}>
-                                        <TableCell>{scenario.testCaseId || 'N/A'}</TableCell>
-                                        <TableCell>{scenario.name}</TableCell>
-                                        <TableCell>{scenario.defectId || 'N/A'}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            )}
-
-            <Card>
-                <CardHeader><CardTitle>Scenario Details</CardTitle></CardHeader>
-                <CardContent>
-                    <div className='max-h-96 overflow-y-auto'>
-                    {report.rawReport.test_results?.map((feature, fIndex) => (
-                        <Collapsible key={`${feature.name}-${fIndex}`} open={openFeatures.has(feature.name)} onOpenChange={() => toggleFeature(feature.name)}>
-                             <CollapsibleTrigger asChild>
-                                <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
-                                    <h3 className='font-semibold'>Feature: {feature.name}</h3>
-                                    {openFeatures.has(feature.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                </div>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="pl-4 pt-2 space-y-2">
-                                {feature.elements.map((scenario, sIndex) => (
-                                     <Card key={`${scenario.name}-${sIndex}`} className='overflow-hidden'>
-                                         <CardHeader className='p-3 bg-muted/50'>
-                                             <CardTitle className='text-sm flex items-center gap-2'>
-                                                 {getScenarioStatus(scenario) === 'passed' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                                                 Scenario: {scenario.name}
-                                             </CardTitle>
-                                         </CardHeader>
-                                         <CardContent className='p-0'>
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Step</TableHead>
-                                                        <TableHead>Status</TableHead>
-                                                        <TableHead>Duration</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {scenario.steps.map((step, stIndex) => (
-                                                        <TableRow key={stIndex}>
-                                                            <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
-                                                            <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{step.result.status}</TableCell>
-                                                            <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                         </CardContent>
-                                     </Card>
-                                ))}
-                            </CollapsibleContent>
-                        </Collapsible>
-                    ))}
                     </div>
-                </CardContent>
-            </Card>
+
+                    {failedScenarios.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Failed Test Cases</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Test Case ID</TableHead>
+                                            <TableHead>Test Case Name</TableHead>
+                                            <TableHead>Defect ID</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {failedScenarios.map(scenario => (
+                                            <TableRow key={scenario.id}>
+                                                <TableCell>{scenario.testCaseId || 'N/A'}</TableCell>
+                                                <TableCell>{scenario.name}</TableCell>
+                                                <TableCell>{scenario.defectId || 'N/A'}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    <Card>
+                        <CardHeader><CardTitle>Scenario Details</CardTitle></CardHeader>
+                        <CardContent>
+                            <div className='max-h-96 overflow-y-auto'>
+                            {report.rawReport.test_results?.map((feature, fIndex) => (
+                                <Collapsible key={`${feature.name}-${fIndex}`} open={openFeatures.has(feature.name)} onOpenChange={() => toggleFeature(feature.name)}>
+                                    <CollapsibleTrigger asChild>
+                                        <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
+                                            <h3 className='font-semibold'>Feature: {feature.name}</h3>
+                                            {openFeatures.has(feature.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                        </div>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="pl-4 pt-2 space-y-2">
+                                        {feature.elements.map((scenario, sIndex) => (
+                                            <Card key={`${scenario.name}-${sIndex}`} className='overflow-hidden'>
+                                                <CardHeader className='p-3 bg-muted/50'>
+                                                    <CardTitle className='text-sm flex items-center gap-2'>
+                                                        {getScenarioStatus(scenario) === 'passed' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                                        Scenario: {scenario.name}
+                                                    </CardTitle>
+                                                </CardHeader>
+                                                <CardContent className='p-0'>
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead>Step</TableHead>
+                                                                <TableHead>Status</TableHead>
+                                                                <TableHead>Duration</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {scenario.steps.map((step, stIndex) => (
+                                                                <TableRow key={stIndex}>
+                                                                    <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
+                                                                    <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{step.result.status}</TableCell>
+                                                                    <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </ScrollArea>
         </DialogContent>
     )
 }
@@ -507,26 +509,22 @@ export function SeleniumDashboardPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Domain</TableHead>
-                                    <TableHead>Environment</TableHead>
                                     <TableHead>Job Name</TableHead>
+                                    <TableHead>Domain</TableHead>
                                     <TableHead>Total</TableHead>
                                     <TableHead>Passed</TableHead>
                                     <TableHead>Failed</TableHead>
-                                    <TableHead>Time</TableHead>
                                     <TableHead>Detailed Report</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {allReports.map(summary => (
                                     <TableRow key={summary.id}>
-                                        <TableCell>{summary.domain}</TableCell>
-                                        <TableCell>{summary.environment}</TableCell>
                                         <TableCell className='max-w-xs truncate'>{summary.jobName}</TableCell>
+                                        <TableCell>{summary.solution}</TableCell>
                                         <TableCell>{summary.totalTests}</TableCell>
                                         <TableCell className='text-green-600'>{summary.passed}</TableCell>
                                         <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
-                                        <TableCell>{formatNanosToTime(summary.totalExecutionTime)}</TableCell>
                                         <TableCell>
                                             <Dialog>
                                                 <DialogTrigger asChild>
@@ -555,4 +553,4 @@ export function SeleniumDashboardPage() {
     );
 }
 
-    
+  
