@@ -14,11 +14,14 @@ import { Button } from '../ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 
 
+interface StepResult {
+    status: 'passed' | 'failed' | 'skipped';
+    duration?: number | { '$numberLong'?: string };
+    error_message?: string;
+}
+
 interface Step {
-    result: {
-        status: 'passed' | 'failed' | 'skipped';
-        duration: number;
-    };
+    result: StepResult;
     name: string;
     keyword: string;
 }
@@ -37,7 +40,7 @@ interface Feature {
     elements: Scenario[];
 }
 
-// This represents the entire file structure
+// This represents the entire file structure from MongoDB
 interface SeleniumReportFile {
     solution: string;
     environment: string;
@@ -63,6 +66,14 @@ interface ReportSummary {
     failed: number;
     tags: string[];
     reportPath: string;
+}
+
+const getStepStatus = (step: Step): 'passed' | 'failed' | 'skipped' => {
+    return step.result.status;
+};
+
+const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
+    return scenario.steps.every(step => getStepStatus(step) === 'passed') ? 'passed' : 'failed';
 }
 
 export function SeleniumDashboardPage() {
@@ -114,7 +125,8 @@ export function SeleniumDashboardPage() {
         try {
             const jsonData: SeleniumReportFile = JSON.parse(fileContent);
 
-            if (typeof jsonData !== 'object' || jsonData === null || !Array.isArray(jsonData.test_results)) {
+             // Validate the structure
+             if (typeof jsonData !== 'object' || jsonData === null || !Array.isArray(jsonData.test_results)) {
                 throw new Error("Uploaded file is not a valid JSON object with a 'test_results' array.");
             }
 
@@ -153,7 +165,7 @@ export function SeleniumDashboardPage() {
     }, [toast, user]);
 
     const reportSummary: ReportSummary | null = useMemo(() => {
-        if (!reportData) return null;
+        if (!reportData || !reportData.test_results) return null;
 
         const testResults = reportData.test_results;
         let totalTests = 0;
@@ -161,26 +173,28 @@ export function SeleniumDashboardPage() {
         const tags = new Set<string>();
 
         testResults.forEach(feature => {
-            feature.elements.forEach(scenario => {
-                totalTests++;
-                if (scenario.steps.every(step => step.result.status === 'passed')) {
-                    passed++;
-                }
-                if (scenario.tags) {
-                    scenario.tags.forEach(tag => tags.add(tag.name));
-                }
-            });
+            if (feature.elements) {
+                feature.elements.forEach(scenario => {
+                    totalTests++;
+                    if (getScenarioStatus(scenario) === 'passed') {
+                        passed++;
+                    }
+                    if (scenario.tags) {
+                        scenario.tags.forEach(tag => tags.add(tag.name));
+                    }
+                });
+            }
         });
 
         return {
-            domain: reportData.solution,
-            environment: reportData.environment,
-            executionEnv: reportData.Config,
+            domain: reportData.solution || 'N/A',
+            environment: reportData.environment || 'N/A',
+            executionEnv: reportData.Config || 'N/A',
             totalTests,
             passed,
             failed: totalTests - passed,
             tags: Array.from(tags),
-            reportPath: reportData['Report Path'],
+            reportPath: reportData['Report Path'] || '#',
         };
     }, [reportData]);
     
