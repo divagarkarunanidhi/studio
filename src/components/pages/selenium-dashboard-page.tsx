@@ -116,14 +116,15 @@ const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
 
 const extractTestCaseIdFromTags = (tags?: { name: string }[]): string | null => {
     if (!tags) return null;
-    const tcTag = tags.find(tag => tag.name.match(/^@TC-\d+$/) || tag.name.match(/^@TestCaseId=/));
-    if (!tcTag) return null;
-    
-    if (tcTag.name.startsWith('@TestCaseId=')) {
-        return tcTag.name.split('=')[1] || null;
+    for (const tag of tags) {
+        const tagName = tag.name;
+        // Match @TestCaseId=value or @TC-value
+        const match = tagName.match(/^@(?:TestCaseId=|TC-)(.+)/);
+        if (match && match[1]) {
+            return match[1];
+        }
     }
-    
-    return tcTag.name.substring(1); // Remove '@' for @TC-xxxx tags
+    return null;
 };
 
 const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: TestCase[]): string | null => {
@@ -603,3 +604,4 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
