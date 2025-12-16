@@ -179,11 +179,9 @@ export function SeleniumDashboardPage() {
     const [allReports, setAllReports] = useState<ReportSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
-    const [detailedReport, setDetailedReport] = useState<ReportSummary | null>(null);
 
     const handleLoadFromServer = useCallback(async () => {
         setIsLoading(true);
-        setDetailedReport(null); // Go back to summary view
         try {
           const response = await fetch('/api/selenium/all');
           if (!response.ok) {
@@ -225,12 +223,17 @@ export function SeleniumDashboardPage() {
         try {
             const uploadedJson = JSON.parse(fileContent);
 
-            const fileData: SeleniumReportFile = uploadedJson;
+            const fileData: SeleniumReportFile = {
+                solution: uploadedJson.solution,
+                environment: uploadedJson.environment,
+                Config: uploadedJson.Config,
+                "Report Path": uploadedJson["Report Path"],
+                test_results: uploadedJson.test_results,
+            };
 
             if (!fileData || !Array.isArray(fileData.test_results)) {
                  throw new Error("JSON file must be an object containing a 'test_results' array.");
             }
-
 
             const response = await fetch('/api/selenium/upload', {
                 method: 'POST',
@@ -292,125 +295,10 @@ export function SeleniumDashboardPage() {
         );
     }
 
-    if (detailedReport) {
-        return (
-            <div className="space-y-6">
-                <Button variant="outline" onClick={() => setDetailedReport(null)}>
-                    &larr; Back to All Reports
-                </Button>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Execution Details for: {detailedReport.fileName}</CardTitle>
-                        <CardDescription>
-                            Uploaded on {isValid(new Date(detailedReport.uploadedAt)) ? format(new Date(detailedReport.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'Invalid Date'}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                    <Collapsible>
-                        <CollapsibleTrigger asChild>
-                            <Button variant="link" className="p-0 mb-4">
-                                Show Full Report Details <ChevronRight className="h-4 w-4 ml-1" />
-                            </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                            <div className="space-y-4">
-                                {detailedReport.rawReport.fileData?.test_results?.map((feature, fIndex) => (
-                                    <Card key={`${feature.name}-${fIndex}`}>
-                                        <CardHeader>
-                                            <CardTitle className='text-lg'>Feature: {feature.name}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="space-y-2">
-                                                {feature.elements?.map((scenario, sIndex) => (
-                                                    <Collapsible key={`${scenario.name}-${sIndex}`}>
-                                                        <CollapsibleTrigger asChild>
-                                                            <div className="flex items-center gap-2 p-2 rounded-md hover:bg-muted cursor-pointer">
-                                                                <ChevronRight className="h-4 w-4" />
-                                                                <Badge variant={getScenarioStatus(scenario) === 'passed' ? 'default' : 'destructive'}>{getScenarioStatus(scenario)}</Badge>
-                                                                <span className="font-medium">{scenario.name}</span>
-                                                            </div>
-                                                        </CollapsibleTrigger>
-                                                        <CollapsibleContent className="pl-8 pt-2">
-                                                            <Table>
-                                                                <TableHeader>
-                                                                    <TableRow>
-                                                                        <TableHead>Step</TableHead>
-                                                                        <TableHead>Status</TableHead>
-                                                                        <TableHead>Duration</TableHead>
-                                                                    </TableRow>
-                                                                </TableHeader>
-                                                                <TableBody>
-                                                                    {scenario.steps.map((step, stIndex) => (
-                                                                        <TableRow key={stIndex}>
-                                                                            <TableCell>{step.keyword.trim()} {step.name}</TableCell>
-                                                                            <TableCell>
-                                                                                <Badge variant={step.result.status === 'passed' ? 'default' : step.result.status === 'failed' ? 'destructive' : 'secondary'}>{step.result.status}</Badge>
-                                                                            </TableCell>
-                                                                            <TableCell>{formatDuration(getStepDuration(step))}</TableCell>
-                                                                        </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
-                                                        </CollapsibleContent>
-                                                    </Collapsible>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
-                    
-                    <h3 className="text-xl font-semibold mb-2 mt-6">Failure Summary</h3>
-                    {detailedReport.failedFeatures.length > 0 ? (
-                        <div className="space-y-4">
-                            {detailedReport.failedFeatures.map(feature => (
-                                <Card key={feature.featureName}>
-                                    <CardHeader>
-                                        <CardTitle className='text-lg'>{feature.featureName}</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Failed Scenario</TableHead>
-                                                    <TableHead>Tags</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {feature.scenarios.map(scenario => (
-                                                    <TableRow key={scenario.name}>
-                                                        <TableCell className="font-medium">{scenario.name}</TableCell>
-                                                        <TableCell>
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {scenario.tags.map(tag => <Badge key={tag} variant="destructive">{tag}</Badge>)}
-                                                            </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                         ) : (
-                            <Alert>
-                                <AlertTitle>No Failures!</AlertTitle>
-                                <AlertDescription>This test run had 0 failed scenarios.</AlertDescription>
-                            </Alert>
-                         )}
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6">
              <div className='flex justify-between items-center'>
-                <h2 className="text-2xl font-bold">All Selenium Executions</h2>
+                <h2 className="text-2xl font-bold">Selenium Executions</h2>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="outline">
@@ -439,45 +327,19 @@ export function SeleniumDashboardPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Date Uploaded</TableHead>
-                                    <TableHead>Domain</TableHead>
-                                    <TableHead>Environment</TableHead>
-                                    <TableHead>Total</TableHead>
+                                    <TableHead>Solution</TableHead>
+                                    <TableHead>Total Test Cases</TableHead>
                                     <TableHead>Passed</TableHead>
                                     <TableHead>Failed</TableHead>
-                                    <TableHead>Execution Time</TableHead>
-                                    <TableHead>Report Path</TableHead>
-                                    <TableHead>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {allReports.map(summary => (
                                     <TableRow key={summary.id}>
-                                        <TableCell className='font-medium text-xs'>
-                                            {isValid(new Date(summary.uploadedAt)) ? format(new Date(summary.uploadedAt), "dd MMM yyyy, HH:mm") : 'Invalid Date'}
-                                        </TableCell>
                                         <TableCell>{summary.domain}</TableCell>
-                                        <TableCell>{summary.environment}</TableCell>
                                         <TableCell>{summary.totalTests}</TableCell>
                                         <TableCell className='text-green-600'>{summary.passed}</TableCell>
                                         <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-1 text-muted-foreground">
-                                                <Timer className="h-4 w-4" />
-                                                {formatDuration(summary.totalDuration)}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <a href={summary.reportPath} target="_blank" rel="noopener noreferrer" className="flex items-center text-primary hover:underline">
-                                                View Report <ExternalLink className="ml-1 h-3 w-3" />
-                                            </a>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button variant="ghost" size="sm" onClick={() => setDetailedReport(summary)}>
-                                                <Eye className="mr-2 h-4 w-4" />
-                                                Details
-                                            </Button>
-                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
