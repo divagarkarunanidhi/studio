@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -12,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '../ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { format, formatDistanceToNowStrict } from 'date-fns';
+import { format, formatDistanceToNowStrict, isValid } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
@@ -225,8 +224,8 @@ export function SeleniumDashboardPage() {
         try {
             const fileData: SeleniumReportFile = JSON.parse(fileContent);
 
-            if (typeof fileData !== 'object' || fileData === null) {
-                throw new Error("Uploaded file is not a valid JSON object.");
+            if (typeof fileData !== 'object' || fileData === null || !Array.isArray(fileData.test_results)) {
+                throw new Error("Uploaded file is not a valid JSON object or is missing the 'test_results' array.");
             }
 
             const response = await fetch('/api/selenium/upload', {
@@ -300,7 +299,7 @@ export function SeleniumDashboardPage() {
                     <CardHeader>
                         <CardTitle>Execution Details for: {detailedReport.fileName}</CardTitle>
                         <CardDescription>
-                            Uploaded on {format(new Date(detailedReport.uploadedAt), "MMM d, yyyy 'at' h:mm a")}
+                            Uploaded on {isValid(new Date(detailedReport.uploadedAt)) ? format(new Date(detailedReport.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'Invalid Date'}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -452,7 +451,7 @@ export function SeleniumDashboardPage() {
                                 {allReports.map(summary => (
                                     <TableRow key={summary.id}>
                                         <TableCell className='font-medium text-xs'>
-                                            {format(new Date(summary.uploadedAt), "dd MMM yyyy, HH:mm")}
+                                            {isValid(new Date(summary.uploadedAt)) ? format(new Date(summary.uploadedAt), "dd MMM yyyy, HH:mm") : 'Invalid Date'}
                                         </TableCell>
                                         <TableCell>{summary.domain}</TableCell>
                                         <TableCell>{summary.environment}</TableCell>
@@ -495,5 +494,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
-    
