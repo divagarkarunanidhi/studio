@@ -6,19 +6,26 @@ export async function POST(request: Request) {
   try {
     const { clientPromise, dbName } = await getMongoDetails();
     const body = await request.json();
+    // Destructure all expected top-level fields from the uploaded JSON
     const { fileData, uploaderId, fileName } = body;
+    const { solution, environment, Config, "Report Path": reportPath, test_results } = fileData;
 
-    // Updated validation: check if fileData is an object and has test_results
-    if (typeof fileData !== 'object' || fileData === null || !Array.isArray(fileData.test_results) || !uploaderId || !fileName) {
-        return NextResponse.json({ error: "Invalid data format. Expecting an object with 'fileData', 'uploaderId', and 'fileName'." }, { status: 400 });
+    // Validate that the essential parts are present
+    if (!test_results || !Array.isArray(test_results) || !uploaderId || !fileName || !solution) {
+        return NextResponse.json({ error: "Invalid data format. Expecting an object with 'fileData' (containing 'test_results', 'solution', etc.), 'uploaderId', and 'fileName'." }, { status: 400 });
     }
 
     const client = await clientPromise;
     const db = client.db(dbName);
     
+    // Construct the document to be inserted with top-level fields
     const docToInsert = {
         fileName,
-        fileData, // The entire JSON object is stored
+        solution,
+        environment,
+        Config,
+        "Report Path": reportPath,
+        test_results,
         uploaderId,
         uploadedAt: new Date().toISOString(),
     };

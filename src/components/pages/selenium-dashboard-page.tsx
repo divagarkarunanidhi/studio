@@ -7,15 +7,11 @@ import { useUser } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload, ExternalLink, ChevronRight, ChevronsRight, Eye, Timer } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '../ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
-import { format, formatDistanceToNowStrict, isValid } from 'date-fns';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
+import { Button } from '../ui/button';
 
 interface StepResult {
     status: 'passed' | 'failed' | 'skipped';
@@ -43,14 +39,6 @@ interface Feature {
     tags?: { name: string }[];
 }
 
-interface StoredReportData {
-    _id: string;
-    fileName: string;
-    fileData: SeleniumReportFile;
-    uploaderId: string;
-    uploadedAt: string;
-}
-
 interface SeleniumReportFile {
     solution?: string;
     environment?: string;
@@ -59,97 +47,51 @@ interface SeleniumReportFile {
     test_results: Feature[];
 }
 
+// This interface now represents the direct structure from MongoDB
+interface StoredReportData {
+    _id: string;
+    fileName: string;
+    solution: string;
+    environment: string;
+    Config: string;
+    "Report Path": string;
+    test_results: Feature[];
+    uploaderId: string;
+    uploadedAt: string;
+}
+
 interface ReportSummary {
     id: string;
-    fileName: string;
-    uploadedAt: string;
-    domain: string;
-    environment: string;
-    executionEnv: string;
+    solution: string;
     totalTests: number;
     passed: number;
     failed: number;
-    tags: string[];
-    reportPath: string;
-    failedFeatures: { featureName: string; scenarios: { name: string; tags: string[] }[] }[];
-    totalDuration: number;
-    rawReport: StoredReportData;
 }
 
-const getStepDuration = (step: Step): number => {
-    if (!step.result.duration) return 0;
-    if (typeof step.result.duration === 'number') return step.result.duration;
-    if (typeof step.result.duration === 'object' && step.result.duration?.$numberLong) {
-        return parseInt(step.result.duration.$numberLong, 10);
-    }
-    return 0;
-};
 
 const getStepStatus = (step: Step): 'passed' | 'failed' | 'skipped' => {
     return step.result.status;
 };
 
 const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
-    return scenario.steps.every(step => getStepStatus(step) === 'passed') ? 'passed' : 'failed';
+    // A scenario fails if any of its steps have failed.
+    return scenario.steps.some(step => getStepStatus(step) === 'failed') ? 'failed' : 'passed';
 }
 
-const formatDuration = (nanoseconds: number): string => {
-    if (nanoseconds === 0) return "0s";
-    const seconds = nanoseconds / 1e9;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.round(seconds % 60);
-    if (minutes > 0) {
-      return `${minutes}m ${remainingSeconds}s`;
-    }
-    return `${seconds.toFixed(2)}s`;
-};
-
-
 const processReport = (report: StoredReportData): ReportSummary => {
-    const { _id, fileName, uploadedAt, fileData } = report;
+    const { _id, solution, test_results } = report;
     let totalTests = 0;
     let passed = 0;
-    let totalDuration = 0;
-    const tags = new Set<string>();
-    const failedFeatures: ReportSummary['failedFeatures'] = [];
 
-    if (fileData && fileData.test_results) {
-        fileData.test_results.forEach(feature => {
-            if (feature.tags) {
-                feature.tags.forEach(tag => tags.add(tag.name));
-            }
-
-            let featureHasFailures = false;
-            const failedScenariosInFeature: { name: string; tags: string[] }[] = [];
-
+    if (test_results) {
+        test_results.forEach(feature => {
             if (feature.elements) {
                 feature.elements.forEach(scenario => {
                     totalTests++;
                     const scenarioStatus = getScenarioStatus(scenario);
                     if (scenarioStatus === 'passed') {
                         passed++;
-                    } else {
-                        featureHasFailures = true;
-                        failedScenariosInFeature.push({
-                            name: scenario.name,
-                            tags: scenario.tags ? scenario.tags.map(t => t.name) : []
-                        });
                     }
-
-                    if (scenario.tags) {
-                        scenario.tags.forEach(tag => tags.add(tag.name));
-                    }
-
-                    scenario.steps.forEach(step => {
-                        totalDuration += getStepDuration(step);
-                    });
-                });
-            }
-
-            if (featureHasFailures) {
-                failedFeatures.push({
-                    featureName: feature.name,
-                    scenarios: failedScenariosInFeature
                 });
             }
         });
@@ -157,19 +99,10 @@ const processReport = (report: StoredReportData): ReportSummary => {
 
     return {
         id: _id,
-        fileName,
-        uploadedAt,
-        domain: fileData?.solution || 'N/A',
-        environment: fileData?.environment || 'N/A',
-        executionEnv: fileData?.Config || 'N/A',
+        solution: solution || 'N/A',
         totalTests,
         passed,
         failed: totalTests - passed,
-        tags: Array.from(tags),
-        reportPath: fileData?.['Report Path'] || '#',
-        failedFeatures,
-        totalDuration,
-        rawReport: report,
     };
 };
 
@@ -223,15 +156,7 @@ export function SeleniumDashboardPage() {
         try {
             const uploadedJson = JSON.parse(fileContent);
 
-            const fileData: SeleniumReportFile = {
-                solution: uploadedJson.solution,
-                environment: uploadedJson.environment,
-                Config: uploadedJson.Config,
-                "Report Path": uploadedJson["Report Path"],
-                test_results: uploadedJson.test_results,
-            };
-
-            if (!fileData || !Array.isArray(fileData.test_results)) {
+            if (!uploadedJson || !Array.isArray(uploadedJson.test_results)) {
                  throw new Error("JSON file must be an object containing a 'test_results' array.");
             }
 
@@ -239,7 +164,7 @@ export function SeleniumDashboardPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  fileData: fileData,
+                  fileData: uploadedJson, // Send the whole object
                   uploaderId: user.uid,
                   fileName: file.name,
                 }),
@@ -336,7 +261,7 @@ export function SeleniumDashboardPage() {
                             <TableBody>
                                 {allReports.map(summary => (
                                     <TableRow key={summary.id}>
-                                        <TableCell>{summary.domain}</TableCell>
+                                        <TableCell>{summary.solution}</TableCell>
                                         <TableCell>{summary.totalTests}</TableCell>
                                         <TableCell className='text-green-600'>{summary.passed}</TableCell>
                                         <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
