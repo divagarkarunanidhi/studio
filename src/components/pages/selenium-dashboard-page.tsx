@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -222,11 +223,20 @@ export function SeleniumDashboardPage() {
         }
 
         try {
-            const fileData: SeleniumReportFile = JSON.parse(fileContent);
+            const uploadedJson = JSON.parse(fileContent);
 
-            if (typeof fileData !== 'object' || fileData === null || !Array.isArray(fileData.test_results)) {
-                throw new Error("Uploaded file is not a valid JSON object or is missing the 'test_results' array.");
+            // Validate that the uploaded file is an object and contains a `report` key which is an array
+            if (typeof uploadedJson !== 'object' || uploadedJson === null) {
+                throw new Error("Uploaded file is not a valid JSON object.");
             }
+
+            const fileData: SeleniumReportFile = uploadedJson.report ? uploadedJson.report[0] : uploadedJson;
+
+            // Further validation for the actual report content
+            if (!Array.isArray(fileData.test_results)) {
+                 throw new Error("JSON file must be an object containing a 'test_results' array.");
+            }
+
 
             const response = await fetch('/api/selenium/upload', {
                 method: 'POST',
@@ -248,7 +258,17 @@ export function SeleniumDashboardPage() {
                 description: `Successfully processed and saved ${file.name}. Refreshing data...`
             });
 
-            await handleLoadFromServer();
+            const newReport = await response.json();
+            const processedNewReport = processReport({
+                _id: newReport.fileId,
+                fileName: file.name,
+                fileData: fileData,
+                uploaderId: user.uid,
+                uploadedAt: new Date().toISOString(),
+            });
+
+            setAllReports(prev => [processedNewReport, ...prev]);
+            setShowUploader(false);
             
         } catch (error: any) {
             console.error("Error processing JSON report:", error);
@@ -311,7 +331,7 @@ export function SeleniumDashboardPage() {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                             <div className="space-y-4">
-                                {detailedReport.rawReport.fileData.test_results?.map((feature, fIndex) => (
+                                {detailedReport.rawReport.fileData?.test_results?.map((feature, fIndex) => (
                                     <Card key={`${feature.name}-${fIndex}`}>
                                         <CardHeader>
                                             <CardTitle className='text-lg'>Feature: {feature.name}</CardTitle>
@@ -494,3 +514,5 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
+    
