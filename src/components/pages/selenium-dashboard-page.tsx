@@ -113,7 +113,7 @@ const processReport = (report: StoredReportData): ReportSummary => {
     const tags = new Set<string>();
     const failedFeatures: ReportSummary['failedFeatures'] = [];
 
-    if (fileData.test_results) {
+    if (fileData && fileData.test_results) {
         fileData.test_results.forEach(feature => {
             if (feature.tags) {
                 feature.tags.forEach(tag => tags.add(tag.name));
@@ -159,14 +159,14 @@ const processReport = (report: StoredReportData): ReportSummary => {
         id: _id,
         fileName,
         uploadedAt,
-        domain: fileData.solution || 'N/A',
-        environment: fileData.environment || 'N/A',
-        executionEnv: fileData.Config || 'N/A',
+        domain: fileData?.solution || 'N/A',
+        environment: fileData?.environment || 'N/A',
+        executionEnv: fileData?.Config || 'N/A',
         totalTests,
         passed,
         failed: totalTests - passed,
         tags: Array.from(tags),
-        reportPath: fileData['Report Path'] || '#',
+        reportPath: fileData?.['Report Path'] || '#',
         failedFeatures,
         totalDuration,
         rawReport: report,
