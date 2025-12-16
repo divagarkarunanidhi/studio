@@ -116,7 +116,10 @@ const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
 
 const findTestCaseIdByName = (scenarioName: string, testCaseDetails: TestCase[]): string | null => {
     if (!scenarioName || !testCaseDetails) return null;
-    const matchingTC = testCaseDetails.find(tc => tc['Name']?.trim() === scenarioName.trim());
+    const cleanedScenarioName = scenarioName.trim().toLowerCase();
+    const matchingTC = testCaseDetails.find(tc => 
+        tc['Name']?.trim().toLowerCase() === cleanedScenarioName
+    );
     return matchingTC ? (matchingTC['Issue key'] || null) : null;
 };
 
@@ -391,6 +394,7 @@ export function SeleniumDashboardPage() {
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
     
     const processedReports = useMemo(() => {
+        if (testCaseDetails.length === 0) return [];
         return allReports.map(report => processReport(report, testCaseDetails));
     }, [allReports, testCaseDetails]);
 
@@ -581,11 +585,11 @@ export function SeleniumDashboardPage() {
                             </TableBody>
                         </Table>
                     </div>
-                     {processedReports.length === 0 && (
+                     {processedReports.length === 0 && !isLoading && (
                         <Alert className="mt-4">
                             <AlertTitle>No Reports Found</AlertTitle>
                             <AlertDescription>
-                                There are no Selenium reports stored in the database. Use the button above to upload one.
+                                Either there are no Selenium reports, or the test case summary file hasn't been uploaded. Please upload a test case summary file first from the "Test Case Summary" page.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -595,3 +599,4 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
