@@ -43,20 +43,20 @@ interface Feature {
     tags?: { name: string }[];
 }
 
-interface SeleniumReportFile {
-    solution: string;
-    environment: string;
-    Config: string;
-    "Report Path": string;
-    test_results: Feature[];
-}
-
 interface StoredReportData {
     _id: string;
     fileName: string;
     fileData: SeleniumReportFile;
     uploaderId: string;
     uploadedAt: string;
+}
+
+interface SeleniumReportFile {
+    solution?: string;
+    environment?: string;
+    Config?: string;
+    "Report Path"?: string;
+    test_results: Feature[];
 }
 
 interface ReportSummary {
@@ -227,7 +227,7 @@ export function SeleniumDashboardPage() {
 
             const fileData: SeleniumReportFile = uploadedJson;
 
-            if (!Array.isArray(fileData.test_results)) {
+            if (!fileData || !Array.isArray(fileData.test_results)) {
                  throw new Error("JSON file must be an object containing a 'test_results' array.");
             }
 
