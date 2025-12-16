@@ -116,9 +116,7 @@ const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
 
 const findTestCaseIdByName = (scenarioName: string, testCaseDetails: TestCase[]): string | null => {
     if (!scenarioName || !testCaseDetails) return null;
-    // Find the test case in the summary data where the 'Name' matches the scenario name.
-    const matchingTC = testCaseDetails.find(tc => tc['Name'] === scenarioName);
-    // Return the 'Issue key' of the found test case.
+    const matchingTC = testCaseDetails.find(tc => tc['Name']?.trim() === scenarioName.trim());
     return matchingTC ? (matchingTC['Issue key'] || null) : null;
 };
 
@@ -139,7 +137,6 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
     let jobName = "N/A";
 
     if (test_results && test_results.length > 0) {
-        // Extract job name from the feature name
         jobName = test_results[0].name || "N/A";
 
         test_results.forEach(feature => {
@@ -150,7 +147,6 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
                     if (status === 'passed') {
                         passed++;
                     }
-                    // Find test case ID by name from the test case summary data.
                     const testCaseId = findTestCaseIdByName(scenario.name, testCaseDetails);
                     const defectId = findDefectIdForTestCase(testCaseId, testCaseDetails);
 
@@ -389,60 +385,57 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
 export function SeleniumDashboardPage() {
     const { toast } = useToast();
     const { user } = useUser();
-    const [allReports, setAllReports] = useState<ReportSummary[]>([]);
+    const [allReports, setAllReports] = useState<StoredReportData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
+    
+    const processedReports = useMemo(() => {
+        return allReports.map(report => processReport(report, testCaseDetails));
+    }, [allReports, testCaseDetails]);
 
-    const handleLoadFromServer = useCallback(async (testCases: TestCase[]) => {
+
+    const handleLoadData = useCallback(async () => {
         setIsLoading(true);
         try {
-          const response = await fetch('/api/selenium/all');
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.details || 'Failed to fetch data from server.');
-          }
-          const data: StoredReportData[] = await response.json();
-          if (data && data.length > 0) {
-            const processed = data.map(report => processReport(report, testCases));
-            setAllReports(processed);
-            setShowUploader(false);
-          } else {
-            setAllReports([]);
-            setShowUploader(true); 
-          }
+            const tcResponse = await fetch('/api/test-cases/latest');
+            let tcs: TestCase[] = [];
+            if (tcResponse.ok) {
+                const tcData = await tcResponse.json();
+                if (tcData && tcData.testCases) {
+                    tcs = tcData.testCases;
+                    setTestCaseDetails(tcs);
+                }
+            } else {
+                 console.warn("Could not fetch test case details. Test Case IDs might be missing.");
+            }
+
+            const reportResponse = await fetch('/api/selenium/all');
+            if (!reportResponse.ok) {
+                const errorData = await reportResponse.json();
+                throw new Error(errorData.details || 'Failed to fetch reports from server.');
+            }
+            const reportData: StoredReportData[] = await reportResponse.json();
+            
+            if (reportData && reportData.length > 0) {
+                setAllReports(reportData);
+                setShowUploader(false);
+            } else {
+                setAllReports([]);
+                setShowUploader(true);
+            }
         } catch (error: any) {
-          toast({ variant: 'destructive', title: 'Error Loading Reports', description: error.message });
-          setShowUploader(true); 
-          console.error(error);
+            toast({ variant: 'destructive', title: 'Error Loading Data', description: error.message });
+            setShowUploader(true);
+            console.error(error);
         } finally {
-          setIsLoading(false);
+            setIsLoading(false);
         }
     }, [toast]);
       
     useEffect(() => {
-        const loadAllData = async () => {
-            setIsLoading(true);
-            try {
-                const tcResponse = await fetch('/api/test-cases/latest');
-                let tcs: TestCase[] = [];
-                if (tcResponse.ok) {
-                    const tcData = await tcResponse.json();
-                    if (tcData && tcData.testCases) {
-                        tcs = tcData.testCases;
-                        setTestCaseDetails(tcs);
-                    }
-                }
-                await handleLoadFromServer(tcs);
-            } catch (error) {
-                console.error("Error loading initial data:", error);
-                await handleLoadFromServer([]); // Load reports even if TCs fail
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadAllData();
-    }, [handleLoadFromServer]);
+        handleLoadData();
+    }, [handleLoadData]);
 
 
     const handleDataUploaded = useCallback(async (fileContent: string, file: File) => {
@@ -458,8 +451,8 @@ export function SeleniumDashboardPage() {
         try {
             const uploadedJson = JSON.parse(fileContent);
 
-            if (!uploadedJson || !Array.isArray(uploadedJson)) {
-                 throw new Error("JSON file must be an array of test results.");
+            if (!uploadedJson || !Array.isArray(uploadedJson) || uploadedJson.length === 0) {
+                 throw new Error("JSON file must be a non-empty array of test results.");
             }
 
             const response = await fetch('/api/selenium/upload', {
@@ -485,7 +478,7 @@ export function SeleniumDashboardPage() {
                 title: "Report Uploaded",
                 description: `Successfully processed and saved ${file.name}. Refreshing data...`
             });
-            await handleLoadFromServer(testCaseDetails);
+            await handleLoadData();
             setShowUploader(false);
             
         } catch (error: any) {
@@ -496,7 +489,7 @@ export function SeleniumDashboardPage() {
                 description: error.message || 'Could not parse the JSON file. Please ensure it is a valid Selenium report.',
             });
         }
-    }, [toast, user, handleLoadFromServer, testCaseDetails]);
+    }, [toast, user, handleLoadData]);
     
     if (isLoading) {
         return (
@@ -568,7 +561,7 @@ export function SeleniumDashboardPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {allReports.map(summary => (
+                                {processedReports.map(summary => (
                                     <TableRow key={summary.id}>
                                         <TableCell className='max-w-xs truncate'>{summary.jobName}</TableCell>
                                         <TableCell>{summary.domain}</TableCell>
@@ -588,7 +581,7 @@ export function SeleniumDashboardPage() {
                             </TableBody>
                         </Table>
                     </div>
-                     {allReports.length === 0 && (
+                     {processedReports.length === 0 && (
                         <Alert className="mt-4">
                             <AlertTitle>No Reports Found</AlertTitle>
                             <AlertDescription>
