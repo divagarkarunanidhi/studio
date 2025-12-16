@@ -12,6 +12,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Button } from '../ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+  } from "@/components/ui/dialog"
+import { Pie, PieChart, Cell, Tooltip } from "recharts";
+import {
+  ChartContainer,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+
+type TestCase = {
+    [key: string]: string;
+};
 
 interface StepResult {
     status: 'passed' | 'failed' | 'skipped';
@@ -39,15 +55,6 @@ interface Feature {
     tags?: { name: string }[];
 }
 
-interface SeleniumReportFile {
-    solution?: string;
-    environment?: string;
-    Config?: string;
-    "Report Path"?: string;
-    test_results: Feature[];
-}
-
-// This interface now represents the direct structure from MongoDB
 interface StoredReportData {
     _id: string;
     fileName: string;
@@ -66,32 +73,58 @@ interface ReportSummary {
     totalTests: number;
     passed: number;
     failed: number;
+    scenarios: DetailedScenario[];
 }
 
-
-const getStepStatus = (step: Step): 'passed' | 'failed' | 'skipped' => {
-    return step.result.status;
-};
+interface DetailedScenario {
+    id: string;
+    name: string;
+    status: 'passed' | 'failed';
+    testCaseId: string | null;
+    defectId: string | null;
+}
 
 const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
-    // A scenario fails if any of its steps have failed.
-    return scenario.steps.some(step => getStepStatus(step) === 'failed') ? 'failed' : 'passed';
-}
+    return scenario.steps.some(step => step.result.status === 'failed') ? 'failed' : 'passed';
+};
 
-const processReport = (report: StoredReportData): ReportSummary => {
+const extractTestCaseIdFromTags = (tags?: { name: string }[]): string | null => {
+    if (!tags) return null;
+    const tcTag = tags.find(tag => tag.name.match(/^@TC-\d+$/));
+    return tcTag ? tcTag.name.substring(1) : null; // Remove '@'
+};
+
+const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: TestCase[]): string | null => {
+    if (!testCaseId || !testCaseDetails) return null;
+    const matchingTC = testCaseDetails.find(tc => tc['Issue key'] === testCaseId);
+    return matchingTC ? (matchingTC['Outward issue link (Agile Hive Dependency Link)'] || null) : null;
+};
+
+
+const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
     const { _id, solution, test_results } = report;
     let totalTests = 0;
     let passed = 0;
+    const detailedScenarios: DetailedScenario[] = [];
 
     if (test_results) {
         test_results.forEach(feature => {
             if (feature.elements) {
                 feature.elements.forEach(scenario => {
                     totalTests++;
-                    const scenarioStatus = getScenarioStatus(scenario);
-                    if (scenarioStatus === 'passed') {
+                    const status = getScenarioStatus(scenario);
+                    if (status === 'passed') {
                         passed++;
                     }
+                    const testCaseId = extractTestCaseIdFromTags(scenario.tags);
+                    const defectId = findDefectIdForTestCase(testCaseId, testCaseDetails);
+                    detailedScenarios.push({
+                        id: scenario.name,
+                        name: scenario.name,
+                        status: status,
+                        testCaseId: testCaseId,
+                        defectId: defectId,
+                    });
                 });
             }
         });
@@ -99,12 +132,77 @@ const processReport = (report: StoredReportData): ReportSummary => {
 
     return {
         id: _id,
-        solution: solution || 'N/A',
+        solution: report.solution || 'N/A',
         totalTests,
         passed,
         failed: totalTests - passed,
+        scenarios: detailedScenarios,
     };
 };
+
+const DetailModal = ({ report }: { report: ReportSummary }) => {
+    const pieData = [
+        { name: 'Passed', value: report.passed, fill: 'hsl(var(--chart-1))' },
+        { name: 'Failed', value: report.failed, fill: 'hsl(var(--chart-2))' },
+    ];
+    return (
+        <DialogContent className="max-w-4xl">
+            <DialogHeader>
+                <DialogTitle>Detailed Report for: {report.solution}</DialogTitle>
+            </DialogHeader>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Test Case Status</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ChartContainer config={{}} className="mx-auto aspect-square max-h-[250px]">
+                            <PieChart>
+                                <Tooltip content={<ChartTooltipContent hideLabel />} />
+                                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
+                                 {pieData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                                </Pie>
+                            </PieChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+                <div className='flex flex-col gap-2 text-sm'>
+                    <div className='flex justify-between'><span>Total Test Cases:</span> <strong>{report.totalTests}</strong></div>
+                    <div className='flex justify-between text-green-600'><span>Passed:</span> <strong>{report.passed}</strong></div>
+                    <div className='flex justify-between text-red-600'><span>Failed:</span> <strong>{report.failed}</strong></div>
+                </div>
+            </div>
+
+            <Card>
+                <CardHeader><CardTitle>Test Details</CardTitle></CardHeader>
+                <CardContent>
+                    <div className='max-h-96 overflow-y-auto'>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Test Case ID</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Defect ID</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {report.scenarios.map(scenario => (
+                                <TableRow key={scenario.id}>
+                                    <TableCell>{scenario.testCaseId || 'N/A'}</TableCell>
+                                    <TableCell className={cn(scenario.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{scenario.status}</TableCell>
+                                    <TableCell>{scenario.defectId || 'N/A'}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    </div>
+                </CardContent>
+            </Card>
+        </DialogContent>
+    )
+}
 
 export function SeleniumDashboardPage() {
     const { toast } = useToast();
@@ -112,8 +210,23 @@ export function SeleniumDashboardPage() {
     const [allReports, setAllReports] = useState<ReportSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
+    const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
 
-    const handleLoadFromServer = useCallback(async () => {
+     const fetchTestCaseDetails = useCallback(async () => {
+        try {
+            const response = await fetch('/api/test-cases/latest');
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.testCases) {
+                    setTestCaseDetails(data.testCases);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch test case details:", error);
+        }
+    }, []);
+
+    const handleLoadFromServer = useCallback(async (testCases: TestCase[]) => {
         setIsLoading(true);
         try {
           const response = await fetch('/api/selenium/all');
@@ -123,7 +236,7 @@ export function SeleniumDashboardPage() {
           }
           const data: StoredReportData[] = await response.json();
           if (data && data.length > 0) {
-            const processed = data.map(processReport);
+            const processed = data.map(report => processReport(report, testCases));
             setAllReports(processed);
             setShowUploader(false);
           } else {
@@ -137,11 +250,32 @@ export function SeleniumDashboardPage() {
         } finally {
           setIsLoading(false);
         }
-      }, [toast]);
+    }, [toast]);
       
     useEffect(() => {
-        handleLoadFromServer();
+        const loadAllData = async () => {
+            setIsLoading(true);
+            try {
+                const tcResponse = await fetch('/api/test-cases/latest');
+                let tcs: TestCase[] = [];
+                if (tcResponse.ok) {
+                    const tcData = await tcResponse.json();
+                    if (tcData && tcData.testCases) {
+                        tcs = tcData.testCases;
+                        setTestCaseDetails(tcs);
+                    }
+                }
+                await handleLoadFromServer(tcs);
+            } catch (error) {
+                console.error("Error loading initial data:", error);
+                await handleLoadFromServer([]); // Load reports even if TCs fail
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadAllData();
     }, [handleLoadFromServer]);
+
 
     const handleDataUploaded = useCallback(async (fileContent: string, file: File) => {
         if (!user) {
@@ -156,17 +290,21 @@ export function SeleniumDashboardPage() {
         try {
             const uploadedJson = JSON.parse(fileContent);
 
-            if (!uploadedJson || !Array.isArray(uploadedJson.test_results)) {
-                 throw new Error("JSON file must be an object containing a 'test_results' array.");
+            if (!uploadedJson || !Array.isArray(uploadedJson)) {
+                 throw new Error("JSON file must be an array of test results.");
             }
 
             const response = await fetch('/api/selenium/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  fileData: uploadedJson, // Send the whole object
+                  fileData: { test_results: uploadedJson },
                   uploaderId: user.uid,
                   fileName: file.name,
+                  solution: uploadedJson[0]?.name || "Unknown Solution",
+                  environment: 'default',
+                  Config: 'default',
+                  "Report Path": "N/A"
                 }),
             });
       
@@ -179,7 +317,8 @@ export function SeleniumDashboardPage() {
                 title: "Report Uploaded",
                 description: `Successfully processed and saved ${file.name}. Refreshing data...`
             });
-            handleLoadFromServer();
+            await handleLoadFromServer(testCaseDetails);
+            setShowUploader(false);
             
         } catch (error: any) {
             console.error("Error processing JSON report:", error);
@@ -189,7 +328,7 @@ export function SeleniumDashboardPage() {
                 description: error.message || 'Could not parse the JSON file. Please ensure it is a valid Selenium report.',
             });
         }
-    }, [toast, user, handleLoadFromServer]);
+    }, [toast, user, handleLoadFromServer, testCaseDetails]);
     
     if (isLoading) {
         return (
@@ -256,6 +395,7 @@ export function SeleniumDashboardPage() {
                                     <TableHead>Total Test Cases</TableHead>
                                     <TableHead>Passed</TableHead>
                                     <TableHead>Failed</TableHead>
+                                    <TableHead>Detailed Report</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -265,6 +405,14 @@ export function SeleniumDashboardPage() {
                                         <TableCell>{summary.totalTests}</TableCell>
                                         <TableCell className='text-green-600'>{summary.passed}</TableCell>
                                         <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
+                                        <TableCell>
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <Button variant='link'>View Details</Button>
+                                                </DialogTrigger>
+                                                <DetailModal report={summary} />
+                                            </Dialog>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -284,3 +432,5 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
+    
