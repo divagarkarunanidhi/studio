@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/chart";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { ScrollArea } from '../ui/scroll-area';
+import type { Defect } from '@/lib/types';
 
 
 type TestCase = {
@@ -114,13 +115,13 @@ const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
     return scenario.steps.some(step => step.result.status === 'failed') ? 'failed' : 'passed';
 };
 
-const findTestCaseIdByName = (scenarioName: string, testCaseDetails: TestCase[]): string | null => {
-    if (!scenarioName || !testCaseDetails) return null;
+const findTestCaseIdByName = (scenarioName: string, allDefects: Defect[]): string | null => {
+    if (!scenarioName || !allDefects) return null;
     const cleanedScenarioName = scenarioName.trim().toLowerCase();
-    const matchingTC = testCaseDetails.find(tc => 
-        tc['Name']?.trim().toLowerCase() === cleanedScenarioName
+    const matchingDefect = allDefects.find(defect => 
+        defect.summary?.trim().toLowerCase() === cleanedScenarioName
     );
-    return matchingTC ? (matchingTC['Issue key'] || null) : null;
+    return matchingDefect ? matchingDefect.id : null;
 };
 
 
@@ -131,7 +132,7 @@ const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: Tes
 };
 
 
-const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
+const processReport = (report: StoredReportData, testCaseDetails: TestCase[], allDefects: Defect[]): ReportSummary => {
     const { _id, test_results, solution, environment } = report;
     let totalTests = 0;
     let passed = 0;
@@ -150,7 +151,7 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
                     if (status === 'passed') {
                         passed++;
                     }
-                    const testCaseId = findTestCaseIdByName(scenario.name, testCaseDetails);
+                    const testCaseId = findTestCaseIdByName(scenario.name, allDefects);
                     const defectId = findDefectIdForTestCase(testCaseId, testCaseDetails);
 
                     detailedScenarios.push({
@@ -392,28 +393,40 @@ export function SeleniumDashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
+    const [allDefects, setAllDefects] = useState<Defect[]>([]);
     
     const processedReports = useMemo(() => {
-        if (testCaseDetails.length === 0) return [];
-        return allReports.map(report => processReport(report, testCaseDetails));
-    }, [allReports, testCaseDetails]);
+        if (allDefects.length === 0) return [];
+        return allReports.map(report => processReport(report, testCaseDetails, allDefects));
+    }, [allReports, testCaseDetails, allDefects]);
 
 
     const handleLoadData = useCallback(async () => {
         setIsLoading(true);
         try {
+            // Fetch Test Cases
             const tcResponse = await fetch('/api/test-cases/latest');
-            let tcs: TestCase[] = [];
             if (tcResponse.ok) {
                 const tcData = await tcResponse.json();
                 if (tcData && tcData.testCases) {
-                    tcs = tcData.testCases;
-                    setTestCaseDetails(tcs);
+                    setTestCaseDetails(tcData.testCases);
                 }
             } else {
-                 console.warn("Could not fetch test case details. Test Case IDs might be missing.");
+                 console.warn("Could not fetch test case details. Defect IDs might be missing.");
             }
 
+            // Fetch Defects
+            const defectResponse = await fetch('/api/defects/latest');
+            if (defectResponse.ok) {
+                const defectData = await defectResponse.json();
+                if (defectData && defectData.defects) {
+                    setAllDefects(defectData.defects);
+                }
+            } else {
+                console.warn("Could not fetch defect details. Test Case IDs might be missing from names.");
+            }
+
+            // Fetch Selenium Reports
             const reportResponse = await fetch('/api/selenium/all');
             if (!reportResponse.ok) {
                 const errorData = await reportResponse.json();
@@ -587,9 +600,9 @@ export function SeleniumDashboardPage() {
                     </div>
                      {processedReports.length === 0 && !isLoading && (
                         <Alert className="mt-4">
-                            <AlertTitle>No Reports Found</AlertTitle>
+                            <AlertTitle>No Reports to Display</AlertTitle>
                             <AlertDescription>
-                                Either there are no Selenium reports, or the test case summary file hasn't been uploaded. Please upload a test case summary file first from the "Test Case Summary" page.
+                                Could not find Selenium reports or the necessary defect/test case summary data. Please ensure all required files have been uploaded.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -599,4 +612,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
