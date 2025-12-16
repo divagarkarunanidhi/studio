@@ -114,18 +114,14 @@ const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
     return scenario.steps.some(step => step.result.status === 'failed') ? 'failed' : 'passed';
 };
 
-const extractTestCaseIdFromTags = (tags?: { name: string }[]): string | null => {
-    if (!tags) return null;
-    for (const tag of tags) {
-        const tagName = tag.name;
-        // Match @TestCaseId=value or @TC-value
-        const match = tagName.match(/^@(?:TestCaseId=|TC-)(.+)/);
-        if (match && match[1]) {
-            return match[1];
-        }
-    }
-    return null;
+const findTestCaseIdByName = (scenarioName: string, testCaseDetails: TestCase[]): string | null => {
+    if (!scenarioName || !testCaseDetails) return null;
+    // Find the test case in the summary data where the 'Name' matches the scenario name.
+    const matchingTC = testCaseDetails.find(tc => tc['Name'] === scenarioName);
+    // Return the 'Issue key' of the found test case.
+    return matchingTC ? (matchingTC['Issue key'] || null) : null;
 };
+
 
 const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: TestCase[]): string | null => {
     if (!testCaseId || !testCaseDetails) return null;
@@ -154,8 +150,10 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
                     if (status === 'passed') {
                         passed++;
                     }
-                    const testCaseId = extractTestCaseIdFromTags(scenario.tags);
+                    // Find test case ID by name from the test case summary data.
+                    const testCaseId = findTestCaseIdByName(scenario.name, testCaseDetails);
                     const defectId = findDefectIdForTestCase(testCaseId, testCaseDetails);
+
                     detailedScenarios.push({
                         id: scenario.name,
                         name: scenario.name,
@@ -604,4 +602,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
