@@ -195,6 +195,19 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
     const [isStatusOpen, setIsStatusOpen] = useState(true);
     const [isFailedOpen, setIsFailedOpen] = useState(true);
     const [isScenarioDetailsOpen, setIsScenarioDetailsOpen] = useState(true);
+    const [openScenarios, setOpenScenarios] = useState<Set<string>>(new Set());
+
+    const toggleScenario = (scenarioName: string) => {
+        setOpenScenarios(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(scenarioName)) {
+                newSet.delete(scenarioName);
+            } else {
+                newSet.add(scenarioName);
+            }
+            return newSet;
+        });
+    };
 
     const failedScenarios = useMemo(() => {
         return report.scenarios.filter(s => s.status === 'failed');
@@ -320,34 +333,41 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
                                             </CollapsibleTrigger>
                                             <CollapsibleContent className="pl-4 pt-2 space-y-2">
                                                 {feature.elements.map((scenario, sIndex) => (
-                                                    <Card key={`${scenario.name}-${sIndex}`} className='overflow-hidden'>
-                                                        <CardHeader className='p-3 bg-muted/50'>
-                                                            <CardTitle className='text-sm flex items-center gap-2'>
-                                                                {getScenarioStatus(scenario) === 'passed' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                                                                Scenario: {scenario.name}
-                                                            </CardTitle>
-                                                        </CardHeader>
-                                                        <CardContent className='p-0'>
-                                                            <Table>
-                                                                <TableHeader>
-                                                                    <TableRow>
-                                                                        <TableHead>Step</TableHead>
-                                                                        <TableHead>Status</TableHead>
-                                                                        <TableHead>Duration</TableHead>
-                                                                    </TableRow>
-                                                                </TableHeader>
-                                                                <TableBody>
-                                                                    {scenario.steps.map((step, stIndex) => (
-                                                                        <TableRow key={stIndex}>
-                                                                            <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
-                                                                            <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{step.result.status}</TableCell>
-                                                                            <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
-                                                                        </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
-                                                        </CardContent>
-                                                    </Card>
+                                                    <Collapsible key={`${scenario.name}-${sIndex}`} open={openScenarios.has(scenario.name)} onOpenChange={() => toggleScenario(scenario.name)}>
+                                                        <Card className='overflow-hidden'>
+                                                            <CollapsibleTrigger asChild>
+                                                                <CardHeader className='p-3 bg-muted/50 flex flex-row items-center justify-between cursor-pointer'>
+                                                                    <CardTitle className='text-sm flex items-center gap-2'>
+                                                                        {getScenarioStatus(scenario) === 'passed' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                                                        Scenario: {scenario.name}
+                                                                    </CardTitle>
+                                                                    <ChevronDown className={cn("h-4 w-4 transition-transform", !openScenarios.has(scenario.name) && "-rotate-90")} />
+                                                                </CardHeader>
+                                                            </CollapsibleTrigger>
+                                                            <CollapsibleContent>
+                                                                <CardContent className='p-0'>
+                                                                    <Table>
+                                                                        <TableHeader>
+                                                                            <TableRow>
+                                                                                <TableHead>Step</TableHead>
+                                                                                <TableHead>Status</TableHead>
+                                                                                <TableHead>Duration</TableHead>
+                                                                            </TableRow>
+                                                                        </TableHeader>
+                                                                        <TableBody>
+                                                                            {scenario.steps.map((step, stIndex) => (
+                                                                                <TableRow key={stIndex}>
+                                                                                    <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
+                                                                                    <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{step.result.status}</TableCell>
+                                                                                    <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
+                                                                                </TableRow>
+                                                                            ))}
+                                                                        </TableBody>
+                                                                    </Table>
+                                                                </CardContent>
+                                                            </CollapsibleContent>
+                                                        </Card>
+                                                    </Collapsible>
                                                 ))}
                                             </CollapsibleContent>
                                         </Collapsible>
@@ -579,7 +599,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
-  
-
-    
