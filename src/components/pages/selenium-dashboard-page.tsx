@@ -7,11 +7,9 @@ import { useUser } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { StatCard } from '../dashboard/stat-card';
-import { ClipboardCheck, FileJson, CheckCircle2, XCircle, Percent, Loader2, Upload } from 'lucide-react';
+import { ClipboardCheck, FileJson, CheckCircle2, XCircle, Percent, Loader2, Upload, ExternalLink } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '../ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 
@@ -29,6 +27,7 @@ interface Scenario {
     name: string;
     keyword: string;
     steps: Step[];
+    tags?: { name: string }[];
 }
 
 interface Feature {
@@ -38,19 +37,29 @@ interface Feature {
     elements: Scenario[];
 }
 
-interface ReportStats {
-    totalFeatures: number;
-    totalScenarios: number;
-    passedScenarios: number;
-    failedScenarios: number;
-    passPercentage: number;
-    failedFeatures: { name: string; scenarios: { name: string; failedStep: string }[] }[];
+interface SeleniumExecutionReport {
+    solution: string;
+    environment: string;
+    Config: string;
+    "Report Path": string;
+    test_results: Feature[];
+}
+
+interface ReportSummary {
+    domain: string;
+    environment: string;
+    executionEnv: string;
+    totalTests: number;
+    passed: number;
+    failed: number;
+    tags: string[];
+    reportPath: string;
 }
 
 export function SeleniumDashboardPage() {
     const { toast } = useToast();
     const { user } = useUser();
-    const [report, setReport] = useState<Feature[] | null>(null);
+    const [reportData, setReportData] = useState<SeleniumExecutionReport[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
 
@@ -64,10 +73,10 @@ export function SeleniumDashboardPage() {
           }
           const data = await response.json();
           if (data && data.fileData) {
-            setReport(data.fileData);
+            setReportData(data.fileData);
             setShowUploader(false);
           } else {
-            setReport(null);
+            setReportData(null);
             setShowUploader(true); 
           }
         } catch (error: any) {
@@ -94,10 +103,10 @@ export function SeleniumDashboardPage() {
           }
 
         try {
-            const jsonData = JSON.parse(fileContent);
+            const jsonData: SeleniumExecutionReport[] = JSON.parse(fileContent);
 
-            if (!Array.isArray(jsonData)) {
-                throw new Error("Uploaded file is not a valid JSON array of Cucumber features.");
+            if (!Array.isArray(jsonData) || !jsonData.every(item => item.test_results)) {
+                throw new Error("Uploaded file is not a valid JSON array of Selenium reports.");
             }
 
             const response = await fetch('/api/selenium/upload', {
@@ -115,7 +124,7 @@ export function SeleniumDashboardPage() {
                 throw new Error(errorData.error || 'Failed to save the report to the server.');
             }
             
-            setReport(jsonData);
+            setReportData(jsonData);
             setShowUploader(false);
             
             toast({
@@ -125,59 +134,49 @@ export function SeleniumDashboardPage() {
             
         } catch (error: any) {
             console.error("Error processing JSON report:", error);
-            setReport(null);
+            setReportData(null);
             toast({
                 variant: 'destructive',
                 title: 'Error Loading Report',
-                description: 'Could not parse the JSON file. Please ensure it is a valid Cucumber report.',
+                description: error.message || 'Could not parse the JSON file. Please ensure it is a valid Selenium report.',
             });
         }
     }, [toast, user]);
 
-    const reportStats: ReportStats | null = useMemo(() => {
-        if (!report) return null;
+    const reportSummaries: ReportSummary[] | null = useMemo(() => {
+        if (!reportData) return null;
 
-        let totalScenarios = 0;
-        let passedScenarios = 0;
-        const failedFeatures: ReportStats['failedFeatures'] = [];
+        return reportData.map(report => {
+            const testResults = report.test_results;
+            let totalTests = 0;
+            let passed = 0;
+            const tags = new Set<string>();
 
-        report.forEach(feature => {
-            totalScenarios += feature.elements.length;
-            const featureFails: { name: string; failedStep: string }[] = [];
-
-            feature.elements.forEach(scenario => {
-                const isScenarioPassed = scenario.steps.every(step => step.result.status === 'passed');
-                if (isScenarioPassed) {
-                    passedScenarios++;
-                } else {
-                    const failedStep = scenario.steps.find(step => step.result.status === 'failed');
-                    featureFails.push({
-                        name: scenario.name,
-                        failedStep: failedStep ? `${failedStep.keyword}${failedStep.name}` : 'Unknown step',
-                    });
-                }
+            testResults.forEach(feature => {
+                feature.elements.forEach(scenario => {
+                    totalTests++;
+                    if (scenario.steps.every(step => step.result.status === 'passed')) {
+                        passed++;
+                    }
+                    if (scenario.tags) {
+                        scenario.tags.forEach(tag => tags.add(tag.name));
+                    }
+                });
             });
 
-            if (featureFails.length > 0) {
-                failedFeatures.push({
-                    name: feature.name,
-                    scenarios: featureFails
-                });
-            }
+            return {
+                domain: report.solution,
+                environment: report.environment,
+                executionEnv: report.Config,
+                totalTests,
+                passed,
+                failed: totalTests - passed,
+                tags: Array.from(tags),
+                reportPath: report['Report Path'],
+            };
         });
 
-        const failedScenarios = totalScenarios - passedScenarios;
-        const passPercentage = totalScenarios > 0 ? (passedScenarios / totalScenarios) * 100 : 0;
-
-        return {
-            totalFeatures: report.length,
-            totalScenarios,
-            passedScenarios,
-            failedScenarios,
-            passPercentage,
-            failedFeatures,
-        };
-    }, [report]);
+    }, [reportData]);
     
     if (isLoading) {
         return (
@@ -190,7 +189,7 @@ export function SeleniumDashboardPage() {
         );
     }
 
-    if (showUploader || !report || !reportStats) {
+    if (showUploader || !reportSummaries) {
         return (
             <div className="flex flex-1 flex-col items-center justify-center p-4">
                 <div className="flex w-full max-w-lg flex-col items-center justify-center gap-4 text-center">
@@ -217,7 +216,8 @@ export function SeleniumDashboardPage() {
 
     return (
         <div className="space-y-6">
-             <div className='text-right'>
+             <div className='flex justify-between items-center'>
+                <h2 className="text-2xl font-bold">Selenium Execution Summary</h2>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="outline">
@@ -239,63 +239,50 @@ export function SeleniumDashboardPage() {
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard title="Total Features" value={reportStats.totalFeatures} icon={<FileJson />} />
-                <StatCard title="Total Scenarios" value={reportStats.totalScenarios} icon={<ClipboardCheck />} />
-                <StatCard title="Passed Scenarios" value={reportStats.passedScenarios} icon={<CheckCircle2 className="text-green-500" />} />
-                <StatCard title="Failed Scenarios" value={reportStats.failedScenarios} icon={<XCircle className="text-destructive" />} />
-            </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Test Run Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center gap-4">
-                        <div className="text-5xl font-bold text-green-500">{reportStats.passPercentage.toFixed(2)}%</div>
-                        <div className="w-full">
-                            <p className="text-muted-foreground">Overall Pass Rate</p>
-                            <Progress value={reportStats.passPercentage} className="mt-2" />
-                        </div>
+                <CardContent className="pt-6">
+                    <div className="w-full overflow-hidden rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Domain</TableHead>
+                                    <TableHead>Environment</TableHead>
+                                    <TableHead>Execution Env</TableHead>
+                                    <TableHead>Total</TableHead>
+                                    <TableHead>Passed</TableHead>
+                                    <TableHead>Failed</TableHead>
+                                    <TableHead>Tags</TableHead>
+                                    <TableHead>Report Path</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {reportSummaries.map((summary, idx) => (
+                                    <TableRow key={idx}>
+                                        <TableCell className='font-medium'>{summary.domain}</TableCell>
+                                        <TableCell>{summary.environment}</TableCell>
+                                        <TableCell>{summary.executionEnv}</TableCell>
+                                        <TableCell>{summary.totalTests}</TableCell>
+                                        <TableCell className='text-green-600'>{summary.passed}</TableCell>
+                                        <TableCell className='text-destructive'>{summary.failed}</TableCell>
+                                        <TableCell className='max-w-xs'>
+                                            <div className="flex flex-wrap gap-1">
+                                                {summary.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <a href={summary.reportPath} target="_blank" rel="noopener noreferrer" className="flex items-center text-primary hover:underline">
+                                                View Report <ExternalLink className="ml-1 h-3 w-3" />
+                                            </a>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
                 </CardContent>
             </Card>
 
-            {reportStats.failedFeatures.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Failure Details</CardTitle>
-                        <CardDescription>A summary of all features with failed scenarios.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="w-full overflow-hidden rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Feature</TableHead>
-                                        <TableHead>Failed Scenario</TableHead>
-                                        <TableHead>Failing Step</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {reportStats.failedFeatures.map((feature, idx) => (
-                                        feature.scenarios.map((scenario, sIdx) => (
-                                            <TableRow key={`${idx}-${sIdx}`}>
-                                                {sIdx === 0 && <TableCell rowSpan={feature.scenarios.length} className="font-medium align-top">{feature.name}</TableCell>}
-                                                <TableCell>{scenario.name}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant="destructive">{scenario.failedStep}</Badge>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
         </div>
     );
 }
-
