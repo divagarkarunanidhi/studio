@@ -7,11 +7,12 @@ import { useUser } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Button } from '../ui/button';
+import { format } from 'date-fns';
 import {
     Dialog,
     DialogContent,
@@ -24,6 +25,8 @@ import {
   ChartContainer,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+
 
 type TestCase = {
     [key: string]: string;
@@ -75,6 +78,11 @@ interface ReportSummary {
     passed: number;
     failed: number;
     scenarios: DetailedScenario[];
+    totalExecutionTime: number; // in nanoseconds
+    rawReport: StoredReportData;
+    uploadedAt: string;
+    domain: string;
+    environment: string;
 }
 
 interface DetailedScenario {
@@ -84,6 +92,22 @@ interface DetailedScenario {
     testCaseId: string | null;
     defectId: string | null;
 }
+
+const getStepDuration = (step: Step): number => {
+    if (!step.result || step.result.duration === undefined) {
+      return 0;
+    }
+  
+    if (typeof step.result.duration === 'number') {
+      return step.result.duration;
+    }
+  
+    if (typeof step.result.duration === 'object' && step.result.duration && '$numberLong' in step.result.duration) {
+      return Number(step.result.duration.$numberLong);
+    }
+    
+    return 0;
+};
 
 const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
     return scenario.steps.some(step => step.result.status === 'failed') ? 'failed' : 'passed';
@@ -103,17 +127,19 @@ const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: Tes
 
 
 const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
-    const { _id, solution, test_results } = report;
+    const { _id, test_results, uploadedAt } = report;
     let totalTests = 0;
     let passed = 0;
+    let totalExecutionTime = 0;
     const detailedScenarios: DetailedScenario[] = [];
     let jobName = "N/A";
+    const domain = report.solution || "N/A";
+    const environment = report.environment || "N/A";
+
 
     if (test_results && test_results.length > 0) {
-        // Extract job name from the first scenario of the first feature
-        if (test_results[0].elements && test_results[0].elements.length > 0) {
-            jobName = test_results[0].elements[0].name;
-        }
+        // Extract job name from the feature name
+        jobName = test_results[0].name || "N/A";
 
         test_results.forEach(feature => {
             if (feature.elements) {
@@ -132,6 +158,10 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
                         testCaseId: testCaseId,
                         defectId: defectId,
                     });
+
+                    scenario.steps.forEach(step => {
+                        totalExecutionTime += getStepDuration(step);
+                    });
                 });
             }
         });
@@ -145,16 +175,43 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
         passed,
         failed: totalTests - passed,
         scenarios: detailedScenarios,
+        totalExecutionTime,
+        rawReport: report,
+        uploadedAt,
+        domain,
+        environment,
     };
 };
 
+const formatNanosToTime = (nanos: number) => {
+    if (nanos === 0) return "0s";
+    const seconds = nanos / 1e9;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
+};
+
 const DetailModal = ({ report }: { report: ReportSummary }) => {
+    const [openFeatures, setOpenFeatures] = useState<Set<string>>(new Set());
+
+    const toggleFeature = (featureName: string) => {
+        setOpenFeatures(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(featureName)) {
+                newSet.delete(featureName);
+            } else {
+                newSet.add(featureName);
+            }
+            return newSet;
+        });
+    };
+
     const pieData = [
         { name: 'Passed', value: report.passed, fill: 'hsl(var(--chart-1))' },
         { name: 'Failed', value: report.failed, fill: 'hsl(var(--chart-2))' },
     ];
     return (
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-6xl">
             <DialogHeader>
                 <DialogTitle>Detailed Report for: {report.solution}</DialogTitle>
             </DialogHeader>
@@ -174,37 +231,70 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
                                 </Pie>
                             </PieChart>
                         </ChartContainer>
+                         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 text-sm">
+                            {pieData.map((entry) => (
+                                <div key={entry.name} className="flex items-center gap-2">
+                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.fill }} />
+                                <span>{entry.name}: <strong className='font-semibold'>{entry.value}</strong></span>
+                                </div>
+                            ))}
+                        </div>
                     </CardContent>
                 </Card>
-                <div className='flex flex-col gap-2 text-sm'>
-                    <div className='flex justify-between'><span>Total Test Cases:</span> <strong>{report.totalTests}</strong></div>
-                    <div className='flex justify-between text-green-600'><span>Passed:</span> <strong>{report.passed}</strong></div>
-                    <div className='flex justify-between text-red-600'><span>Failed:</span> <strong>{report.failed}</strong></div>
+                <div className='flex flex-col gap-2 text-sm justify-center'>
+                    <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Test Cases:</span> <strong>{report.totalTests}</strong></div>
+                    <div className='flex justify-between p-2 rounded-md text-green-600 bg-green-500/10'><span>Passed:</span> <strong>{report.passed}</strong></div>
+                    <div className='flex justify-between p-2 rounded-md text-red-600 bg-red-500/10'><span>Failed:</span> <strong>{report.failed}</strong></div>
+                    <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Execution Time:</span> <strong>{formatNanosToTime(report.totalExecutionTime)}</strong></div>
                 </div>
             </div>
 
             <Card>
-                <CardHeader><CardTitle>Test Details</CardTitle></CardHeader>
+                <CardHeader><CardTitle>Scenario Details</CardTitle></CardHeader>
                 <CardContent>
                     <div className='max-h-96 overflow-y-auto'>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Test Case ID</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Defect ID</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {report.scenarios.map(scenario => (
-                                <TableRow key={scenario.id}>
-                                    <TableCell>{scenario.testCaseId || 'N/A'}</TableCell>
-                                    <TableCell className={cn(scenario.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{scenario.status}</TableCell>
-                                    <TableCell>{scenario.defectId || 'N/A'}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    {report.rawReport.test_results?.map((feature, fIndex) => (
+                        <Collapsible key={`${feature.name}-${fIndex}`} open={openFeatures.has(feature.name)} onOpenChange={() => toggleFeature(feature.name)}>
+                             <CollapsibleTrigger asChild>
+                                <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
+                                    <h3 className='font-semibold'>Feature: {feature.name}</h3>
+                                    {openFeatures.has(feature.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pl-4 pt-2 space-y-2">
+                                {feature.elements.map((scenario, sIndex) => (
+                                     <Card key={`${scenario.name}-${sIndex}`} className='overflow-hidden'>
+                                         <CardHeader className='p-3 bg-muted/50'>
+                                             <CardTitle className='text-sm flex items-center gap-2'>
+                                                 {getScenarioStatus(scenario) === 'passed' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                                 Scenario: {scenario.name}
+                                             </CardTitle>
+                                         </CardHeader>
+                                         <CardContent className='p-0'>
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Step</TableHead>
+                                                        <TableHead>Status</TableHead>
+                                                        <TableHead>Duration</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {scenario.steps.map((step, stIndex) => (
+                                                        <TableRow key={stIndex}>
+                                                            <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
+                                                            <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{step.result.status}</TableCell>
+                                                            <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                         </CardContent>
+                                     </Card>
+                                ))}
+                            </CollapsibleContent>
+                        </Collapsible>
+                    ))}
                     </div>
                 </CardContent>
             </Card>
@@ -219,20 +309,6 @@ export function SeleniumDashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
-
-     const fetchTestCaseDetails = useCallback(async () => {
-        try {
-            const response = await fetch('/api/test-cases/latest');
-            if (response.ok) {
-                const data = await response.json();
-                if (data && data.testCases) {
-                    setTestCaseDetails(data.testCases);
-                }
-            }
-        } catch (error) {
-            console.error("Failed to fetch test case details:", error);
-        }
-    }, []);
 
     const handleLoadFromServer = useCallback(async (testCases: TestCase[]) => {
         setIsLoading(true);
@@ -302,6 +378,8 @@ export function SeleniumDashboardPage() {
                  throw new Error("JSON file must be an array of test results.");
             }
 
+            const solution = uploadedJson[0]?.name || "Unknown Solution";
+
             const response = await fetch('/api/selenium/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -309,7 +387,7 @@ export function SeleniumDashboardPage() {
                   fileData: { test_results: uploadedJson },
                   uploaderId: user.uid,
                   fileName: file.name,
-                  solution: uploadedJson[0]?.name || "Unknown Solution",
+                  solution: solution,
                   environment: 'default',
                   Config: 'default',
                   "Report Path": "N/A"
@@ -399,26 +477,34 @@ export function SeleniumDashboardPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Solution</TableHead>
+                                    <TableHead>Uploaded At</TableHead>
+                                    <TableHead>Domain</TableHead>
+                                    <TableHead>Environment</TableHead>
                                     <TableHead>Job Name</TableHead>
-                                    <TableHead>Total Test Cases</TableHead>
+                                    <TableHead>Total</TableHead>
                                     <TableHead>Passed</TableHead>
                                     <TableHead>Failed</TableHead>
+                                    <TableHead>Time</TableHead>
                                     <TableHead>Detailed Report</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {allReports.map(summary => (
                                     <TableRow key={summary.id}>
-                                        <TableCell>{summary.solution}</TableCell>
-                                        <TableCell>{summary.jobName}</TableCell>
+                                         <TableCell className='font-medium text-xs'>
+                                            {summary.uploadedAt ? format(new Date(summary.uploadedAt), "dd MMM yyyy, HH:mm") : "Invalid Date"}
+                                        </TableCell>
+                                        <TableCell>{summary.domain}</TableCell>
+                                        <TableCell>{summary.environment}</TableCell>
+                                        <TableCell className='max-w-xs truncate'>{summary.jobName}</TableCell>
                                         <TableCell>{summary.totalTests}</TableCell>
                                         <TableCell className='text-green-600'>{summary.passed}</TableCell>
                                         <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
+                                        <TableCell>{formatNanosToTime(summary.totalExecutionTime)}</TableCell>
                                         <TableCell>
                                             <Dialog>
                                                 <DialogTrigger asChild>
-                                                    <Button variant='link'>View Details</Button>
+                                                    <Button variant='link' size="sm">View Details</Button>
                                                 </DialogTrigger>
                                                 <DetailModal report={summary} />
                                             </Dialog>
@@ -442,3 +528,5 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
+    
