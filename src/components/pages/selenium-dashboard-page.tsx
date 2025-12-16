@@ -70,6 +70,7 @@ interface StoredReportData {
 interface ReportSummary {
     id: string;
     solution: string;
+    jobName: string;
     totalTests: number;
     passed: number;
     failed: number;
@@ -106,8 +107,14 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
     let totalTests = 0;
     let passed = 0;
     const detailedScenarios: DetailedScenario[] = [];
+    let jobName = "N/A";
 
-    if (test_results) {
+    if (test_results && test_results.length > 0) {
+        // Extract job name from the first scenario of the first feature
+        if (test_results[0].elements && test_results[0].elements.length > 0) {
+            jobName = test_results[0].elements[0].name;
+        }
+
         test_results.forEach(feature => {
             if (feature.elements) {
                 feature.elements.forEach(scenario => {
@@ -133,6 +140,7 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
     return {
         id: _id,
         solution: report.solution || 'N/A',
+        jobName: jobName,
         totalTests,
         passed,
         failed: totalTests - passed,
@@ -392,6 +400,7 @@ export function SeleniumDashboardPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Solution</TableHead>
+                                    <TableHead>Job Name</TableHead>
                                     <TableHead>Total Test Cases</TableHead>
                                     <TableHead>Passed</TableHead>
                                     <TableHead>Failed</TableHead>
@@ -402,6 +411,7 @@ export function SeleniumDashboardPage() {
                                 {allReports.map(summary => (
                                     <TableRow key={summary.id}>
                                         <TableCell>{summary.solution}</TableCell>
+                                        <TableCell>{summary.jobName}</TableCell>
                                         <TableCell>{summary.totalTests}</TableCell>
                                         <TableCell className='text-green-600'>{summary.passed}</TableCell>
                                         <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
@@ -432,5 +442,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
-    
