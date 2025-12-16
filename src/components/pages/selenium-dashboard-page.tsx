@@ -225,14 +225,8 @@ export function SeleniumDashboardPage() {
         try {
             const uploadedJson = JSON.parse(fileContent);
 
-            // Validate that the uploaded file is an object and contains a `report` key which is an array
-            if (typeof uploadedJson !== 'object' || uploadedJson === null) {
-                throw new Error("Uploaded file is not a valid JSON object.");
-            }
+            const fileData: SeleniumReportFile = uploadedJson;
 
-            const fileData: SeleniumReportFile = uploadedJson.report ? uploadedJson.report[0] : uploadedJson;
-
-            // Further validation for the actual report content
             if (!Array.isArray(fileData.test_results)) {
                  throw new Error("JSON file must be an object containing a 'test_results' array.");
             }
@@ -257,18 +251,7 @@ export function SeleniumDashboardPage() {
                 title: "Report Uploaded",
                 description: `Successfully processed and saved ${file.name}. Refreshing data...`
             });
-
-            const newReport = await response.json();
-            const processedNewReport = processReport({
-                _id: newReport.fileId,
-                fileName: file.name,
-                fileData: fileData,
-                uploaderId: user.uid,
-                uploadedAt: new Date().toISOString(),
-            });
-
-            setAllReports(prev => [processedNewReport, ...prev]);
-            setShowUploader(false);
+            handleLoadFromServer();
             
         } catch (error: any) {
             console.error("Error processing JSON report:", error);
@@ -514,5 +497,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
-    
