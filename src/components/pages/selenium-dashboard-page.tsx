@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -191,6 +192,9 @@ const formatNanosToTime = (nanos: number) => {
 
 const DetailModal = ({ report }: { report: ReportSummary }) => {
     const [openFeatures, setOpenFeatures] = useState<Set<string>>(new Set());
+    const [isStatusOpen, setIsStatusOpen] = useState(true);
+    const [isFailedOpen, setIsFailedOpen] = useState(true);
+    const [isScenarioDetailsOpen, setIsScenarioDetailsOpen] = useState(true);
 
     const failedScenarios = useMemo(() => {
         return report.scenarios.filter(s => s.status === 'failed');
@@ -220,31 +224,38 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
             <ScrollArea className="max-h-[80vh]">
                 <div className="space-y-6 p-4">
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Test Case Status</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <ChartContainer config={{}} className="mx-auto aspect-square max-h-[250px]">
-                                    <PieChart>
-                                        <Tooltip content={<ChartTooltipContent hideLabel />} />
-                                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
-                                        {pieData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                                        ))}
-                                        </Pie>
-                                    </PieChart>
-                                </ChartContainer>
-                                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 text-sm">
-                                    {pieData.map((entry) => (
-                                        <div key={entry.name} className="flex items-center gap-2">
-                                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.fill }} />
-                                        <span>{entry.name}: <strong className='font-semibold'>{entry.value}</strong></span>
+                         <Collapsible open={isStatusOpen} onOpenChange={setIsStatusOpen}>
+                            <Card>
+                                <CollapsibleTrigger asChild>
+                                    <CardHeader className="flex flex-row items-center justify-between cursor-pointer">
+                                        <CardTitle>Test Case Status</CardTitle>
+                                        <ChevronDown className={cn("h-4 w-4 transition-transform", !isStatusOpen && "-rotate-90")} />
+                                    </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <CardContent>
+                                        <ChartContainer config={{}} className="mx-auto aspect-square max-h-[250px]">
+                                            <PieChart>
+                                                <Tooltip content={<ChartTooltipContent hideLabel />} />
+                                                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
+                                                {pieData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                                ))}
+                                                </Pie>
+                                            </PieChart>
+                                        </ChartContainer>
+                                        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 text-sm">
+                                            {pieData.map((entry) => (
+                                                <div key={entry.name} className="flex items-center gap-2">
+                                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.fill }} />
+                                                <span>{entry.name}: <strong className='font-semibold'>{entry.value}</strong></span>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
                         <div className='flex flex-col gap-2 text-sm justify-center'>
                             <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Test Cases:</span> <strong>{report.totalTests}</strong></div>
                             <div className='flex justify-between p-2 rounded-md text-green-600 bg-green-500/10'><span>Passed:</span> <strong>{report.passed}</strong></div>
@@ -254,82 +265,98 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
                     </div>
 
                     {failedScenarios.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Failed Test Cases</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Test Case ID</TableHead>
-                                            <TableHead>Test Case Name</TableHead>
-                                            <TableHead>Defect ID</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {failedScenarios.map(scenario => (
-                                            <TableRow key={scenario.id}>
-                                                <TableCell>{scenario.testCaseId || 'N/A'}</TableCell>
-                                                <TableCell>{scenario.name}</TableCell>
-                                                <TableCell>{scenario.defectId || 'N/A'}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
+                        <Collapsible open={isFailedOpen} onOpenChange={setIsFailedOpen}>
+                            <Card>
+                                <CollapsibleTrigger asChild>
+                                    <CardHeader className="flex flex-row items-center justify-between cursor-pointer">
+                                        <CardTitle>Failed Test Cases</CardTitle>
+                                        <ChevronDown className={cn("h-4 w-4 transition-transform", !isFailedOpen && "-rotate-90")} />
+                                    </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <CardContent>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Test Case ID</TableHead>
+                                                    <TableHead>Test Case Name</TableHead>
+                                                    <TableHead>Defect ID</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {failedScenarios.map(scenario => (
+                                                    <TableRow key={scenario.id}>
+                                                        <TableCell>{scenario.testCaseId || 'N/A'}</TableCell>
+                                                        <TableCell>{scenario.name}</TableCell>
+                                                        <TableCell>{scenario.defectId || 'N/A'}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                        </Collapsible>
                     )}
 
-                    <Card>
-                        <CardHeader><CardTitle>Scenario Details</CardTitle></CardHeader>
-                        <CardContent>
-                            <div className='max-h-96 overflow-y-auto'>
-                            {report.rawReport.test_results?.map((feature, fIndex) => (
-                                <Collapsible key={`${feature.name}-${fIndex}`} open={openFeatures.has(feature.name)} onOpenChange={() => toggleFeature(feature.name)}>
-                                    <CollapsibleTrigger asChild>
-                                        <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
-                                            <h3 className='font-semibold'>Feature: {feature.name}</h3>
-                                            {openFeatures.has(feature.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                        </div>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="pl-4 pt-2 space-y-2">
-                                        {feature.elements.map((scenario, sIndex) => (
-                                            <Card key={`${scenario.name}-${sIndex}`} className='overflow-hidden'>
-                                                <CardHeader className='p-3 bg-muted/50'>
-                                                    <CardTitle className='text-sm flex items-center gap-2'>
-                                                        {getScenarioStatus(scenario) === 'passed' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                                                        Scenario: {scenario.name}
-                                                    </CardTitle>
-                                                </CardHeader>
-                                                <CardContent className='p-0'>
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow>
-                                                                <TableHead>Step</TableHead>
-                                                                <TableHead>Status</TableHead>
-                                                                <TableHead>Duration</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {scenario.steps.map((step, stIndex) => (
-                                                                <TableRow key={stIndex}>
-                                                                    <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
-                                                                    <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{step.result.status}</TableCell>
-                                                                    <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
-                                    </CollapsibleContent>
-                                </Collapsible>
-                            ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <Collapsible open={isScenarioDetailsOpen} onOpenChange={setIsScenarioDetailsOpen}>
+                        <Card>
+                             <CollapsibleTrigger asChild>
+                                <CardHeader className="flex flex-row items-center justify-between cursor-pointer">
+                                    <CardTitle>Scenario Details</CardTitle>
+                                    <ChevronDown className={cn("h-4 w-4 transition-transform", !isScenarioDetailsOpen && "-rotate-90")} />
+                                </CardHeader>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                                <CardContent>
+                                    <div className='max-h-96 overflow-y-auto'>
+                                    {report.rawReport.test_results?.map((feature, fIndex) => (
+                                        <Collapsible key={`${feature.name}-${fIndex}`} open={openFeatures.has(feature.name)} onOpenChange={() => toggleFeature(feature.name)}>
+                                            <CollapsibleTrigger asChild>
+                                                <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
+                                                    <h3 className='font-semibold'>Feature: {feature.name}</h3>
+                                                    {openFeatures.has(feature.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                </div>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="pl-4 pt-2 space-y-2">
+                                                {feature.elements.map((scenario, sIndex) => (
+                                                    <Card key={`${scenario.name}-${sIndex}`} className='overflow-hidden'>
+                                                        <CardHeader className='p-3 bg-muted/50'>
+                                                            <CardTitle className='text-sm flex items-center gap-2'>
+                                                                {getScenarioStatus(scenario) === 'passed' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                                                Scenario: {scenario.name}
+                                                            </CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent className='p-0'>
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow>
+                                                                        <TableHead>Step</TableHead>
+                                                                        <TableHead>Status</TableHead>
+                                                                        <TableHead>Duration</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {scenario.steps.map((step, stIndex) => (
+                                                                        <TableRow key={stIndex}>
+                                                                            <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
+                                                                            <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{step.result.status}</TableCell>
+                                                                            <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </CardContent>
+                                                    </Card>
+                                                ))}
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                    ))}
+                                    </div>
+                                </CardContent>
+                            </CollapsibleContent>
+                        </Card>
+                    </Collapsible>
                 </div>
             </ScrollArea>
         </DialogContent>
@@ -554,3 +581,5 @@ export function SeleniumDashboardPage() {
 }
 
   
+
+    
