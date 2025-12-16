@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Button } from '../ui/button';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import {
     Dialog,
     DialogContent,
@@ -194,6 +194,10 @@ const formatNanosToTime = (nanos: number) => {
 const DetailModal = ({ report }: { report: ReportSummary }) => {
     const [openFeatures, setOpenFeatures] = useState<Set<string>>(new Set());
 
+    const failedScenarios = useMemo(() => {
+        return report.scenarios.filter(s => s.status === 'failed');
+    }, [report.scenarios]);
+
     const toggleFeature = (featureName: string) => {
         setOpenFeatures(prev => {
             const newSet = new Set(prev);
@@ -248,6 +252,34 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
                     <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Execution Time:</span> <strong>{formatNanosToTime(report.totalExecutionTime)}</strong></div>
                 </div>
             </div>
+
+            {failedScenarios.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Failed Test Cases</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Test Case ID</TableHead>
+                                    <TableHead>Test Case Name</TableHead>
+                                    <TableHead>Defect ID</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {failedScenarios.map(scenario => (
+                                    <TableRow key={scenario.id}>
+                                        <TableCell>{scenario.testCaseId || 'N/A'}</TableCell>
+                                        <TableCell>{scenario.name}</TableCell>
+                                        <TableCell>{scenario.defectId || 'N/A'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader><CardTitle>Scenario Details</CardTitle></CardHeader>
@@ -378,8 +410,6 @@ export function SeleniumDashboardPage() {
                  throw new Error("JSON file must be an array of test results.");
             }
 
-            const solution = uploadedJson[0]?.name || "Unknown Solution";
-
             const response = await fetch('/api/selenium/upload', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -387,8 +417,8 @@ export function SeleniumDashboardPage() {
                   fileData: { test_results: uploadedJson },
                   uploaderId: user.uid,
                   fileName: file.name,
-                  solution: solution,
-                  environment: 'default',
+                  solution: uploadedJson[0]?.elements[0]?.tags?.find((t: any) => t.name.startsWith('@Sol='))?.name.split('=')[1] || 'Unknown',
+                  environment: uploadedJson[0]?.elements[0]?.tags?.find((t: any) => t.name.startsWith('@Env='))?.name.split('=')[1] || 'default',
                   Config: 'default',
                   "Report Path": "N/A"
                 }),
