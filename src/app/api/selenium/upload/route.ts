@@ -8,8 +8,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { fileData, uploaderId, fileName } = body;
 
-    if (!Array.isArray(fileData) || !uploaderId || !fileName) {
-        return NextResponse.json({ error: "Invalid data format." }, { status: 400 });
+    // Updated validation: check if fileData is an object and has test_results
+    if (typeof fileData !== 'object' || fileData === null || !Array.isArray(fileData.test_results) || !uploaderId || !fileName) {
+        return NextResponse.json({ error: "Invalid data format. Expecting an object with 'fileData', 'uploaderId', and 'fileName'." }, { status: 400 });
     }
 
     const client = await clientPromise;
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     
     const docToInsert = {
         fileName,
-        fileData,
+        fileData, // The entire JSON object is stored
         uploaderId,
         uploadedAt: new Date().toISOString(),
     };
@@ -33,5 +34,3 @@ export async function POST(request: Request) {
     );
   }
 }
-    
-

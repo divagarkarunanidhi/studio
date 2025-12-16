@@ -37,12 +37,21 @@ interface Feature {
     elements: Scenario[];
 }
 
-interface SeleniumExecutionReport {
+// This represents the entire file structure
+interface SeleniumReportFile {
     solution: string;
     environment: string;
     Config: string;
     "Report Path": string;
     test_results: Feature[];
+}
+
+// This represents the data we store on the server
+interface StoredReportData {
+    fileName: string;
+    fileData: SeleniumReportFile;
+    uploaderId: string;
+    uploadedAt: string;
 }
 
 interface ReportSummary {
@@ -59,7 +68,7 @@ interface ReportSummary {
 export function SeleniumDashboardPage() {
     const { toast } = useToast();
     const { user } = useUser();
-    const [reportData, setReportData] = useState<SeleniumExecutionReport[] | null>(null);
+    const [reportData, setReportData] = useState<SeleniumReportFile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
 
@@ -71,7 +80,7 @@ export function SeleniumDashboardPage() {
             const errorData = await response.json();
             throw new Error(errorData.details || 'Failed to fetch data from server.');
           }
-          const data = await response.json();
+          const data: StoredReportData | null = await response.json();
           if (data && data.fileData) {
             setReportData(data.fileData);
             setShowUploader(false);
@@ -103,10 +112,10 @@ export function SeleniumDashboardPage() {
           }
 
         try {
-            const jsonData: SeleniumExecutionReport[] = JSON.parse(fileContent);
+            const jsonData: SeleniumReportFile = JSON.parse(fileContent);
 
-            if (!Array.isArray(jsonData) || !jsonData.every(item => item.test_results)) {
-                throw new Error("Uploaded file is not a valid JSON array of Selenium reports.");
+            if (typeof jsonData !== 'object' || jsonData === null || !Array.isArray(jsonData.test_results)) {
+                throw new Error("Uploaded file is not a valid JSON object with a 'test_results' array.");
             }
 
             const response = await fetch('/api/selenium/upload', {
@@ -143,39 +152,36 @@ export function SeleniumDashboardPage() {
         }
     }, [toast, user]);
 
-    const reportSummaries: ReportSummary[] | null = useMemo(() => {
+    const reportSummary: ReportSummary | null = useMemo(() => {
         if (!reportData) return null;
 
-        return reportData.map(report => {
-            const testResults = report.test_results;
-            let totalTests = 0;
-            let passed = 0;
-            const tags = new Set<string>();
+        const testResults = reportData.test_results;
+        let totalTests = 0;
+        let passed = 0;
+        const tags = new Set<string>();
 
-            testResults.forEach(feature => {
-                feature.elements.forEach(scenario => {
-                    totalTests++;
-                    if (scenario.steps.every(step => step.result.status === 'passed')) {
-                        passed++;
-                    }
-                    if (scenario.tags) {
-                        scenario.tags.forEach(tag => tags.add(tag.name));
-                    }
-                });
+        testResults.forEach(feature => {
+            feature.elements.forEach(scenario => {
+                totalTests++;
+                if (scenario.steps.every(step => step.result.status === 'passed')) {
+                    passed++;
+                }
+                if (scenario.tags) {
+                    scenario.tags.forEach(tag => tags.add(tag.name));
+                }
             });
-
-            return {
-                domain: report.solution,
-                environment: report.environment,
-                executionEnv: report.Config,
-                totalTests,
-                passed,
-                failed: totalTests - passed,
-                tags: Array.from(tags),
-                reportPath: report['Report Path'],
-            };
         });
 
+        return {
+            domain: reportData.solution,
+            environment: reportData.environment,
+            executionEnv: reportData.Config,
+            totalTests,
+            passed,
+            failed: totalTests - passed,
+            tags: Array.from(tags),
+            reportPath: reportData['Report Path'],
+        };
     }, [reportData]);
     
     if (isLoading) {
@@ -189,7 +195,7 @@ export function SeleniumDashboardPage() {
         );
     }
 
-    if (showUploader || !reportSummaries) {
+    if (showUploader || !reportSummary) {
         return (
             <div className="flex flex-1 flex-col items-center justify-center p-4">
                 <div className="flex w-full max-w-lg flex-col items-center justify-center gap-4 text-center">
@@ -257,26 +263,24 @@ export function SeleniumDashboardPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {reportSummaries.map((summary, idx) => (
-                                    <TableRow key={idx}>
-                                        <TableCell className='font-medium'>{summary.domain}</TableCell>
-                                        <TableCell>{summary.environment}</TableCell>
-                                        <TableCell>{summary.executionEnv}</TableCell>
-                                        <TableCell>{summary.totalTests}</TableCell>
-                                        <TableCell className='text-green-600'>{summary.passed}</TableCell>
-                                        <TableCell className='text-destructive'>{summary.failed}</TableCell>
+                                    <TableRow>
+                                        <TableCell className='font-medium'>{reportSummary.domain}</TableCell>
+                                        <TableCell>{reportSummary.environment}</TableCell>
+                                        <TableCell>{reportSummary.executionEnv}</TableCell>
+                                        <TableCell>{reportSummary.totalTests}</TableCell>
+                                        <TableCell className='text-green-600'>{reportSummary.passed}</TableCell>
+                                        <TableCell className='text-destructive'>{reportSummary.failed}</TableCell>
                                         <TableCell className='max-w-xs'>
                                             <div className="flex flex-wrap gap-1">
-                                                {summary.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                                                {reportSummary.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <a href={summary.reportPath} target="_blank" rel="noopener noreferrer" className="flex items-center text-primary hover:underline">
+                                            <a href={reportSummary.reportPath} target="_blank" rel="noopener noreferrer" className="flex items-center text-primary hover:underline">
                                                 View Report <ExternalLink className="ml-1 h-3 w-3" />
                                             </a>
                                         </TableCell>
                                     </TableRow>
-                                ))}
                             </TableBody>
                         </Table>
                     </div>
