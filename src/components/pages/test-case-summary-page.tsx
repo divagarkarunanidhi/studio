@@ -11,12 +11,12 @@ import * as XLSX from 'xlsx';
 import { FileUploader } from '../dashboard/file-uploader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
-import { FileText, Loader2, Download, Wand2, AlertTriangle } from 'lucide-react';
+import { FileText, Loader2, Download, Wand2, AlertTriangle, PieChart, BarChart, LineChart } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 import { SingleSelect, type SingleSelectOption } from '../ui/single-select';
 import { Input } from '@/components/ui/input';
-import { TestCasePieChart } from '../dashboard/test-case-pie-chart';
+import { TestCaseDistributionChart } from '../dashboard/test-case-distribution-chart';
 import {
     Dialog,
     DialogContent,
@@ -29,9 +29,11 @@ import {
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Skeleton } from '../ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 
 
 type TestCaseData = { [key: string]: string };
+type ChartType = 'pie' | 'bar' | 'line';
 
 interface TestCaseSummaryPageProps {
   onDataPresentChange: (isPresent: boolean) => void;
@@ -136,6 +138,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [headers, setHeaders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
+  const [chartType, setChartType] = useState<ChartType>('pie');
 
   // State for reusability section
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(DEFAULT_REUSED_FROM_LABELS);
@@ -483,8 +486,16 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                     className="w-full"
                 />
             </CardContent>
-            <CardFooter>
-                <TestCasePieChart
+            <CardFooter className="flex-col items-start gap-4">
+                <Tabs value={chartType} onValueChange={(value) => setChartType(value as ChartType)}>
+                    <TabsList>
+                        <TabsTrigger value="pie"><PieChart className="h-4 w-4 mr-2"/>Pie Chart</TabsTrigger>
+                        <TabsTrigger value="bar"><BarChart className="h-4 w-4 mr-2"/>Bar Chart</TabsTrigger>
+                        <TabsTrigger value="line"><LineChart className="h-4 w-4 mr-2"/>Line Chart</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+                <TestCaseDistributionChart
+                    chartType={chartType}
                     data={chartData}
                     title="Test Case Distribution"
                     description="Based on selected labels"
