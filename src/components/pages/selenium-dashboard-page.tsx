@@ -82,7 +82,6 @@ interface ReportSummary {
     scenarios: DetailedScenario[];
     totalExecutionTime: number; // in nanoseconds
     rawReport: StoredReportData;
-    uploadedAt: string;
     domain: string;
     environment: string;
 }
@@ -117,8 +116,14 @@ const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
 
 const extractTestCaseIdFromTags = (tags?: { name: string }[]): string | null => {
     if (!tags) return null;
-    const tcTag = tags.find(tag => tag.name.match(/^@TC-\d+$/));
-    return tcTag ? tcTag.name.substring(1) : null; // Remove '@'
+    const tcTag = tags.find(tag => tag.name.match(/^@TC-\d+$/) || tag.name.match(/^@TestCaseId=/));
+    if (!tcTag) return null;
+    
+    if (tcTag.name.startsWith('@TestCaseId=')) {
+        return tcTag.name.split('=')[1] || null;
+    }
+    
+    return tcTag.name.substring(1); // Remove '@' for @TC-xxxx tags
 };
 
 const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: TestCase[]): string | null => {
@@ -129,7 +134,7 @@ const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: Tes
 
 
 const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
-    const { _id, test_results, uploadedAt, solution, environment } = report;
+    const { _id, test_results, solution, environment } = report;
     let totalTests = 0;
     let passed = 0;
     let totalExecutionTime = 0;
@@ -168,7 +173,7 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
 
     return {
         id: _id,
-        solution: solution || 'N/A',
+        solution: report.solution || 'N/A',
         jobName: jobName,
         totalTests,
         passed,
@@ -176,9 +181,8 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
         scenarios: detailedScenarios,
         totalExecutionTime,
         rawReport: report,
-        uploadedAt,
-        domain: solution || "N/A",
-        environment: environment || "N/A",
+        domain: report.solution || "N/A",
+        environment: report.environment || "N/A",
     };
 };
 
@@ -568,7 +572,7 @@ export function SeleniumDashboardPage() {
                                 {allReports.map(summary => (
                                     <TableRow key={summary.id}>
                                         <TableCell className='max-w-xs truncate'>{summary.jobName}</TableCell>
-                                        <TableCell>{summary.solution}</TableCell>
+                                        <TableCell>{summary.domain}</TableCell>
                                         <TableCell>{summary.totalTests}</TableCell>
                                         <TableCell className='text-green-600'>{summary.passed}</TableCell>
                                         <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
