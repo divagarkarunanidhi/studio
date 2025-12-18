@@ -128,7 +128,7 @@ export function TestCaseDistributionChart({
                             cursor={false}
                             content={<ChartTooltipContent indicator="dot" />}
                         />
-                        <Bar dataKey="count" fill="var(--color-count)" radius={4}>
+                        <Bar dataKey="count" fill="var(--color-count)" radius={4} barSize={20}>
                             {chartSlices.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
