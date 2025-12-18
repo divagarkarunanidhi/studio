@@ -85,10 +85,9 @@ import * as XLSX from 'xlsx';
 import { doc, getDoc } from 'firebase/firestore';
 import { TestCaseSummaryPage } from './test-case-summary-page';
 import { SeleniumDashboardPage } from './selenium-dashboard-page';
-import { AllTestCasePage } from './all-test-case-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard' | 'all-test-cases';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -253,7 +252,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const [showUploader, setShowUploader] = useState(false);
   const [testCaseDataPresent, setTestCaseDataPresent] = useState(false);
-  const [allTestCaseDataPresent, setAllTestCaseDataPresent] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -415,10 +413,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const handleClearTestCaseData = () => {
     setTestCaseDataPresent(false);
   };
-
-  const handleClearAllTestCaseData = () => {
-    setAllTestCaseDataPresent(false);
-  };
   
   const handleLogout = async () => {
     await signOut(auth);
@@ -465,7 +459,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'feedback-management': 'Feedback Management',
     'test-case-summary': 'Test Case Summary',
     'selenium-dashboard': 'Selenium Dashboard',
-    'all-test-cases': 'All Test Cases'
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -482,7 +475,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'feedback-management': 'View, edit, and delete saved few-shot learning examples.',
     'test-case-summary': 'Upload and visualize test case data by label.',
     'selenium-dashboard': 'Visualize results from Selenium test runs.',
-    'all-test-cases': 'Upload and visualize all test case data.'
   };
 
   const uniqueDomains = useMemo(() => {
@@ -723,12 +715,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 Test Case Summary
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="All Test Cases" isActive={activeView === 'all-test-cases'} onClick={() => handleViewChange('all-test-cases')}>
-                <Clipboard />
-                All Test Cases
-              </SidebarMenuButton>
-            </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton tooltip="Selenium Dashboard" isActive={activeView === 'selenium-dashboard'} onClick={() => handleViewChange('selenium-dashboard')}>
                 <MonitorPlay />
@@ -859,28 +845,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                     </AlertDialogContent>
                 </AlertDialog>
               )}
-              {userRole === 'admin' && activeView === 'all-test-cases' && allTestCaseDataPresent && (
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="outline">
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload New Data
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Upload a new test case file?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will clear the current test case data and allow you to upload a new file.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleClearAllTestCaseData}>Continue</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-              )}
           </div>
         </header>
 
@@ -934,10 +898,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             {activeView === 'test-case-summary' && (
               <TestCaseSummaryPage onDataPresentChange={setTestCaseDataPresent} showUploaderInitially={!testCaseDataPresent} />
             )}
-            {activeView === 'all-test-cases' && (
-              <AllTestCasePage onDataPresentChange={setAllTestCaseDataPresent} showUploaderInitially={!allTestCaseDataPresent} />
-            )}
-             {activeView === 'selenium-dashboard' && (
+            {activeView === 'selenium-dashboard' && (
               <SeleniumDashboardPage />
             )}
             
