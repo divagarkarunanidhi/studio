@@ -115,13 +115,13 @@ const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
     return scenario.steps.some(step => step.result.status === 'failed') ? 'failed' : 'passed';
 };
 
-const findTestCaseIdByName = (scenarioName: string, allDefects: Defect[]): string | null => {
-    if (!scenarioName || !allDefects) return null;
+const findTestCaseIdByName = (scenarioName: string, testCases: TestCase[]): string | null => {
+    if (!scenarioName || !testCases) return null;
     const cleanedScenarioName = scenarioName.trim().toLowerCase();
-    const matchingDefect = allDefects.find(defect => 
-        defect.summary?.trim().toLowerCase() === cleanedScenarioName
+    const matchingTestCase = testCases.find(tc => 
+        tc.Summary?.trim().toLowerCase() === cleanedScenarioName
     );
-    return matchingDefect ? matchingDefect.id : null;
+    return matchingTestCase ? matchingTestCase['Issue key'] : null;
 };
 
 
@@ -132,7 +132,7 @@ const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: Tes
 };
 
 
-const processReport = (report: StoredReportData, testCaseDetails: TestCase[], allDefects: Defect[]): ReportSummary => {
+const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
     const { _id, test_results, solution, environment } = report;
     let totalTests = 0;
     let passed = 0;
@@ -151,7 +151,7 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[], al
                     if (status === 'passed') {
                         passed++;
                     }
-                    const testCaseId = findTestCaseIdByName(scenario.name, allDefects);
+                    const testCaseId = findTestCaseIdByName(scenario.name, testCaseDetails);
                     const defectId = findDefectIdForTestCase(testCaseId, testCaseDetails);
 
                     detailedScenarios.push({
@@ -393,37 +393,27 @@ export function SeleniumDashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
-    const [allDefects, setAllDefects] = useState<Defect[]>([]);
     
     const processedReports = useMemo(() => {
-        if (allDefects.length === 0) return [];
-        return allReports.map(report => processReport(report, testCaseDetails, allDefects));
-    }, [allReports, testCaseDetails, allDefects]);
+        if (testCaseDetails.length === 0) return [];
+        return allReports.map(report => processReport(report, testCaseDetails));
+    }, [allReports, testCaseDetails]);
 
 
     const handleLoadData = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Fetch Test Cases
+            // Fetch Test Cases from the 'testCases' collection
             const tcResponse = await fetch('/api/test-cases/latest');
             if (tcResponse.ok) {
                 const tcData = await tcResponse.json();
                 if (tcData && tcData.testCases) {
                     setTestCaseDetails(tcData.testCases);
+                } else {
+                    console.warn("Test case details are missing from the response but are required for ID mapping.");
                 }
             } else {
                  console.warn("Could not fetch test case details. Defect IDs might be missing.");
-            }
-
-            // Fetch Defects
-            const defectResponse = await fetch('/api/defects/latest');
-            if (defectResponse.ok) {
-                const defectData = await defectResponse.json();
-                if (defectData && defectData.defects) {
-                    setAllDefects(defectData.defects);
-                }
-            } else {
-                console.warn("Could not fetch defect details. Test Case IDs might be missing from names.");
             }
 
             // Fetch Selenium Reports
@@ -602,7 +592,7 @@ export function SeleniumDashboardPage() {
                         <Alert className="mt-4">
                             <AlertTitle>No Reports to Display</AlertTitle>
                             <AlertDescription>
-                                Could not find Selenium reports or the necessary defect/test case summary data. Please ensure all required files have been uploaded.
+                                Could not find Selenium reports or the necessary test case summary data. Please ensure all required files have been uploaded.
                             </AlertDescription>
                         </Alert>
                     )}
