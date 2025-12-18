@@ -459,11 +459,11 @@ const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: st
                                 <CardContent>
                                     <div className='max-h-96 overflow-y-auto'>
                                     {report.rawReport.test_results?.map((feature, fIndex) => (
-                                        <Collapsible key={`${feature.name}-${fIndex}`} open={openFeatures.has(feature.name)} onOpenChange={() => toggleFeature(feature.name)}>
+                                        <Collapsible key={`${feature.uri}-${fIndex}`} open={openFeatures.has(feature.uri)} onOpenChange={() => toggleFeature(feature.uri)}>
                                             <CollapsibleTrigger asChild>
                                                 <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
                                                     <h3 className='font-semibold'>Feature: {feature.name}</h3>
-                                                    {openFeatures.has(feature.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4" />}
+                                                    {openFeatures.has(feature.uri) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4" />}
                                                 </div>
                                             </CollapsibleTrigger>
                                             <CollapsibleContent className="pl-4 pt-2 space-y-2">
@@ -668,25 +668,43 @@ export function SeleniumDashboardPage() {
         const selected = processedReports.filter(r => selectedReportIds.includes(r.id));
         if (selected.length === 0) return null;
     
-        const consolidated: ReportSummary = selected.reduce((acc, report, index) => {
-            if (index === 0) {
-                return { ...report }; // Start with the first report
-            }
+        const emptyAcc: ReportSummary = {
+            id: "consolidated",
+            solution: "Consolidated Report",
+            jobName: `${selected.length} Reports Combined`,
+            totalTests: 0,
+            passed: 0,
+            failed: 0,
+            scenarios: [],
+            totalExecutionTime: 0,
+            rawReport: {
+                ...selected[0].rawReport, // Base structure from first report
+                test_results: []
+            },
+            domain: "Consolidated",
+            environment: "Consolidated",
+        };
+    
+        const consolidated = selected.reduce((acc, report) => {
             acc.totalTests += report.totalTests;
             acc.passed += report.passed;
             acc.failed += report.failed;
             acc.totalExecutionTime += report.totalExecutionTime;
-            acc.scenarios = acc.scenarios.concat(report.scenarios);
-            // Concatenate raw reports for detailed view if needed, or handle differently
-            acc.rawReport.test_results = acc.rawReport.test_results.concat(report.rawReport.test_results);
+            acc.scenarios.push(...report.scenarios);
+            
+            // Merge raw reports for detailed view
+            report.rawReport.test_results.forEach(feature => {
+                const existingFeature = acc.rawReport.test_results.find(f => f.uri === feature.uri);
+                if (existingFeature) {
+                    existingFeature.elements.push(...feature.elements);
+                } else {
+                    acc.rawReport.test_results.push({ ...feature });
+                }
+            });
+            
             return acc;
-        }, { ...selected[0] });
-    
-        // Adjust names for consolidated view
-        consolidated.id = "consolidated";
-        consolidated.solution = "Consolidated Report";
-        consolidated.jobName = `${selectedReportIds.length} Reports Combined`;
-    
+        }, emptyAcc);
+        
         return consolidated;
     }, [selectedReportIds, processedReports]);
     
