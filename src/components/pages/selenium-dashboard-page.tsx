@@ -4,7 +4,9 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import type { AppConfiguration, Defect } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
@@ -28,7 +30,6 @@ import {
 } from "@/components/ui/chart";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { ScrollArea } from '../ui/scroll-area';
-import type { Defect } from '@/lib/types';
 
 
 type TestCase = {
@@ -193,7 +194,7 @@ const formatNanosToTime = (nanos: number) => {
     return `${minutes}m ${remainingSeconds}s`;
 };
 
-const DetailModal = ({ report }: { report: ReportSummary }) => {
+const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: string }) => {
     const [openFeatures, setOpenFeatures] = useState<Set<string>>(new Set());
     const [isStatusOpen, setIsStatusOpen] = useState(true);
     const [isFailedOpen, setIsFailedOpen] = useState(true);
@@ -302,7 +303,20 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
                                             <TableBody>
                                                 {failedScenarios.map(scenario => (
                                                     <TableRow key={scenario.id}>
-                                                        <TableCell>{scenario.testCaseId || 'N/A'}</TableCell>
+                                                        <TableCell>
+                                                        {scenario.testCaseId ? (
+                                                                <a
+                                                                    href={`${jiraLink}/browse/${scenario.testCaseId}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-primary hover:underline"
+                                                                >
+                                                                    {scenario.testCaseId}
+                                                                </a>
+                                                            ) : (
+                                                                'N/A'
+                                                            )}
+                                                        </TableCell>
                                                         <TableCell>{scenario.name}</TableCell>
                                                         <TableCell>{scenario.defectId || 'N/A'}</TableCell>
                                                     </TableRow>
@@ -389,11 +403,26 @@ const DetailModal = ({ report }: { report: ReportSummary }) => {
 export function SeleniumDashboardPage() {
     const { toast } = useToast();
     const { user } = useUser();
+    const firestore = useFirestore();
     const [allReports, setAllReports] = useState<StoredReportData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
+    const [jiraLink, setJiraLink] = useState<string>("");
     
+    useEffect(() => {
+        const fetchConfig = async () => {
+            if (!firestore) return;
+            const configRef = doc(firestore, 'appConfiguration', 'global');
+            const configSnap = await getDoc(configRef);
+            if (configSnap.exists()) {
+                const configData = configSnap.data() as AppConfiguration;
+                setJiraLink(configData.jiraLink);
+            }
+        };
+        fetchConfig();
+      }, [firestore]);
+
     const processedReports = useMemo(() => {
         if (testCaseDetails.length === 0) return [];
         return allReports.map(report => processReport(report, testCaseDetails));
@@ -580,7 +609,7 @@ export function SeleniumDashboardPage() {
                                                 <DialogTrigger asChild>
                                                     <Button variant='link' size="sm">View Details</Button>
                                                 </DialogTrigger>
-                                                <DetailModal report={summary} />
+                                                <DetailModal report={summary} jiraLink={jiraLink} />
                                             </Dialog>
                                         </TableCell>
                                     </TableRow>
