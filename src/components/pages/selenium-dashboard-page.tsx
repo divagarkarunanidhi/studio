@@ -22,6 +22,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogDescription,
   } from "@/components/ui/dialog"
 import { Pie, PieChart, Cell, Tooltip } from "recharts";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/chart";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { ScrollArea } from '../ui/scroll-area';
+import { Badge } from '../ui/badge';
 
 
 type TestCase = {
@@ -194,6 +196,66 @@ const formatNanosToTime = (nanos: number) => {
     return `${minutes}m ${remainingSeconds}s`;
 };
 
+const ClickableStat = ({
+    title,
+    count,
+    scenarios,
+    jiraLink,
+    className
+}: {
+    title: string;
+    count: number;
+    scenarios: DetailedScenario[];
+    jiraLink: string;
+    className?: string;
+}) => {
+    if (count === 0) {
+        return (
+            <div className={cn('flex justify-between p-2 rounded-md bg-muted/50', className)}>
+                <span>{title}:</span>
+                <strong>{count}</strong>
+            </div>
+        )
+    }
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <div className={cn('flex justify-between p-2 rounded-md cursor-pointer hover:ring-1 hover:ring-primary', className)}>
+                    <span>{title}:</span>
+                    <strong className='hover:underline'>{count}</strong>
+                </div>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Test Cases for: {title}</DialogTitle>
+                    <DialogDescription>{count} test case(s) in this category.</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-72 w-full rounded-md border">
+                    <div className="p-4 flex flex-wrap gap-2">
+                        {scenarios.map((scenario, idx) => (
+                            <Badge key={scenario.id + idx} variant="secondary">
+                                {scenario.testCaseId ? (
+                                    <a
+                                        href={`${jiraLink}/browse/${scenario.testCaseId}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:underline"
+                                    >
+                                        {scenario.testCaseId}
+                                    </a>
+                                ) : (
+                                    <span title={scenario.name}>ID N/A</span>
+                                )}
+                            </Badge>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: string }) => {
     const [openFeatures, setOpenFeatures] = useState<Set<string>>(new Set());
     const [isStatusOpen, setIsStatusOpen] = useState(true);
@@ -215,6 +277,9 @@ const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: st
 
     const failedScenarios = useMemo(() => {
         return report.scenarios.filter(s => s.status === 'failed');
+    }, [report.scenarios]);
+    const passedScenarios = useMemo(() => {
+        return report.scenarios.filter(s => s.status === 'passed');
     }, [report.scenarios]);
 
     const toggleFeature = (featureName: string) => {
@@ -274,9 +339,9 @@ const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: st
                             </Card>
                         </Collapsible>
                         <div className='flex flex-col gap-2 text-sm justify-center'>
-                            <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Test Cases:</span> <strong>{report.totalTests}</strong></div>
-                            <div className='flex justify-between p-2 rounded-md text-green-600 bg-green-500/10'><span>Passed:</span> <strong>{report.passed}</strong></div>
-                            <div className='flex justify-between p-2 rounded-md text-red-600 bg-red-500/10'><span>Failed:</span> <strong>{report.failed}</strong></div>
+                           <ClickableStat title="Total Test Cases" count={report.totalTests} scenarios={report.scenarios} jiraLink={jiraLink} />
+                            <ClickableStat title="Passed" count={report.passed} scenarios={passedScenarios} jiraLink={jiraLink} className='text-green-600 bg-green-500/10' />
+                            <ClickableStat title="Failed" count={report.failed} scenarios={failedScenarios} jiraLink={jiraLink} className='text-red-600 bg-red-500/10' />
                             <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Execution Time:</span> <strong>{formatNanosToTime(report.totalExecutionTime)}</strong></div>
                         </div>
                     </div>
