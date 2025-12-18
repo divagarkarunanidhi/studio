@@ -34,6 +34,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
+import { Checkbox } from '../ui/checkbox';
 
 
 type TestCase = {
@@ -462,7 +463,7 @@ const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: st
                                             <CollapsibleTrigger asChild>
                                                 <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
                                                     <h3 className='font-semibold'>Feature: {feature.name}</h3>
-                                                    {openFeatures.has(feature.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                    {openFeatures.has(feature.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4" />}
                                                 </div>
                                             </CollapsibleTrigger>
                                             <CollapsibleContent className="pl-4 pt-2 space-y-2">
@@ -526,7 +527,8 @@ export function SeleniumDashboardPage() {
     const [showUploader, setShowUploader] = useState(false);
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
     const [jiraLink, setJiraLink] = useState<string>("");
-    
+    const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
+
     useEffect(() => {
         const fetchConfig = async () => {
             if (!firestore) return;
@@ -643,6 +645,50 @@ export function SeleniumDashboardPage() {
             });
         }
     }, [toast, user, handleLoadData]);
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedReportIds(processedReports.map(r => r.id));
+        } else {
+            setSelectedReportIds([]);
+        }
+    };
+    
+    const handleSelectRow = (reportId: string, checked: boolean) => {
+        if (checked) {
+            setSelectedReportIds(prev => [...prev, reportId]);
+        } else {
+            setSelectedReportIds(prev => prev.filter(id => id !== reportId));
+        }
+    };
+    
+    const consolidatedReport = useMemo((): ReportSummary | null => {
+        if (selectedReportIds.length === 0) return null;
+    
+        const selected = processedReports.filter(r => selectedReportIds.includes(r.id));
+        if (selected.length === 0) return null;
+    
+        const consolidated: ReportSummary = selected.reduce((acc, report, index) => {
+            if (index === 0) {
+                return { ...report }; // Start with the first report
+            }
+            acc.totalTests += report.totalTests;
+            acc.passed += report.passed;
+            acc.failed += report.failed;
+            acc.totalExecutionTime += report.totalExecutionTime;
+            acc.scenarios = acc.scenarios.concat(report.scenarios);
+            // Concatenate raw reports for detailed view if needed, or handle differently
+            acc.rawReport.test_results = acc.rawReport.test_results.concat(report.rawReport.test_results);
+            return acc;
+        }, { ...selected[0] });
+    
+        // Adjust names for consolidated view
+        consolidated.id = "consolidated";
+        consolidated.solution = "Consolidated Report";
+        consolidated.jobName = `${selectedReportIds.length} Reports Combined`;
+    
+        return consolidated;
+    }, [selectedReportIds, processedReports]);
     
     if (isLoading) {
         return (
@@ -676,7 +722,17 @@ export function SeleniumDashboardPage() {
     return (
         <div className="space-y-6">
              <div className='flex justify-between items-center'>
-                <h2 className="text-2xl font-bold">Selenium Executions</h2>
+                <div className='flex items-center gap-4'>
+                    <h2 className="text-2xl font-bold">Selenium Executions</h2>
+                    {selectedReportIds.length > 0 && consolidatedReport && (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button>View Consolidated Report ({selectedReportIds.length})</Button>
+                            </DialogTrigger>
+                            <DetailModal report={consolidatedReport} jiraLink={jiraLink} />
+                        </Dialog>
+                    )}
+                </div>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="outline">
@@ -705,6 +761,13 @@ export function SeleniumDashboardPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-[40px]">
+                                        <Checkbox
+                                            checked={selectedReportIds.length > 0 && selectedReportIds.length === processedReports.length}
+                                            onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                                            aria-label="Select all rows"
+                                        />
+                                    </TableHead>
                                     <TableHead>Job Name</TableHead>
                                     <TableHead>Domain</TableHead>
                                     <TableHead>Total</TableHead>
@@ -715,7 +778,14 @@ export function SeleniumDashboardPage() {
                             </TableHeader>
                             <TableBody>
                                 {processedReports.map(summary => (
-                                    <TableRow key={summary.id}>
+                                    <TableRow key={summary.id} data-state={selectedReportIds.includes(summary.id) && "selected"}>
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selectedReportIds.includes(summary.id)}
+                                                onCheckedChange={(checked) => handleSelectRow(summary.id, !!checked)}
+                                                aria-label={`Select row ${summary.id}`}
+                                            />
+                                        </TableCell>
                                         <TableCell className='max-w-xs truncate'>{summary.jobName}</TableCell>
                                         <TableCell>{summary.domain}</TableCell>
                                         <TableCell>{summary.totalTests}</TableCell>
