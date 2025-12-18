@@ -318,7 +318,20 @@ const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: st
                                                             )}
                                                         </TableCell>
                                                         <TableCell>{scenario.name}</TableCell>
-                                                        <TableCell>{scenario.defectId || 'N/A'}</TableCell>
+                                                        <TableCell>
+                                                            {scenario.defectId ? (
+                                                                <a
+                                                                    href={`${jiraLink}/browse/${scenario.defectId}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-primary hover:underline"
+                                                                >
+                                                                    {scenario.defectId}
+                                                                </a>
+                                                            ) : (
+                                                                'N/A'
+                                                            )}
+                                                        </TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
