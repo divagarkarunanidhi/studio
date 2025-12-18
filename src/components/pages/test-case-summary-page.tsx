@@ -11,7 +11,7 @@ import * as XLSX from 'xlsx';
 import { FileUploader } from '../dashboard/file-uploader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
-import { FileText, Loader2, Download, Wand2, AlertTriangle, PieChart, BarChart, LineChart } from 'lucide-react';
+import { FileText, Loader2, Download, Wand2, AlertTriangle, PieChart, BarChart, LineChart, AreaChart, Radar, Trello } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 import { SingleSelect, type SingleSelectOption } from '../ui/single-select';
@@ -33,7 +33,7 @@ import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 
 
 type TestCaseData = { [key: string]: string };
-type ChartType = 'pie' | 'bar' | 'line';
+type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar' | 'treemap';
 
 interface TestCaseSummaryPageProps {
   onDataPresentChange: (isPresent: boolean) => void;
@@ -488,10 +488,13 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
             </CardContent>
             <CardFooter className="flex-col items-start gap-4">
                 <Tabs value={chartType} onValueChange={(value) => setChartType(value as ChartType)}>
-                    <TabsList>
-                        <TabsTrigger value="pie"><PieChart className="h-4 w-4 mr-2"/>Pie Chart</TabsTrigger>
-                        <TabsTrigger value="bar"><BarChart className="h-4 w-4 mr-2"/>Bar Chart</TabsTrigger>
-                        <TabsTrigger value="line"><LineChart className="h-4 w-4 mr-2"/>Line Chart</TabsTrigger>
+                    <TabsList className="grid grid-cols-6">
+                        <TabsTrigger value="pie"><PieChart className="h-4 w-4 mr-2"/>Pie</TabsTrigger>
+                        <TabsTrigger value="bar"><BarChart className="h-4 w-4 mr-2"/>Bar</TabsTrigger>
+                        <TabsTrigger value="line"><LineChart className="h-4 w-4 mr-2"/>Line</TabsTrigger>
+                        <TabsTrigger value="area"><AreaChart className="h-4 w-4 mr-2"/>Area</TabsTrigger>
+                        <TabsTrigger value="radar"><Radar className="h-4 w-4 mr-2"/>Radar</TabsTrigger>
+                        <TabsTrigger value="treemap"><Trello className="h-4 w-4 mr-2"/>Treemap</TabsTrigger>
                     </TabsList>
                 </Tabs>
                 <TestCaseDistributionChart

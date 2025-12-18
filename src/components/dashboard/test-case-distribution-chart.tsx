@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as XLSX from 'xlsx';
-import { Pie, PieChart, Cell, Tooltip, Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart } from "recharts";
+import { Pie, PieChart, Cell, Tooltip, Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Area, AreaChart, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Treemap } from "recharts";
 import {
   Card,
   CardContent,
@@ -32,7 +32,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 
 type TestCaseData = { [key: string]: string };
-type ChartType = 'pie' | 'bar' | 'line';
+type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar' | 'treemap';
 
 interface ChartPoint {
   name: string;
@@ -75,13 +75,23 @@ export function TestCaseDistributionChart({
 
   const chartConfig = React.useMemo(() => {
     if (!data || data.length === 0) return {};
-    return data.reduce((acc, item, index) => {
-      acc[item.name] = {
-        label: item.name,
-        color: COLORS[index % COLORS.length],
-      };
-      return acc;
+    const config: ChartConfig = data.reduce((acc, item, index) => {
+        acc[item.name] = {
+            label: item.name,
+            color: COLORS[index % COLORS.length],
+        };
+        return acc;
     }, {} as ChartConfig);
+
+    // Add a generic 'count' for charts that use a single data key
+    if (!config.count) {
+        config.count = {
+            label: "Count",
+            color: "hsl(var(--chart-1))",
+        };
+    }
+
+    return config;
   }, [data]);
 
   const totalCount = React.useMemo(() => {
@@ -166,6 +176,67 @@ export function TestCaseDistributionChart({
                     </LineChart>
                 </ChartContainer>
             );
+        case 'area':
+            return (
+                <ChartContainer config={chartConfig} className="w-full aspect-video max-h-[250px]">
+                    <AreaChart accessibilityLayer data={chartSlices} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
+                        <CartesianGrid vertical={false} />
+                        <XAxis
+                            dataKey="name"
+                            tickLine={false}
+                            axisLine={false}
+                            tickMargin={10}
+                            interval={0}
+                            angle={-15}
+                            textAnchor="end"
+                            height={80}
+                            tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                        />
+                        <YAxis />
+                        <Tooltip content={<ChartTooltipContent indicator="dot" />} />
+                        <Area
+                            dataKey="count"
+                            type="monotone"
+                            fill="hsl(var(--chart-1))"
+                            stroke="hsl(var(--chart-1))"
+                            fillOpacity={0.4}
+                        />
+                    </AreaChart>
+                </ChartContainer>
+            );
+        case 'radar':
+            return (
+                <ChartContainer config={chartConfig} className="w-full aspect-square max-h-[300px]">
+                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartSlices}>
+                        <PolarGrid />
+                        <PolarAngleAxis dataKey="name" tick={(props) => {
+                            const { x, y, payload } = props;
+                            const name = payload.value.length > 15 ? `${payload.value.substring(0,15)}...` : payload.value;
+                            return <text x={x} y={y} dy={5} textAnchor="middle" fill="#666" fontSize={10}>{name}</text>
+                        }}/>
+                        <PolarRadiusAxis />
+                        <Tooltip content={<ChartTooltipContent />} />
+                        <Radar name="Test Cases" dataKey="count" stroke="hsl(var(--chart-1))" fill="hsl(var(--chart-1))" fillOpacity={0.6} />
+                    </RadarChart>
+                </ChartContainer>
+            )
+        case 'treemap':
+            return (
+                <ChartContainer config={chartConfig} className="w-full aspect-video max-h-[350px]">
+                    <Treemap
+                        width={400}
+                        height={350}
+                        data={chartSlices}
+                        dataKey="count"
+                        nameKey="name"
+                        ratio={4 / 3}
+                        stroke="#fff"
+                        fill="hsl(var(--chart-2))"
+                        content={<TreemapContent colors={COLORS} />}
+                    />
+                    <Tooltip content={<ChartTooltipContent />} />
+                </ChartContainer>
+            )
         case 'pie':
         default:
             return (
@@ -206,7 +277,7 @@ export function TestCaseDistributionChart({
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 pb-0">
+      <CardContent className="flex-1 pb-0 flex justify-center items-center">
         {renderChart()}
       </CardContent>
       <CardContent className="mt-2 flex-col gap-2 text-sm">
@@ -275,3 +346,34 @@ export function TestCaseDistributionChart({
     </Card>
   );
 }
+
+// Custom content renderer for Treemap
+const TreemapContent = ({ root, depth, x, y, width, height, index, colors, name }: any) => {
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          style={{
+            fill: colors[index % colors.length],
+            stroke: '#fff',
+            strokeWidth: 2 / (depth + 1e-10),
+            strokeOpacity: 1 / (depth + 1e-10),
+          }}
+        />
+        {depth === 1 ? (
+          <text
+            x={x + width / 2}
+            y={y + height / 2 + 7}
+            textAnchor="middle"
+            fill="#fff"
+            fontSize={14}
+          >
+            {name}
+          </text>
+        ) : null}
+      </g>
+    );
+};
