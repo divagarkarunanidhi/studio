@@ -350,6 +350,10 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     return dataMap;
   }, [testCases, selectedFilterLabels, getTCLabelsAsSet]);
 
+  const isChartLoading = useMemo(() => {
+    return isLoading || (testCases.length > 0 && selectedFilterLabels.length > 0 && chartData.length === 0);
+  }, [isLoading, testCases, selectedFilterLabels, chartData]);
+
   const reusabilityData = useMemo(() => {
     if (!reusedInLabel || reusedFromLabels.length === 0) {
       return { count: 0, testCases: [] };
@@ -441,7 +445,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   }, [chartData, reusedFromLabels, reusedInLabel, reusabilityData.count, totalSavingHours, totalSavingDays]);
 
 
-  if (isLoading) {
+  if (isLoading && showUploaderInitially) {
     return (
         <div className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -499,6 +503,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                 <TestCaseDistributionChart
                     chartType={chartType}
                     data={chartData}
+                    isLoading={isChartLoading}
                     title="Test Case Distribution"
                     description="Based on selected labels"
                     allHeaders={headers}

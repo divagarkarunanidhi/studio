@@ -30,6 +30,7 @@ import {
 import { ScrollArea } from "../ui/scroll-area";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
 
 type TestCaseData = { [key: string]: string };
 type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar';
@@ -47,6 +48,7 @@ interface TestCaseDistributionChartProps {
   allHeaders: string[];
   onExport: (testCasesToExport: TestCaseData[], sliceName: string) => void;
   chartType: ChartType;
+  isLoading: boolean;
 }
 
 const COLORS = [
@@ -71,6 +73,7 @@ export function TestCaseDistributionChart({
   allHeaders,
   onExport,
   chartType,
+  isLoading,
 }: TestCaseDistributionChartProps) {
 
   const chartConfig = React.useMemo(() => {
@@ -99,6 +102,28 @@ export function TestCaseDistributionChart({
     const totalSlice = data.find(d => d.name === 'Total Test Cases in File');
     return totalSlice ? totalSlice.count : data.reduce((acc, item) => acc + item.count, 0);
   }, [data]);
+
+  if (isLoading) {
+    return (
+        <Card className="flex flex-col w-full">
+            <CardHeader className="items-center pb-0">
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-4 w-1/3 mt-2" />
+            </CardHeader>
+            <CardContent className="flex-1 pb-0 flex justify-center items-center">
+                <Skeleton className="h-[300px] w-[300px] rounded-full" />
+            </CardContent>
+            <CardContent className="mt-2 flex-col gap-2 text-sm">
+                 <Skeleton className="h-5 w-1/4 mx-auto" />
+                 <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                 </div>
+            </CardContent>
+        </Card>
+    )
+  }
   
   if (!data || data.length === 0) {
     return (
