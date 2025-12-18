@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as XLSX from 'xlsx';
-import { Pie, PieChart, Cell, Tooltip, Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Area, AreaChart, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Treemap } from "recharts";
+import { Pie, PieChart, Cell, Tooltip, Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Area, AreaChart, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
 import {
   Card,
   CardContent,
@@ -32,7 +32,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 
 type TestCaseData = { [key: string]: string };
-type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar' | 'treemap';
+type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar';
 
 interface ChartPoint {
   name: string;
@@ -220,23 +220,6 @@ export function TestCaseDistributionChart({
                     </RadarChart>
                 </ChartContainer>
             )
-        case 'treemap':
-            return (
-                <ChartContainer config={chartConfig} className="w-full aspect-video max-h-[350px]">
-                    <Treemap
-                        width={400}
-                        height={350}
-                        data={chartSlices}
-                        dataKey="count"
-                        nameKey="name"
-                        ratio={4 / 3}
-                        stroke="#fff"
-                        fill="hsl(var(--chart-2))"
-                        content={<TreemapContent colors={COLORS} />}
-                    />
-                    <Tooltip content={<ChartTooltipContent />} />
-                </ChartContainer>
-            )
         case 'pie':
         default:
             return (
@@ -346,34 +329,3 @@ export function TestCaseDistributionChart({
     </Card>
   );
 }
-
-// Custom content renderer for Treemap
-const TreemapContent = ({ root, depth, x, y, width, height, index, colors, name }: any) => {
-    return (
-      <g>
-        <rect
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          style={{
-            fill: colors[index % colors.length],
-            stroke: '#fff',
-            strokeWidth: 2 / (depth + 1e-10),
-            strokeOpacity: 1 / (depth + 1e-10),
-          }}
-        />
-        {depth === 1 ? (
-          <text
-            x={x + width / 2}
-            y={y + height / 2 + 7}
-            textAnchor="middle"
-            fill="#fff"
-            fontSize={14}
-          >
-            {name}
-          </text>
-        ) : null}
-      </g>
-    );
-};
