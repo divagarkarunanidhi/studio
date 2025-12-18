@@ -7,10 +7,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { AppConfiguration, Defect } from '@/lib/types';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -23,6 +24,7 @@ import {
     DialogTitle,
     DialogTrigger,
     DialogDescription,
+    DialogFooter,
   } from "@/components/ui/dialog"
 import { Pie, PieChart, Cell, Tooltip } from "recharts";
 import {
@@ -196,6 +198,37 @@ const formatNanosToTime = (nanos: number) => {
     return `${minutes}m ${remainingSeconds}s`;
 };
 
+const handleExport = (scenariosToExport: DetailedScenario[], sliceName: string) => {
+    if (!scenariosToExport || scenariosToExport.length === 0) {
+        // Maybe show a toast message here
+        return;
+    }
+
+    const worksheetData = scenariosToExport.map(sc => ({
+        'Test Case ID': sc.testCaseId || 'N/A',
+        'Test Case Name': sc.name,
+        'Defect ID': sc.defectId || 'N/A',
+        'Status': sc.status,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    
+    worksheet['!cols'] = [
+        { wch: 15 }, // Test Case ID
+        { wch: 60 }, // Test Case Name
+        { wch: 15 }, // Defect ID
+        { wch: 10 }, // Status
+    ];
+
+    XLSX.utils.sheet_add_aoa(worksheet, [Object.keys(worksheetData[0])], { origin: 'A1' });
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Scenarios');
+    const fileName = `selenium_scenarios_${sliceName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+};
+
+
 const ClickableStat = ({
     title,
     count,
@@ -251,6 +284,12 @@ const ClickableStat = ({
                         ))}
                     </div>
                 </ScrollArea>
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => handleExport(scenarios, title)} disabled={!scenarios || scenarios.length === 0}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export to Excel
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     )
