@@ -139,6 +139,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
   const [chartType, setChartType] = useState<ChartType>('pie');
+  const [isClient, setIsClient] = useState(false);
 
   // State for reusability section
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(DEFAULT_REUSED_FROM_LABELS);
@@ -150,6 +151,10 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [analysis, setAnalysis] = useState<TestCaseAnalysisOutput | null>(null);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     onDataPresentChange(testCases.length > 0);
@@ -500,16 +505,18 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         <TabsTrigger value="radar"><Radar className="h-4 w-4 mr-2"/>Radar</TabsTrigger>
                     </TabsList>
                 </Tabs>
-                <TestCaseDistributionChart
-                    chartType={chartType}
-                    data={chartData}
-                    isLoading={isChartLoading}
-                    title="Test Case Distribution"
-                    description="Based on selected labels"
-                    allHeaders={headers}
-                    onExport={handleExport}
-                    jiraLink={jiraLink}
-                />
+                {isClient ? (
+                    <TestCaseDistributionChart
+                        chartType={chartType}
+                        data={chartData}
+                        isLoading={isChartLoading}
+                        title="Test Case Distribution"
+                        description="Based on selected labels"
+                        allHeaders={headers}
+                        onExport={handleExport}
+                        jiraLink={jiraLink}
+                    />
+                ) : <Skeleton className="h-[400px] w-full" />}
             </CardFooter>
         </Card>
 
