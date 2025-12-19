@@ -74,7 +74,7 @@ const CustomXAxisTick = (props: any) => {
 
     return (
         <g transform={`translate(${x},${y})`}>
-            <UITooltipProvider>
+            <TooltipProvider>
                 <UITooltip>
                     <UITooltipTrigger asChild>
                         <Text x={0} y={0} dy={10} textAnchor="end" fill="#666" angle={-15}>
@@ -87,7 +87,7 @@ const CustomXAxisTick = (props: any) => {
                         </UITooltipContent>
                     )}
                 </UITooltip>
-            </UITooltipProvider>
+            </TooltipProvider>
         </g>
     );
 };
