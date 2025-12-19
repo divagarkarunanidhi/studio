@@ -516,7 +516,9 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         onExport={handleExport}
                         jiraLink={jiraLink}
                     />
-                ) : <Skeleton className="h-[400px] w-full" />}
+                ) : (
+                    <Skeleton className="h-[400px] w-full" />
+                )}
             </CardFooter>
         </Card>
 
