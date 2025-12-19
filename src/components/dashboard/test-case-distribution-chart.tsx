@@ -144,7 +144,7 @@ export function TestCaseDistributionChart({
     switch (chartType) {
         case 'bar':
             return (
-                <ChartContainer config={chartConfig} className="w-full aspect-video max-h-[250px]">
+                <ChartContainer config={chartConfig} className="w-11/12 mx-auto aspect-video max-h-[250px]">
                     <BarChart accessibilityLayer data={chartSlices} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis
@@ -173,7 +173,7 @@ export function TestCaseDistributionChart({
             );
         case 'line':
             return (
-                <ChartContainer config={chartConfig} className="w-full aspect-video max-h-[250px]">
+                <ChartContainer config={chartConfig} className="w-11/12 mx-auto aspect-video max-h-[250px]">
                     <LineChart accessibilityLayer data={chartSlices} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis
@@ -203,7 +203,7 @@ export function TestCaseDistributionChart({
             );
         case 'area':
             return (
-                <ChartContainer config={chartConfig} className="w-full aspect-video max-h-[250px]">
+                <ChartContainer config={chartConfig} className="w-11/12 mx-auto aspect-video max-h-[250px]">
                     <AreaChart accessibilityLayer data={chartSlices} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis
