@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as XLSX from 'xlsx';
-import { Pie, PieChart, Cell, Tooltip, Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Area, AreaChart, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
+import { Pie, PieChart, Cell, Tooltip, Bar, BarChart, CartesianGrid, XAxis, YAxis, Line, LineChart, Area, AreaChart, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Text } from "recharts";
 import {
   Card,
   CardContent,
@@ -31,6 +31,8 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
+import { TooltipProvider, Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger } from "@/components/ui/tooltip";
+
 
 type TestCaseData = { [key: string]: string };
 type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar';
@@ -64,6 +66,31 @@ const COLORS = [
   "#FF6384",
 ];
 
+
+const CustomXAxisTick = (props: any) => {
+    const { x, y, payload } = props;
+    const value = payload.value;
+    const truncatedValue = value.length > 20 ? `${value.substring(0, 20)}...` : value;
+
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <UITooltipProvider>
+                <UITooltip>
+                    <UITooltipTrigger asChild>
+                        <Text x={0} y={0} dy={10} textAnchor="end" fill="#666" angle={-15}>
+                            {truncatedValue}
+                        </Text>
+                    </UITooltipTrigger>
+                    {value.length > 20 && (
+                        <UITooltipContent>
+                            <p>{value}</p>
+                        </UITooltipContent>
+                    )}
+                </UITooltip>
+            </UITooltipProvider>
+        </g>
+    );
+};
 
 export function TestCaseDistributionChart({
   data,
@@ -153,10 +180,8 @@ export function TestCaseDistributionChart({
                             tickMargin={10}
                             axisLine={false}
                             interval={0}
-                            angle={-15}
-                            textAnchor="end"
                             height={80}
-                            tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                            tick={<CustomXAxisTick />}
                         />
                         <YAxis />
                         <Tooltip
@@ -182,10 +207,8 @@ export function TestCaseDistributionChart({
                             axisLine={false}
                             tickMargin={10}
                             interval={0}
-                            angle={-15}
-                            textAnchor="end"
                             height={80}
-                            tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                            tick={<CustomXAxisTick />}
                         />
                         <YAxis />
                         <Tooltip content={<ChartTooltipContent indicator="dot" />} />
@@ -212,10 +235,8 @@ export function TestCaseDistributionChart({
                             axisLine={false}
                             tickMargin={10}
                             interval={0}
-                            angle={-15}
-                            textAnchor="end"
                             height={80}
-                            tickFormatter={(value) => value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                            tick={<CustomXAxisTick />}
                         />
                         <YAxis />
                         <Tooltip content={<ChartTooltipContent indicator="dot" />} />
