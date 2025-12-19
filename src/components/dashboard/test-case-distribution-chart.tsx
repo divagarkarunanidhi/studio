@@ -102,6 +102,11 @@ export function TestCaseDistributionChart({
   chartType,
   isLoading,
 }: TestCaseDistributionChartProps) {
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const chartConfig = React.useMemo(() => {
     if (!data || data.length === 0) return {};
@@ -307,7 +312,7 @@ export function TestCaseDistributionChart({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0 flex justify-center items-center">
-        {renderChart()}
+        {isClient ? renderChart() : <Skeleton className="h-[300px] w-full" />}
       </CardContent>
       <CardContent className="mt-2 flex-col gap-2 text-sm">
         <div className="flex items-center justify-center font-semibold">
