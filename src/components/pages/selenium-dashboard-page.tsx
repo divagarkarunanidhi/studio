@@ -756,8 +756,15 @@ export function SeleniumDashboardPage() {
             scenarios: [],
             totalExecutionTime: 0,
             rawReport: {
-                ...selected[0].rawReport, // Base structure from first report
-                test_results: []
+                _id: "consolidated",
+                fileName: "consolidated",
+                solution: "consolidated",
+                environment: "consolidated",
+                Config: "consolidated",
+                "Report Path": "N/A",
+                test_results: [],
+                uploaderId: "",
+                uploadedAt: new Date().toISOString(),
             },
             domain: "Consolidated",
             environment: "Consolidated",
