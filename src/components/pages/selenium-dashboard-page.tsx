@@ -429,7 +429,7 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
                                 <CollapsibleContent>
                                     <CardContent className="text-sm space-y-4">
                                          <p className="text-xs text-muted-foreground">
-                                            Compared against run from {format(parseISO(comparisonData.previousReportDate), "MMM d, yyyy 'at' h:mm a")}
+                                            Compared against run from {comparisonData.previousReportDate ? format(parseISO(comparisonData.previousReportDate), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                                         </p>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div>
