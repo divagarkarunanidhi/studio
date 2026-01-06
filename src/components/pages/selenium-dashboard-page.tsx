@@ -11,7 +11,7 @@ import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download } from 'lucide-react';
+import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -91,6 +91,7 @@ interface ReportSummary {
     rawReport: StoredReportData;
     domain: string;
     environment: string;
+    uploadedAt: string;
 }
 
 interface DetailedScenario {
@@ -139,7 +140,7 @@ const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: Tes
 
 
 const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
-    const { _id, test_results, solution, environment } = report;
+    const { _id, test_results, solution, environment, uploadedAt } = report;
     let totalTests = 0;
     let passed = 0;
     let totalExecutionTime = 0;
@@ -188,6 +189,7 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
         rawReport: report,
         domain: report.solution || "N/A",
         environment: report.environment || "N/A",
+        uploadedAt,
     };
 };
 
@@ -296,9 +298,10 @@ const ClickableStat = ({
     )
 }
 
-const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: string }) => {
+const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: ReportSummary; jiraLink: string; allProcessedReports: ReportSummary[] }) => {
     const [openFeatures, setOpenFeatures] = useState<Set<string>>(new Set());
     const [isStatusOpen, setIsStatusOpen] = useState(true);
+    const [isComparisonOpen, setIsComparisonOpen] = useState(true);
     const [isFailedOpen, setIsFailedOpen] = useState(true);
     const [isScenarioDetailsOpen, setIsScenarioDetailsOpen] = useState(true);
     const [openScenarios, setOpenScenarios] = useState<Set<string>>(new Set());
@@ -334,6 +337,31 @@ const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: st
         });
     };
 
+    const comparisonData = useMemo(() => {
+        if (report.id === 'consolidated') return null;
+
+        const previousReport = allProcessedReports.find(
+            p => p.jobName === report.jobName && p.id !== report.id
+        );
+        if (!previousReport) return null;
+        
+        const currentFailed = new Set(report.scenarios.filter(s => s.status === 'failed').map(s => s.name));
+        const prevFailed = new Set(previousReport.scenarios.filter(s => s.status === 'failed').map(s => s.name));
+
+        const newFailures = report.scenarios.filter(s => currentFailed.has(s.name) && !prevFailed.has(s.name));
+        const fixes = previousReport.scenarios.filter(s => prevFailed.has(s.name) && !currentFailed.has(s.name));
+
+        const timeDifference = report.totalExecutionTime - previousReport.totalExecutionTime;
+
+        return {
+            newFailures,
+            fixes,
+            timeDifference,
+            previousReportDate: previousReport.uploadedAt,
+        }
+
+    }, [report, allProcessedReports]);
+
     const pieData = [
         { name: 'Passed', value: report.passed, fill: 'hsl(var(--chart-1))' },
         { name: 'Failed', value: report.failed, fill: 'hsl(var(--chart-2))' },
@@ -342,6 +370,9 @@ const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: st
         <DialogContent className="max-w-6xl">
             <DialogHeader>
                 <DialogTitle>Detailed Report for: {report.solution}</DialogTitle>
+                <DialogDescription>
+                    Job: {report.jobName} | Environment: {report.environment} | Run on: {format(parseISO(report.rawReport.uploadedAt), "MMM d, yyyy 'at' h:mm a")}
+                </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[80vh]">
                 <div className="space-y-6 p-4">
@@ -385,6 +416,53 @@ const DetailModal = ({ report, jiraLink }: { report: ReportSummary; jiraLink: st
                             <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Execution Time:</span> <strong>{formatNanosToTime(report.totalExecutionTime)}</strong></div>
                         </div>
                     </div>
+
+                    {comparisonData && (
+                         <Collapsible open={isComparisonOpen} onOpenChange={setIsComparisonOpen}>
+                            <Card>
+                                <CollapsibleTrigger asChild>
+                                    <CardHeader className="flex flex-row items-center justify-between cursor-pointer">
+                                        <CardTitle className="flex items-center gap-2"><GitCompareArrows /> Comparison with Last Run</CardTitle>
+                                        <ChevronDown className={cn("h-4 w-4 transition-transform", !isComparisonOpen && "-rotate-90")} />
+                                    </CardHeader>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <CardContent className="text-sm space-y-4">
+                                         <p className="text-xs text-muted-foreground">
+                                            Compared against run from {format(parseISO(comparisonData.previousReportDate), "MMM d, yyyy 'at' h:mm a")}
+                                        </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                                <h4 className="font-semibold mb-2">New Failures ({comparisonData.newFailures.length})</h4>
+                                                <ScrollArea className="h-40 rounded-md border p-2">
+                                                    {comparisonData.newFailures.length > 0 ? (
+                                                        comparisonData.newFailures.map(s => <ClickableStat key={s.id} title={s.testCaseId || 'N/A'} count={0} scenarios={[s]} jiraLink={jiraLink} className="text-xs !p-1 justify-start gap-2" />)
+                                                    ) : <p className="text-muted-foreground text-xs">No new failures.</p>}
+                                                </ScrollArea>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold mb-2">Fixes ({comparisonData.fixes.length})</h4>
+                                                <ScrollArea className="h-40 rounded-md border p-2">
+                                                    {comparisonData.fixes.length > 0 ? (
+                                                        comparisonData.fixes.map(s => <ClickableStat key={s.id} title={s.testCaseId || 'N/A'} count={0} scenarios={[s]} jiraLink={jiraLink} className="text-xs !p-1 justify-start gap-2" />)
+                                                    ) : <p className="text-muted-foreground text-xs">No new fixes.</p>}
+                                                </ScrollArea>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold mb-2">Execution Time</h4>
+                                                <div className={cn("flex items-center gap-2 p-2 rounded-md", comparisonData.timeDifference > 0 ? "bg-red-500/10 text-red-600" : "bg-green-500/10 text-green-600")}>
+                                                     {comparisonData.timeDifference > 0 ? <TrendingUp /> : <TrendingDown />}
+                                                    <span>
+                                                        {formatNanosToTime(Math.abs(comparisonData.timeDifference))} {comparisonData.timeDifference > 0 ? 'slower' : 'faster'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </CollapsibleContent>
+                            </Card>
+                         </Collapsible>
+                    )}
 
                     {failedScenarios.length > 0 && (
                         <Collapsible open={isFailedOpen} onOpenChange={setIsFailedOpen}>
@@ -683,6 +761,7 @@ export function SeleniumDashboardPage() {
             },
             domain: "Consolidated",
             environment: "Consolidated",
+            uploadedAt: new Date().toISOString(),
         };
     
         const consolidated = selected.reduce((acc, report) => {
@@ -747,7 +826,7 @@ export function SeleniumDashboardPage() {
                             <DialogTrigger asChild>
                                 <Button>View Consolidated Report ({selectedReportIds.length})</Button>
                             </DialogTrigger>
-                            <DetailModal report={consolidatedReport} jiraLink={jiraLink} />
+                            <DetailModal report={consolidatedReport} jiraLink={jiraLink} allProcessedReports={processedReports} />
                         </Dialog>
                     )}
                 </div>
@@ -814,7 +893,7 @@ export function SeleniumDashboardPage() {
                                                 <DialogTrigger asChild>
                                                     <Button variant='link' size="sm">View Details</Button>
                                                 </DialogTrigger>
-                                                <DetailModal report={summary} jiraLink={jiraLink} />
+                                                <DetailModal report={summary} jiraLink={jiraLink} allProcessedReports={processedReports} />
                                             </Dialog>
                                         </TableCell>
                                     </TableRow>
