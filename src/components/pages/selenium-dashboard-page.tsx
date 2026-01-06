@@ -371,7 +371,7 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
             <DialogHeader>
                 <DialogTitle>Detailed Report for: {report.solution}</DialogTitle>
                 <DialogDescription>
-                    Job: {report.jobName} | Environment: {report.environment} | Run on: {format(parseISO(report.rawReport.uploadedAt), "MMM d, yyyy 'at' h:mm a")}
+                    Job: {report.jobName} | Environment: {report.environment} | Run on: {report.rawReport.uploadedAt ? format(parseISO(report.rawReport.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[80vh]">
