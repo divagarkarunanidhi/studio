@@ -8,9 +8,12 @@ export async function GET() {
     const { clientPromise, dbName } = await getMongoDetails();
     const client = await clientPromise;
     const db = client.db(dbName);
+    const collection = db.collection("seleniumReports");
 
-    const allFiles = await db
-      .collection("seleniumReports")
+    // Ensure an index exists on the 'uploadedAt' field for efficient sorting
+    await collection.createIndex({ uploadedAt: -1 });
+
+    const allFiles = await collection
       .find({})
       .sort({ uploadedAt: -1 })
       .toArray();
