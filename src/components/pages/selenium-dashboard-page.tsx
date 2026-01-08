@@ -473,7 +473,17 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
                                                 <h4 className="font-semibold mb-2">New Failures ({comparisonData.newFailures.length})</h4>
                                                 <ScrollArea className="h-40 rounded-md border p-2">
                                                     {comparisonData.newFailures.length > 0 ? (
-                                                        comparisonData.newFailures.map(s => <ClickableStat key={s.id} title={s.testCaseId || 'N/A'} count={0} scenarios={[s]} jiraLink={jiraLink} className="text-xs !p-1 justify-start gap-2" />)
+                                                        comparisonData.newFailures.map(s => (
+                                                            <a
+                                                                key={s.id}
+                                                                href={`${jiraLink}/browse/${s.testCaseId}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="block text-xs p-1 rounded-md hover:bg-muted text-primary hover:underline"
+                                                            >
+                                                                {s.testCaseId || 'N/A'}
+                                                            </a>
+                                                        ))
                                                     ) : <p className="text-muted-foreground text-xs">No new failures.</p>}
                                                 </ScrollArea>
                                             </div>
@@ -481,7 +491,17 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
                                                 <h4 className="font-semibold mb-2">Fixes ({comparisonData.fixes.length})</h4>
                                                 <ScrollArea className="h-40 rounded-md border p-2">
                                                     {comparisonData.fixes.length > 0 ? (
-                                                        comparisonData.fixes.map(s => <ClickableStat key={s.id} title={s.testCaseId || 'N/A'} count={0} scenarios={[s]} jiraLink={jiraLink} className="text-xs !p-1 justify-start gap-2" />)
+                                                         comparisonData.fixes.map(s => (
+                                                            <a
+                                                                key={s.id}
+                                                                href={`${jiraLink}/browse/${s.testCaseId}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="block text-xs p-1 rounded-md hover:bg-muted text-primary hover:underline"
+                                                            >
+                                                                {s.testCaseId || 'N/A'}
+                                                            </a>
+                                                        ))
                                                     ) : <p className="text-muted-foreground text-xs">No new fixes.</p>}
                                                 </ScrollArea>
                                             </div>
