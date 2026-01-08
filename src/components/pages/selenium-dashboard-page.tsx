@@ -342,7 +342,11 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
         const reportsForSameJob = allProcessedReports.filter(p => p.jobName === report.jobName);
         if (reportsForSameJob.length <= 1) return false;
 
-        const mostRecentReport = reportsForSameJob.sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())[0];
+        const mostRecentReport = reportsForSameJob.sort((a,b) => {
+            const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+            const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+            return dateB - dateA;
+        })[0];
 
         return mostRecentReport.id === report.id;
     }, [report, allProcessedReports]);
@@ -351,8 +355,12 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
         if (report.id === 'consolidated' || !isMostRecentReport) return null;
 
         const previousRuns = allProcessedReports
-            .filter(p => p.jobName === report.jobName && p.uploadedAt && new Date(p.uploadedAt) < new Date(report.uploadedAt))
-            .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+            .filter(p => p.jobName === report.jobName && p.uploadedAt && report.uploadedAt && new Date(p.uploadedAt) < new Date(report.uploadedAt))
+            .sort((a, b) => {
+                const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+                const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+                return dateB - dateA;
+            });
     
         const previousReport = previousRuns[0];
 
@@ -384,7 +392,7 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
             <DialogHeader>
                 <DialogTitle>Detailed Report for: {report.solution}</DialogTitle>
                 <DialogDescription>
-                    Job: {report.jobName} | Environment: {report.environment} | Run on: {report.rawReport.uploadedAt ? format(parseISO(report.rawReport.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                    Job: {report.jobName} | Environment: {report.environment} | Run on: {report.uploadedAt ? format(parseISO(report.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[80vh]">
