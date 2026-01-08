@@ -140,26 +140,24 @@ const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: Tes
 
 
 const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
-    const { _id, test_results, solution, environment, uploadedAt } = report;
     let totalTests = 0;
     let passed = 0;
     let totalExecutionTime = 0;
     const detailedScenarios: DetailedScenario[] = [];
     let jobName = "N/A";
-    let executionTimestamp = uploadedAt; // Fallback to upload time
+    let executionTimestamp = report.uploadedAt; 
 
-    if (test_results && test_results.length > 0) {
-        jobName = test_results[0].name || "N/A";
+    if (report.test_results && report.test_results.length > 0) {
+        jobName = report.test_results[0].name || "N/A";
         
-        // Try to get the start_timestamp from the first scenario of the first feature
-        if (test_results[0].elements && test_results[0].elements.length > 0) {
-            const firstScenario = test_results[0].elements[0];
+        if (report.test_results[0].elements && report.test_results[0].elements.length > 0) {
+            const firstScenario = report.test_results[0].elements[0];
             if (firstScenario.start_timestamp) {
                 executionTimestamp = firstScenario.start_timestamp;
             }
         }
 
-        test_results.forEach(feature => {
+        report.test_results.forEach(feature => {
             if (feature.elements) {
                 feature.elements.forEach(scenario => {
                     totalTests++;
@@ -187,7 +185,7 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
     }
 
     return {
-        id: _id,
+        id: report._id,
         solution: report.solution || 'N/A',
         jobName: jobName,
         totalTests,
@@ -679,7 +677,6 @@ export function SeleniumDashboardPage() {
 
     const processedReports = useMemo(() => {
         if (testCaseDetails.length === 0 && allReports.length > 0) {
-            // If test cases haven't loaded but reports have, return empty to wait
             return [];
         };
         return allReports.map(report => processReport(report, testCaseDetails));
@@ -689,7 +686,6 @@ export function SeleniumDashboardPage() {
     const handleLoadData = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Fetch Test Cases from the 'testCases' collection
             const tcResponse = await fetch('/api/test-cases/latest');
             if (tcResponse.ok) {
                 const tcData = await tcResponse.json();
@@ -702,7 +698,6 @@ export function SeleniumDashboardPage() {
                  console.warn("Could not fetch test case details. Defect IDs might be missing.");
             }
 
-            // Fetch Selenium Reports
             const reportResponse = await fetch('/api/selenium/all');
             if (!reportResponse.ok) {
                 const errorData = await reportResponse.json();
