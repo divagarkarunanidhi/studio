@@ -188,7 +188,7 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
         rawReport: report,
         domain: report.solution || "N/A",
         environment: report.environment || "N/A",
-        uploadedAt,
+        uploadedAt: uploadedAt,
     };
 };
 
