@@ -337,8 +337,19 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
         });
     };
 
+    const isMostRecentReport = useMemo(() => {
+        if (report.id === 'consolidated') return false;
+        
+        const reportsForSameJob = allProcessedReports.filter(p => p.jobName === report.jobName);
+        if (reportsForSameJob.length <= 1) return false;
+
+        const mostRecentReport = reportsForSameJob.sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())[0];
+
+        return mostRecentReport.id === report.id;
+    }, [report, allProcessedReports]);
+
     const comparisonData = useMemo(() => {
-        if (report.id === 'consolidated') return null;
+        if (report.id === 'consolidated' || !isMostRecentReport) return null;
 
         const previousRuns = allProcessedReports.filter(
             p => p.jobName === report.jobName && new Date(p.uploadedAt) < new Date(report.uploadedAt)
@@ -363,7 +374,7 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
             previousReportDate: previousReport.uploadedAt,
         }
 
-    }, [report, allProcessedReports]);
+    }, [report, allProcessedReports, isMostRecentReport]);
 
     const pieData = [
         { name: 'Passed', value: report.passed, fill: 'hsl(var(--chart-1))' },
@@ -925,4 +936,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
