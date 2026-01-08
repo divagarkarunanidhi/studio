@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -891,6 +890,7 @@ export function SeleniumDashboardPage() {
                                     <TableHead>Total</TableHead>
                                     <TableHead>Passed</TableHead>
                                     <TableHead>Failed</TableHead>
+                                    <TableHead>Execution Date</TableHead>
                                     <TableHead>Detailed Report</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -909,6 +909,9 @@ export function SeleniumDashboardPage() {
                                         <TableCell>{summary.totalTests}</TableCell>
                                         <TableCell className='text-green-600'>{summary.passed}</TableCell>
                                         <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
+                                        <TableCell className="text-muted-foreground text-xs">
+                                            {summary.uploadedAt ? format(parseISO(summary.uploadedAt), 'MMM d, yyyy') : 'N/A'}
+                                        </TableCell>
                                         <TableCell>
                                             <Dialog>
                                                 <DialogTrigger asChild>
@@ -936,3 +939,5 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
+    
