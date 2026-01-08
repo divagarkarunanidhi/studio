@@ -350,9 +350,9 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     const comparisonData = useMemo(() => {
         if (report.id === 'consolidated' || !isMostRecentReport) return null;
 
-        const previousRuns = allProcessedReports.filter(
-            p => p.jobName === report.jobName && new Date(p.uploadedAt) < new Date(report.uploadedAt)
-        ).sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+        const previousRuns = allProcessedReports
+            .filter(p => p.jobName === report.jobName && p.uploadedAt && new Date(p.uploadedAt) < new Date(report.uploadedAt))
+            .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
     
         const previousReport = previousRuns[0];
 
