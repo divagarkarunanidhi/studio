@@ -140,13 +140,13 @@ const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: Tes
 
 
 const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
-    const { _id, test_results, solution, environment } = report;
+    const { _id, test_results, solution, environment, uploadedAt } = report;
     let totalTests = 0;
     let passed = 0;
     let totalExecutionTime = 0;
     const detailedScenarios: DetailedScenario[] = [];
     let jobName = "N/A";
-    let executionTimestamp = report.uploadedAt; // Fallback to upload time
+    let executionTimestamp = uploadedAt; // Fallback to upload time
 
     if (test_results && test_results.length > 0) {
         jobName = test_results[0].name || "N/A";
@@ -397,6 +397,21 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
         { name: 'Passed', value: report.passed, fill: 'hsl(var(--chart-1))' },
         { name: 'Failed', value: report.failed, fill: 'hsl(var(--chart-2))' },
     ];
+    
+    const scenariosByFeature = useMemo(() => {
+        const featureMap = new Map<string, Scenario[]>();
+        report.rawReport.test_results?.forEach(feature => {
+            if (!featureMap.has(feature.name)) {
+                featureMap.set(feature.name, []);
+            }
+            feature.elements.forEach(scenario => {
+                featureMap.get(feature.name)!.push(scenario);
+            });
+        });
+        return Array.from(featureMap.entries());
+    }, [report.rawReport.test_results]);
+
+
     return (
         <DialogContent className="max-w-6xl">
             <DialogHeader>
@@ -567,16 +582,16 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
                             <CollapsibleContent>
                                 <CardContent>
                                     <div className='max-h-96 overflow-y-auto'>
-                                    {report.rawReport.test_results?.map((feature, fIndex) => (
-                                        <Collapsible key={`${feature.uri}-${fIndex}`} open={openFeatures.has(feature.uri)} onOpenChange={() => toggleFeature(feature.uri)}>
+                                    {scenariosByFeature.map(([featureName, scenarios], fIndex) => (
+                                        <Collapsible key={`${featureName}-${fIndex}`} open={openFeatures.has(featureName)} onOpenChange={() => toggleFeature(featureName)}>
                                             <CollapsibleTrigger asChild>
                                                 <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
-                                                    <h3 className='font-semibold'>Feature: {feature.name}</h3>
-                                                    {openFeatures.has(feature.uri) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4" />}
+                                                    <h3 className='font-semibold'>Feature: {featureName}</h3>
+                                                    {openFeatures.has(featureName) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4" />}
                                                 </div>
                                             </CollapsibleTrigger>
                                             <CollapsibleContent className="pl-4 pt-2 space-y-2">
-                                                {feature.elements.map((scenario, sIndex) => (
+                                                {scenarios.map((scenario, sIndex) => (
                                                     <Collapsible key={`${scenario.name}-${sIndex}`} open={openScenarios.has(scenario.name)} onOpenChange={() => toggleScenario(scenario.name)}>
                                                         <Card className='overflow-hidden'>
                                                             <CollapsibleTrigger asChild>
@@ -957,3 +972,6 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
+
+    
