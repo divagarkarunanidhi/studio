@@ -57,6 +57,7 @@ interface Scenario {
     keyword: string;
     steps: Step[];
     tags?: { name: string }[];
+    start_timestamp?: string;
 }
 
 interface Feature {
@@ -139,15 +140,24 @@ const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: Tes
 
 
 const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
-    const { _id, test_results, solution, environment, uploadedAt } = report;
+    const { _id, test_results, solution, environment } = report;
     let totalTests = 0;
     let passed = 0;
     let totalExecutionTime = 0;
     const detailedScenarios: DetailedScenario[] = [];
     let jobName = "N/A";
+    let executionTimestamp = report.uploadedAt; // Fallback to upload time
 
     if (test_results && test_results.length > 0) {
         jobName = test_results[0].name || "N/A";
+        
+        // Try to get the start_timestamp from the first scenario of the first feature
+        if (test_results[0].elements && test_results[0].elements.length > 0) {
+            const firstScenario = test_results[0].elements[0];
+            if (firstScenario.start_timestamp) {
+                executionTimestamp = firstScenario.start_timestamp;
+            }
+        }
 
         test_results.forEach(feature => {
             if (feature.elements) {
@@ -188,7 +198,7 @@ const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): R
         rawReport: report,
         domain: report.solution || "N/A",
         environment: report.environment || "N/A",
-        uploadedAt: uploadedAt,
+        uploadedAt: executionTimestamp,
     };
 };
 
@@ -947,5 +957,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
-    
