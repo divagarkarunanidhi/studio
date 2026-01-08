@@ -108,7 +108,7 @@ const getStepDuration = (step: Step): number => {
     }
   
     if (typeof step.result.duration === 'number') {
-      return step.result.duration;
+      return 0;
     }
   
     if (typeof step.result.duration === 'object' && step.result.duration && '$numberLong' in step.result.duration) {
@@ -255,12 +255,7 @@ const ClickableStat = ({
     className?: string;
 }) => {
     if (count === 0) {
-        return (
-            <div className={cn('flex justify-between p-2 rounded-md bg-muted/50', className)}>
-                <span>{title}:</span>
-                <strong>{count}</strong>
-            </div>
-        )
+        return null;
     }
 
     return (
@@ -349,7 +344,7 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     const isMostRecentReport = useMemo(() => {
         if (report.id === 'consolidated') return false;
         
-        const reportsForSameJob = allProcessedReports.filter(p => p.jobName === report.jobName);
+        const reportsForSameJob = allProcessedReports.filter(p => p.jobName === report.jobName && p.id !== 'consolidated');
         if (reportsForSameJob.length <= 1) return false;
 
         const mostRecentReport = reportsForSameJob.sort((a,b) => {
@@ -365,7 +360,7 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
         if (report.id === 'consolidated' || !isMostRecentReport) return null;
 
         const previousRuns = allProcessedReports
-            .filter(p => p.jobName === report.jobName && p.uploadedAt && report.uploadedAt && new Date(p.uploadedAt) < new Date(report.uploadedAt))
+            .filter(p => p.jobName === report.jobName && p.id !== 'consolidated' && p.uploadedAt && report.uploadedAt && new Date(p.uploadedAt) < new Date(report.uploadedAt))
             .sort((a, b) => {
                 const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
                 const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
@@ -401,12 +396,8 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     const scenariosByFeature = useMemo(() => {
         const featureMap = new Map<string, Scenario[]>();
         report.rawReport.test_results?.forEach(feature => {
-            if (!featureMap.has(feature.name)) {
-                featureMap.set(feature.name, []);
-            }
-            feature.elements.forEach(scenario => {
-                featureMap.get(feature.name)!.push(scenario);
-            });
+            const existingScenarios = featureMap.get(feature.name) || [];
+            featureMap.set(feature.name, [...existingScenarios, ...feature.elements]);
         });
         return Array.from(featureMap.entries());
     }, [report.rawReport.test_results]);
@@ -667,7 +658,10 @@ export function SeleniumDashboardPage() {
       }, [firestore]);
 
     const processedReports = useMemo(() => {
-        if (testCaseDetails.length === 0) return [];
+        if (testCaseDetails.length === 0 && allReports.length > 0) {
+            // If test cases haven't loaded but reports have, return empty to wait
+            return [];
+        };
         return allReports.map(report => processReport(report, testCaseDetails));
     }, [allReports, testCaseDetails]);
 
@@ -972,6 +966,5 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-
-
+    
     
