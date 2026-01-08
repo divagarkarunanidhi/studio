@@ -340,9 +340,12 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     const comparisonData = useMemo(() => {
         if (report.id === 'consolidated') return null;
 
-        const previousReport = allProcessedReports.find(
-            p => p.jobName === report.jobName && p.id !== report.id
-        );
+        const previousRuns = allProcessedReports.filter(
+            p => p.jobName === report.jobName && new Date(p.uploadedAt) < new Date(report.uploadedAt)
+        ).sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+    
+        const previousReport = previousRuns[0];
+
         if (!previousReport) return null;
         
         const currentFailed = new Set(report.scenarios.filter(s => s.status === 'failed').map(s => s.name));
@@ -922,3 +925,4 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
+
