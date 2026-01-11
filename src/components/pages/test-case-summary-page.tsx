@@ -40,114 +40,36 @@ interface TestCaseSummaryPageProps {
   showUploaderInitially: boolean;
 }
 
-
-const parseCSV = (text: string): { headers: string[], data: TestCaseData[] } => {
-    const rows: string[][] = [];
-    let currentRow: string[] = [];
-    let currentField = '';
-    let inQuotes = false;
-    let i = 0;
-
-    const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-    while (i < normalizedText.length) {
-        const char = normalizedText[i];
-        if (inQuotes) {
-            if (char === '"') {
-                if (i + 1 < normalizedText.length && normalizedText[i + 1] === '"') {
-                    currentField += '"';
-                    i++;
-                } else {
-                    inQuotes = false;
-                }
-            } else {
-                currentField += char;
-            }
-        } else {
-            if (char === ',') {
-                currentRow.push(currentField);
-                currentField = '';
-            } else if (char === '\n') {
-                currentRow.push(currentField);
-                rows.push(currentRow);
-                currentRow = [];
-                currentField = '';
-            } else if (char === '"' && currentField === '') {
-                inQuotes = true;
-            } else {
-                currentField += char;
-            }
-        }
-        i++;
-    }
-    if (currentField || currentRow.length > 0) {
-        currentRow.push(currentField);
-        rows.push(currentRow);
-    }
-    
-    const nonEmptyRows = rows.filter(row => row.some(field => field.trim() !== ''));
-    if (nonEmptyRows.length < 1) {
-        return { headers: [], data: [] };
-    }
-
-    const headerRow = nonEmptyRows[0].map(h => h.trim());
-    const dataRows = nonEmptyRows.slice(1);
-    
-    const uniqueHeaders: string[] = [];
-    const headerMap: { [key: string]: number[] } = {};
-
-    headerRow.forEach((header, index) => {
-        if (!headerMap[header]) {
-            headerMap[header] = [];
-            uniqueHeaders.push(header);
-        }
-        headerMap[header].push(index);
-    });
-
-    const data = dataRows.map(row => {
-        const rowData: TestCaseData = {};
-        uniqueHeaders.forEach(header => {
-            const indices = headerMap[header];
-            const values = indices.map(index => row[index]).filter(Boolean); // Filter out empty/null values
-            rowData[header] = values.join(',');
-        });
-        return rowData;
-    });
-
-    return { headers: uniqueHeaders, data };
-};
-
 const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
 const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
 const DEFAULT_OVERVIEW_LABELS = ['FradleyPilot', 'ToshibaPilot', 'FordKOCPilot'];
-
-const processAndSetData = (data: TestCaseData[], setHeaders: (h: string[]) => void, setTestCases: (tc: TestCaseData[]) => void) => {
-    if (data.length > 0) {
-        const sampleHeaders = Object.keys(data[0]);
-        setHeaders(sampleHeaders);
-        setTestCases(data);
-    }
-}
 
 export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially }: TestCaseSummaryPageProps) {
   const { user } = useUser();
   const { toast } = useToast();
   const firestore = useFirestore();
   const [jiraLink, setJiraLink] = useState<string>('');
-  const [testCases, setTestCases] = useState<TestCaseData[]>([]);
+  
+  // Data state
+  const [totalTestCases, setTotalTestCases] = useState(0);
   const [headers, setHeaders] = useState<string[]>([]);
+  const [distributionData, setDistributionData] = useState<any[]>([]);
+  const [reusabilityData, setReusabilityData] = useState({ count: 0, testCases: [] });
+  const [allUniqueLabels, setAllUniqueLabels] = useState<string[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
+  
+  // UI and Filter state
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
   const [chartType, setChartType] = useState<ChartType>('pie');
   const [isClient, setIsClient] = useState(false);
 
-  // State for reusability section
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(DEFAULT_REUSED_FROM_LABELS);
   const [reusedInLabel, setReusedInLabel] = useState<string>(DEFAULT_REUSED_IN_LABEL);
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
   
-  // State for AI analysis
+  // AI analysis state
   const [analysis, setAnalysis] = useState<TestCaseAnalysisOutput | null>(null);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -157,8 +79,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   }, []);
 
   useEffect(() => {
-    onDataPresentChange(testCases.length > 0);
-  }, [testCases.length, onDataPresentChange]);
+    onDataPresentChange(totalTestCases > 0);
+  }, [totalTestCases, onDataPresentChange]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -172,31 +94,60 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     };
     fetchConfig();
   }, [firestore]);
+  
+  const fetchSummaryData = useCallback(async (filters: any) => {
+    setIsLoading(true);
+    try {
+        const response = await fetch('/api/test-cases/summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(filters),
+        });
+        if (!response.ok) throw new Error('Failed to fetch summary data.');
 
-  const labelColumns = useMemo(() => {
-    return headers.filter(h => h.toLowerCase().startsWith('label')).sort();
-  }, [headers]);
+        const data = await response.json();
+        setDistributionData(data.distribution);
+        setReusabilityData(data.reusability);
+        setTotalTestCases(data.totalTestCases);
+        setAllUniqueLabels(data.uniqueLabels);
+        setHeaders(data.headers);
 
-  const allUniqueLabels = useMemo(() => {
-    if (testCases.length === 0 || labelColumns.length === 0) {
-      return [];
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Error Fetching Summary',
+            description: error.message,
+        });
+    } finally {
+        setIsLoading(false);
     }
-    const uniqueLabels = new Set<string>();
-    for (const testCase of testCases) {
-      for (const col of labelColumns) {
-        const value = testCase[col];
-        if (value && value.trim() !== '') {
-          const labels = value.split(',').map(l => l.trim());
-          for (const label of labels) {
-            if (label) {
-              uniqueLabels.add(label);
-            }
-          }
+  }, [toast]);
+  
+  // Initial load and subsequent fetches on filter change
+  useEffect(() => {
+    const filters = {
+        selectedFilterLabels,
+        reusedFromLabels,
+        reusedInLabel,
+    };
+    fetchSummaryData(filters);
+  }, [selectedFilterLabels, reusedFromLabels, reusedInLabel, fetchSummaryData]);
+
+  // Set default labels once unique labels are loaded
+  useEffect(() => {
+    if (allUniqueLabels.length > 0) {
+        const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => allUniqueLabels.includes(label));
+        setSelectedFilterLabels(availableDefaultLabels);
+
+        const availableReusedFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => allUniqueLabels.includes(label));
+        setReusedFromLabels(availableReusedFrom);
+
+        if (allUniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+            setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
         }
-      }
     }
-    return Array.from(uniqueLabels).sort();
-  }, [testCases, labelColumns]);
+  }, [allUniqueLabels]);
+
 
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
     return allUniqueLabels.map(label => ({ value: label, label: label }));
@@ -207,176 +158,48 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   }, [allUniqueLabels]);
 
 
-  useEffect(() => {
-    if (testCases.length > 0 && allUniqueLabels.length > 0) {
-        const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => allUniqueLabels.includes(label));
-        setSelectedFilterLabels(availableDefaultLabels);
-
-        const availableReusedFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => allUniqueLabels.includes(label));
-        setReusedFromLabels(availableReusedFrom);
-
-        if (allUniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-            setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
-        }
-
-    } else {
-        setSelectedFilterLabels([]);
-    }
-  }, [testCases.length, allUniqueLabels]);
-
-
-  const handleLoadFromServer = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/test-cases/latest');
-      if (!response.ok) throw new Error('Failed to fetch latest data.');
-      const data = await response.json();
-      if (data && data.testCases) {
-          processAndSetData(data.testCases, setHeaders, setTestCases);
-      }
-    } catch (error) {
-      console.log("No initial test case data found on server.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    handleLoadFromServer();
-  }, [handleLoadFromServer]);
-
-
   const handleDataUploaded = useCallback(async (csvText: string, fileName: string) => {
     if (!user) {
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Error',
-        description: 'You must be logged in to upload data.',
-      });
+      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload data.' });
       return;
     }
     setIsLoading(true);
     try {
-      const { headers: parsedHeaders, data: parsedData } = parseCSV(csvText);
+        const tempParsed = JSON.parse(csvText); // A quick way to check if it's JSON array
+        const response = await fetch('/api/test-cases/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ testCases: tempParsed, uploaderId: user.uid, fileName: fileName }),
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to save data to the server.');
+        }
+        toast({ title: 'Success!', description: `${tempParsed.length} test case records uploaded and saved.` });
+        await fetchSummaryData({ selectedFilterLabels, reusedFromLabels, reusedInLabel });
 
-      if (parsedData.length === 0) {
-        throw new Error('No data found in the CSV file.');
-      }
-      
-      const response = await fetch('/api/test-cases/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          testCases: parsedData,
-          uploaderId: user.uid,
-          fileName: fileName,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save data to the server.');
-      }
-      
-      processAndSetData(parsedData, setHeaders, setTestCases);
-
-      toast({
-        title: 'Success!',
-        description: `${parsedData.length} test case records uploaded and saved.`,
-      });
-
-    } catch (error: any) {
-      setTestCases([]);
-      setHeaders([]);
-      toast({
-        variant: 'destructive',
-        title: 'Error Processing File',
-        description: error.message,
-      });
+    } catch (error) { // If JSON parsing fails, assume it's CSV
+        try {
+            const response = await fetch('/api/test-cases/upload-csv', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ csv: csvText, uploaderId: user.uid, fileName: fileName }),
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to save CSV data to the server.');
+            }
+            const result = await response.json();
+            toast({ title: 'Success!', description: `${result.count} test case records uploaded from CSV.` });
+            await fetchSummaryData({ selectedFilterLabels, reusedFromLabels, reusedInLabel });
+        } catch (csvError: any) {
+            toast({ variant: 'destructive', title: 'Error Processing File', description: csvError.message });
+        }
     } finally {
         setIsLoading(false);
     }
-  }, [toast, user]);
+}, [toast, user, fetchSummaryData, selectedFilterLabels, reusedFromLabels, reusedInLabel]);
 
-  const getTCLabelsAsSet = useCallback((tc: TestCaseData): Set<string> => {
-    const labels = new Set<string>();
-    labelColumns.forEach(col => {
-        if (tc[col]) {
-            tc[col].split(',').forEach(l => labels.add(l.trim()));
-        }
-    });
-    return labels;
-  }, [labelColumns]);
-
-
-  const chartData = useMemo(() => {
-    if (testCases.length === 0 || selectedFilterLabels.length === 0) {
-        return [];
-    }
-
-    const dataMap: { name: string; count: number, testCases: TestCaseData[] }[] = [];
-
-    // 1. "Matching All" count
-    const allMatchingTcs = testCases.filter(tc => {
-        const tcLabels = getTCLabelsAsSet(tc);
-        return selectedFilterLabels.every(l => tcLabels.has(l));
-    });
-
-    if (allMatchingTcs.length > 0) {
-        dataMap.push({
-            name: `Matching all (${selectedFilterLabels.join(' & ')})`,
-            count: allMatchingTcs.length,
-            testCases: allMatchingTcs
-        });
-    }
-
-    // 2. Total count for each selected label
-    selectedFilterLabels.forEach(label => {
-        const tcsWithLabel = testCases.filter(tc => getTCLabelsAsSet(tc).has(label));
-        if (tcsWithLabel.length > 0) {
-            dataMap.push({
-                name: `Total for '${label}'`,
-                count: tcsWithLabel.length,
-                testCases: tcsWithLabel
-            });
-        }
-    });
-
-    // 3. Overall total
-    const totalSlice = dataMap.find(d => d.name === 'Total Test Cases in File');
-    if (!totalSlice && testCases.length > 0) {
-        dataMap.push({
-            name: 'Total Test Cases in File',
-            count: testCases.length,
-            testCases: testCases
-        });
-    }
-
-    return dataMap;
-  }, [testCases, selectedFilterLabels, getTCLabelsAsSet]);
-
-  const isChartLoading = useMemo(() => {
-    return isLoading || (testCases.length > 0 && selectedFilterLabels.length > 0 && chartData.length === 0);
-  }, [isLoading, testCases, selectedFilterLabels, chartData]);
-
-  const reusabilityData = useMemo(() => {
-    if (!reusedInLabel || reusedFromLabels.length === 0) {
-      return { count: 0, testCases: [] };
-    }
-
-    const matchingTestCases = testCases.filter(tc => {
-      const tcLabels = getTCLabelsAsSet(tc);
-      const hasReusedInLabel = tcLabels.has(reusedInLabel);
-      const hasReusedFromLabel = reusedFromLabels.some(fromLabel => tcLabels.has(fromLabel));
-      
-      return hasReusedInLabel && hasReusedFromLabel;
-    });
-
-    return {
-      count: matchingTestCases.length,
-      testCases: matchingTestCases,
-    };
-  }, [testCases, reusedFromLabels, reusedInLabel, getTCLabelsAsSet]);
 
   const handleExport = (testCasesToExport: TestCaseData[], sliceName: string) => {
     if (!testCasesToExport || testCasesToExport.length === 0) return;
@@ -426,7 +249,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     setAnalysis(null);
     setAnalysisError(null);
 
-    const distributionDataString = JSON.stringify(chartData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
+    const distributionDataString = JSON.stringify(distributionData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
     const reusabilityPayloadString = JSON.stringify({
         reused_from_labels: reusedFromLabels,
         reused_in_label: reusedInLabel,
@@ -447,7 +270,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     } finally {
         setIsAnalysisLoading(false);
     }
-  }, [chartData, reusedFromLabels, reusedInLabel, reusabilityData.count, totalSavingHours, totalSavingDays]);
+  }, [distributionData, reusedFromLabels, reusedInLabel, reusabilityData.count, totalSavingHours, totalSavingDays]);
 
 
   if (isLoading && showUploaderInitially) {
@@ -468,10 +291,10 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                 <Card className="w-full">
                     <CardHeader>
                         <CardTitle>Upload Test Case Data</CardTitle>
-                        <CardDescription>To get started, please upload a CSV file containing your test case details.</CardDescription>
+                        <CardDescription>To get started, please upload a CSV or JSON file containing your test case details.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <FileUploader onDataUploaded={(csv, file) => handleDataUploaded(csv, file.name)} templatePath="/test-cases-template.csv" />
+                        <FileUploader onDataUploaded={(data, file) => handleDataUploaded(data, file.name)} templatePath="/test-cases-template.csv" accept=".csv, .json" />
                     </CardContent>
                 </Card>
             </div>
@@ -489,7 +312,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
             <CardContent>
                     <MultiSelect
                     options={uniqueLabelOptions}
-                    defaultValue={selectedFilterLabels}
+                    value={selectedFilterLabels}
                     onValueChange={setSelectedFilterLabels}
                     placeholder="Select labels to analyze..."
                     className="w-full"
@@ -508,8 +331,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                 {isClient ? (
                     <TestCaseDistributionChart
                         chartType={chartType}
-                        data={chartData}
-                        isLoading={isChartLoading}
+                        data={[...distributionData, { name: 'Total Test Cases in File', count: totalTestCases, testCases: [] }]}
+                        isLoading={isLoading}
                         title="Test Case Distribution"
                         description="Based on selected labels"
                         allHeaders={headers}
@@ -533,7 +356,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         <label className="text-sm font-medium">Reused from</label>
                         <MultiSelect 
                             options={uniqueLabelOptions}
-                            defaultValue={reusedFromLabels}
+                            value={reusedFromLabels}
                             onValueChange={setReusedFromLabels}
                             placeholder="Select source labels..."
                             className="w-full"
@@ -590,7 +413,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                                 </DialogHeader>
                                 <ScrollArea className="h-72 w-full rounded-md border">
                                     <div className="p-4 flex flex-wrap gap-2">
-                                        {reusabilityData.testCases.map((tc, idx) => {
+                                        {(reusabilityData.testCases as TestCaseData[]).map((tc, idx) => {
                                             const id = tc['Issue key'] || `item-${idx}`;
                                             return (
                                                 <Badge key={id} variant="secondary">
@@ -612,7 +435,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                                     </div>
                                 </ScrollArea>
                                 <DialogFooter>
-                                    <Button variant="outline" onClick={() => handleExport(reusabilityData.testCases, 'reusable_test_cases')} disabled={reusabilityData.testCases.length === 0}>
+                                    <Button variant="outline" onClick={() => handleExport(reusabilityData.testCases as TestCaseData[], 'reusable_test_cases')} disabled={reusabilityData.testCases.length === 0}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Export to Excel
                                     </Button>
@@ -675,3 +498,5 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     </div>
   );
 }
+
+    

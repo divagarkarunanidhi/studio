@@ -122,84 +122,6 @@ const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
     return scenario.steps.some(step => step.result.status === 'failed') ? 'failed' : 'passed';
 };
 
-const findTestCaseIdByName = (scenarioName: string, testCases: TestCase[]): string | null => {
-    if (!scenarioName || !testCases) return null;
-    const cleanedScenarioName = scenarioName.trim().toLowerCase();
-    const matchingTestCase = testCases.find(tc => 
-        tc.Summary?.trim().toLowerCase() === cleanedScenarioName
-    );
-    return matchingTestCase ? matchingTestCase['Issue key'] : null;
-};
-
-
-const findDefectIdForTestCase = (testCaseId: string | null, testCaseDetails: TestCase[]): string | null => {
-    if (!testCaseId || !testCaseDetails) return null;
-    const matchingTC = testCaseDetails.find(tc => tc['Issue key'] === testCaseId);
-    return matchingTC ? (matchingTC['Outward issue link (Agile Hive Dependency Link)'] || null) : null;
-};
-
-
-const processReport = (report: StoredReportData, testCaseDetails: TestCase[]): ReportSummary => {
-    let totalTests = 0;
-    let passed = 0;
-    let totalExecutionTime = 0;
-    const detailedScenarios: DetailedScenario[] = [];
-    let jobName = "N/A";
-    let executionTimestamp = report.uploadedAt; 
-
-    if (report.test_results && report.test_results.length > 0) {
-        jobName = report.test_results[0].name || "N/A";
-        
-        if (report.test_results[0].elements && report.test_results[0].elements.length > 0) {
-            const firstScenario = report.test_results[0].elements[0];
-            if (firstScenario.start_timestamp) {
-                executionTimestamp = firstScenario.start_timestamp;
-            }
-        }
-
-        report.test_results.forEach(feature => {
-            if (feature.elements) {
-                feature.elements.forEach(scenario => {
-                    totalTests++;
-                    const status = getScenarioStatus(scenario);
-                    if (status === 'passed') {
-                        passed++;
-                    }
-                    const testCaseId = findTestCaseIdByName(scenario.name, testCaseDetails);
-                    const defectId = findDefectIdForTestCase(testCaseId, testCaseDetails);
-
-                    detailedScenarios.push({
-                        id: scenario.name,
-                        name: scenario.name,
-                        status: status,
-                        testCaseId: testCaseId,
-                        defectId: defectId,
-                    });
-
-                    scenario.steps.forEach(step => {
-                        totalExecutionTime += getStepDuration(step);
-                    });
-                });
-            }
-        });
-    }
-
-    return {
-        id: report._id,
-        solution: report.solution || 'N/A',
-        jobName: jobName,
-        totalTests,
-        passed,
-        failed: totalTests - passed,
-        scenarios: detailedScenarios,
-        totalExecutionTime,
-        rawReport: report,
-        domain: report.solution || "N/A",
-        environment: report.environment || "N/A",
-        uploadedAt: executionTimestamp,
-    };
-};
-
 const formatNanosToTime = (nanos: number) => {
     if (nanos === 0) return "0s";
     const seconds = nanos / 1e9;
@@ -651,11 +573,17 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     )
 }
 
+const PAGE_SIZE = 50;
+
 export function SeleniumDashboardPage() {
     const { toast } = useToast();
     const { user } = useUser();
     const firestore = useFirestore();
-    const [allReports, setAllReports] = useState<StoredReportData[]>([]);
+    
+    const [processedReports, setProcessedReports] = useState<ReportSummary[]>([]);
+    const [totalReports, setTotalReports] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
@@ -673,57 +601,59 @@ export function SeleniumDashboardPage() {
             }
         };
         fetchConfig();
-      }, [firestore]);
+    }, [firestore]);
 
-    const processedReports = useMemo(() => {
-        if (testCaseDetails.length === 0 && allReports.length > 0) {
-            return [];
-        };
-        return allReports.map(report => processReport(report, testCaseDetails));
-    }, [allReports, testCaseDetails]);
-
-
-    const handleLoadData = useCallback(async () => {
+    const fetchReports = useCallback(async (page: number) => {
         setIsLoading(true);
         try {
-            const tcResponse = await fetch('/api/test-cases/latest');
-            if (tcResponse.ok) {
-                const tcData = await tcResponse.json();
-                if (tcData && tcData.testCases) {
-                    setTestCaseDetails(tcData.testCases);
-                } else {
-                    console.warn("Test case details are missing from the response but are required for ID mapping.");
-                }
-            } else {
-                 console.warn("Could not fetch test case details. Defect IDs might be missing.");
-            }
-
-            const reportResponse = await fetch('/api/selenium/all');
+            const reportResponse = await fetch(`/api/selenium/all?page=${page}&limit=${PAGE_SIZE}`);
             if (!reportResponse.ok) {
-                const errorData = await reportResponse.json();
-                throw new Error(errorData.details || 'Failed to fetch reports from server.');
+                throw new Error('Failed to fetch selenium reports.');
             }
-            const reportData: StoredReportData[] = await reportResponse.json();
-            
-            if (reportData && reportData.length > 0) {
-                setAllReports(reportData);
-                setShowUploader(false);
-            } else {
-                setAllReports([]);
-                setShowUploader(true);
-            }
+            const { reports, total } = await reportResponse.json();
+            setProcessedReports(reports);
+            setTotalReports(total);
+            setShowUploader(total === 0);
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error Loading Data', description: error.message });
+            toast({ variant: 'destructive', title: 'Error Loading Reports', description: error.message });
             setShowUploader(true);
-            console.error(error);
         } finally {
             setIsLoading(false);
         }
     }, [toast]);
-      
+    
     useEffect(() => {
-        handleLoadData();
-    }, [handleLoadData]);
+        // Initial load
+        const loadInitialData = async () => {
+            setIsLoading(true);
+            try {
+                // Fetch test cases and reports in parallel
+                const [tcResponse] = await Promise.all([
+                    fetch('/api/test-cases/latest'),
+                ]);
+    
+                if (tcResponse.ok) {
+                    const tcData = await tcResponse.json();
+                    if (tcData && tcData.testCases) {
+                        setTestCaseDetails(tcData.testCases);
+                    }
+                } else {
+                    console.warn("Could not fetch test case details. Defect IDs might be missing.");
+                }
+                
+                // Now fetch the first page of reports
+                await fetchReports(1);
+
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Error Initializing Dashboard', description: error.message });
+                setShowUploader(true);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+    
+        loadInitialData();
+    }, [toast, fetchReports]);
 
 
     const handleDataUploaded = useCallback(async (fileContent: string, file: File) => {
@@ -766,7 +696,8 @@ export function SeleniumDashboardPage() {
                 title: "Report Uploaded",
                 description: `Successfully processed and saved ${file.name}. Refreshing data...`
             });
-            await handleLoadData();
+            await fetchReports(1);
+            setCurrentPage(1);
             setShowUploader(false);
             
         } catch (error: any) {
@@ -777,7 +708,7 @@ export function SeleniumDashboardPage() {
                 description: error.message || 'Could not parse the JSON file. Please ensure it is a valid Selenium report.',
             });
         }
-    }, [toast, user, handleLoadData]);
+    }, [toast, user, fetchReports]);
 
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
@@ -849,7 +780,14 @@ export function SeleniumDashboardPage() {
         return consolidated;
     }, [selectedReportIds, processedReports]);
     
-    if (isLoading) {
+    const handlePageChange = (newPage: number) => {
+        setCurrentPage(newPage);
+        fetchReports(newPage);
+    }
+
+    const totalPages = Math.ceil(totalReports / PAGE_SIZE);
+
+    if (isLoading && currentPage === 1) {
         return (
             <div className="flex flex-1 flex-col items-center justify-center p-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -922,7 +860,7 @@ export function SeleniumDashboardPage() {
                                 <TableRow>
                                     <TableHead className="w-[40px]">
                                         <Checkbox
-                                            checked={selectedReportIds.length > 0 && selectedReportIds.length === processedReports.length}
+                                            checked={processedReports.length > 0 && selectedReportIds.length === processedReports.length}
                                             onCheckedChange={(checked) => handleSelectAll(!!checked)}
                                             aria-label="Select all rows"
                                         />
@@ -937,7 +875,15 @@ export function SeleniumDashboardPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {processedReports.map(summary => (
+                                {isLoading ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell colSpan={8}>
+                                            <Skeleton className="h-8 w-full" />
+                                        </TableCell>
+                                    </TableRow>
+                                    ))
+                                ) : processedReports.map(summary => (
                                     <TableRow key={summary.id} data-state={selectedReportIds.includes(summary.id) && "selected"}>
                                         <TableCell>
                                             <Checkbox
@@ -967,14 +913,37 @@ export function SeleniumDashboardPage() {
                             </TableBody>
                         </Table>
                     </div>
-                     {processedReports.length === 0 && !isLoading && (
+                     {totalReports === 0 && !isLoading && (
                         <Alert className="mt-4">
                             <AlertTitle>No Reports to Display</AlertTitle>
                             <AlertDescription>
-                                Could not find Selenium reports or the necessary test case summary data. Please ensure all required files have been uploaded.
+                                No Selenium reports found. Please use the upload button to add one.
                             </AlertDescription>
                         </Alert>
                     )}
+                     <div className="mt-4 flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                            Showing page {currentPage} of {totalPages} ({totalReports} reports total).
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages || totalPages === 0}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -982,4 +951,6 @@ export function SeleniumDashboardPage() {
     );
 }
     
+    
+
     
