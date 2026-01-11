@@ -8,10 +8,11 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db(dbName);
 
+    // Sort by _id for performance, as it's indexed and contains a timestamp.
     const latestFile = await db
       .collection("seleniumReports")
       .find({})
-      .sort({ uploadedAt: -1 })
+      .sort({ _id: -1 })
       .limit(1)
       .toArray();
 
