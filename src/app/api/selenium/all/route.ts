@@ -3,27 +3,22 @@ import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 import { NextRequest } from "next/server";
 
-// Helper function to find a test case by its name from a cached list
-const findTestCaseByName = (scenarioName: string, testCases: any[]): any | null => {
-    if (!scenarioName || !testCases) return null;
+// Helper function to find a test case by its name from a cached map
+const findTestCaseByName = (scenarioName: string, testCaseMap: Map<string, any>): any | null => {
+    if (!scenarioName || !testCaseMap) return null;
     const cleanedScenarioName = scenarioName.trim().toLowerCase();
-    // Assuming 'Summary' is the field in testCases that matches the scenario name
-    const matchingTestCase = testCases.find(tc => 
-        tc.Summary?.trim().toLowerCase() === cleanedScenarioName
-    );
-    return matchingTestCase || null;
+    return testCaseMap.get(cleanedScenarioName) || null;
 };
 
-// Helper function to find a defect ID for a given test case ID
-const findDefectIdForTestCase = (testCaseId: string | null, testCases: any[]): string | null => {
-    if (!testCaseId || !testCases) return null;
-    const matchingTC = testCases.find(tc => tc['Issue key'] === testCaseId);
-    // This field name seems specific, ensure it's correct
-    return matchingTC ? (matchingTC['Outward issue link (Agile Hive Dependency Link)'] || null) : null;
+// Helper function to find a defect ID for a given test case ID from a cached map
+const findDefectIdForTestCase = (testCaseId: string | null, defectMap: Map<string, string>): string | null => {
+    if (!testCaseId || !defectMap) return null;
+    return defectMap.get(testCaseId) || null;
 };
+
 
 // Helper function to process a single report document
-const processReport = (report: any, testCaseDetails: any[]) => {
+const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseDefectMap: Map<string, string>) => {
     let totalTests = 0;
     let passed = 0;
     let totalExecutionTime = 0;
@@ -50,9 +45,9 @@ const processReport = (report: any, testCaseDetails: any[]) => {
                         passed++;
                     }
                     
-                    const testCase = findTestCaseByName(scenario.name, testCaseDetails);
+                    const testCase = findTestCaseByName(scenario.name, testCaseNameMap);
                     const testCaseId = testCase ? testCase['Issue key'] : null;
-                    const defectId = findDefectIdForTestCase(testCaseId, testCaseDetails);
+                    const defectId = findDefectIdForTestCase(testCaseId, testCaseDefectMap);
 
                     detailedScenarios.push({
                         id: scenario.name,
@@ -107,14 +102,29 @@ export async function GET(request: NextRequest) {
     const latestTestCaseFile = await testCasesCollection.find({}).sort({ _id: -1 }).limit(1).toArray();
     const testCaseDetails = latestTestCaseFile[0]?.testCases || [];
 
+    // Create lookup maps for efficient searching
+    const testCaseNameMap = new Map<string, any>();
+    const testCaseDefectMap = new Map<string, string>();
+    for (const tc of testCaseDetails) {
+        if (tc.Summary) {
+            testCaseNameMap.set(tc.Summary.trim().toLowerCase(), tc);
+        }
+        const testCaseId = tc['Issue key'];
+        const defectId = tc['Outward issue link (Agile Hive Dependency Link)'];
+        if (testCaseId && defectId) {
+            testCaseDefectMap.set(testCaseId, defectId);
+        }
+    }
+
+
     // Fetch the total count of reports and the paginated reports in parallel
     const [total, reports] = await Promise.all([
         reportsCollection.countDocuments(),
-        reportsCollection.find({}).sort({ uploadedAt: -1 }).skip(skip).limit(limit).toArray()
+        reportsCollection.find({}).sort({ _id: -1 }).skip(skip).limit(limit).toArray()
     ]);
     
-    // Process each report using the fetched test case details
-    const processedReports = reports.map(report => processReport(report, testCaseDetails));
+    // Process each report using the efficient lookup maps
+    const processedReports = reports.map(report => processReport(report, testCaseNameMap, testCaseDefectMap));
 
     return NextResponse.json({ reports: processedReports, total });
     
@@ -126,5 +136,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-    
