@@ -1,6 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
+import { Collection } from "mongodb";
 
 // Helper function to get all labels from a test case
 const getTCLabelsAsSet = (tc: any, labelColumns: string[]): Set<string> => {
@@ -11,6 +12,109 @@ const getTCLabelsAsSet = (tc: any, labelColumns: string[]): Set<string> => {
         }
     });
     return labels;
+};
+
+// Helper to get unique labels from the collection using an aggregation pipeline
+const getUniqueLabels = async (collection: Collection, labelColumns: string[]): Promise<string[]> => {
+    if (labelColumns.length === 0) return [];
+    
+    // Unwind the testCases array
+    const pipeline: any[] = [{ $unwind: "$testCases" }];
+
+    // Project the label fields and combine them
+    const projectStage: any = { _id: 0 };
+    const labelArrays: any[] = [];
+    labelColumns.forEach(col => {
+        const arrayField = `labelArray_${col}`;
+        projectStage[arrayField] = { $split: [`$testCases.${col}`, ","] };
+        labelArrays.push(`$${arrayField}`);
+    });
+    projectStage.allLabels = { $concatArrays: labelArrays };
+    pipeline.push({ $project: projectStage });
+    
+    // Unwind the combined labels array
+    pipeline.push({ $unwind: "$allLabels" });
+    
+    // Trim whitespace from labels
+    pipeline.push({ $project: { label: { $trim: { input: "$allLabels" } } } });
+
+    // Group to get unique labels
+    pipeline.push({ $group: { _id: "$label" } });
+    
+    // Filter out null or empty string labels
+    pipeline.push({ $match: { _id: { $ne: null, $ne: "" } } });
+
+    // Sort the labels
+    pipeline.push({ $sort: { _id: 1 } });
+    
+    const result = await collection.aggregate(pipeline).toArray();
+
+    return result.map(item => item._id);
+};
+
+// Helper for distribution calculation using aggregation
+const getDistribution = async (collection: Collection, labels: string[], labelColumns: string[]) => {
+    if (!labels || labels.length === 0) return [];
+
+    const pipeline: any[] = [
+        { $unwind: "$testCases" },
+        // Add a field that is a concatenated string of all label values for easy searching
+        {
+            $addFields: {
+                "searchableLabels": {
+                    $concat: labelColumns.map(col => ({ $ifNull: [{ $concat: [" ,", `$testCases.${col}`] }, ""] }))
+                }
+            }
+        }
+    ];
+
+    const matchQueries = labels.map(label => ({
+        "searchableLabels": { $regex: `\\b${label}\\b`, $options: "i" }
+    }));
+
+    pipeline.push({ $match: { $and: matchQueries } });
+
+    const result = await collection.aggregate(pipeline).toArray();
+    
+    return result.map(doc => doc.testCases);
+};
+
+
+// Helper for reusability calculation using aggregation
+const getReusability = async (collection: Collection, reusedInLabel: string, reusedFromLabels: string[], labelColumns: string[]) => {
+    if (!reusedInLabel || !reusedFromLabels || reusedFromLabels.length === 0) {
+        return { count: 0, testCases: [] };
+    }
+
+    const pipeline: any[] = [
+        { $unwind: "$testCases" },
+         // Add a field that is a concatenated string of all label values for easy searching
+        {
+            $addFields: {
+                "searchableLabels": {
+                    $concat: labelColumns.map(col => ({ $ifNull: [{ $concat: [" ,", `$testCases.${col}`] }, ""] }))
+                }
+            }
+        }
+    ];
+
+    const matchConditions = {
+        $and: [
+            { "searchableLabels": { $regex: `\\b${reusedInLabel}\\b`, $options: "i" } },
+            { 
+                $or: reusedFromLabels.map(fromLabel => ({
+                    "searchableLabels": { $regex: `\\b${fromLabel}\\b`, $options: "i" }
+                }))
+            }
+        ]
+    };
+
+    pipeline.push({ $match: matchConditions });
+    
+    const result = await collection.aggregate(pipeline).toArray();
+    const testCases = result.map(doc => doc.testCases);
+
+    return { count: testCases.length, testCases };
 };
 
 
@@ -24,7 +128,7 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { selectedFilterLabels, reusedFromLabels, reusedInLabel } = body;
 
-        // Fetch the latest test case document
+        // Fetch the latest test case document to get headers and total count
         const latestFile = await collection.find({}).sort({ _id: -1 }).limit(1).toArray();
 
         if (latestFile.length === 0 || !latestFile[0].testCases) {
@@ -41,56 +145,30 @@ export async function POST(request: Request) {
         const allHeaders = Object.keys(testCases[0] || {});
         const labelColumns = allHeaders.filter(h => h.toLowerCase().startsWith('label')).sort();
 
-        // Calculate unique labels
-        const uniqueLabels = new Set<string>();
-        for (const testCase of testCases) {
-            for (const col of labelColumns) {
-                const value = testCase[col];
-                if (value && value.trim() !== '') {
-                    const labels = value.split(',').map((l: string) => l.trim());
-                    for (const label of labels) {
-                        if (label) uniqueLabels.add(label);
-                    }
-                }
-            }
-        }
-        const sortedUniqueLabels = Array.from(uniqueLabels).sort();
+        // Perform calculations using aggregation pipelines in parallel
+        const [
+            uniqueLabels,
+            distributionTestCases,
+            reusabilityData
+        ] = await Promise.all([
+            getUniqueLabels(collection, labelColumns),
+            selectedFilterLabels && selectedFilterLabels.length > 0 ? getDistribution(collection, selectedFilterLabels, labelColumns) : Promise.resolve([]),
+            getReusability(collection, reusedInLabel, reusedFromLabels, labelColumns)
+        ]);
 
-        // Server-side Distribution Calculation
+        // Server-side Distribution Calculation from aggregated results
         const distributionMap: { name: string; count: number, testCases: any[] }[] = [];
         if (selectedFilterLabels && selectedFilterLabels.length > 0) {
-            const allMatchingTcs = testCases.filter((tc: any) => {
-                const tcLabels = getTCLabelsAsSet(tc, labelColumns);
-                return selectedFilterLabels.every((l: string) => tcLabels.has(l));
-            });
-            if (allMatchingTcs.length > 0) {
-                distributionMap.push({ name: `Matching all (${selectedFilterLabels.join(' & ')})`, count: allMatchingTcs.length, testCases: allMatchingTcs });
+            if (distributionTestCases.length > 0) {
+                distributionMap.push({ name: `Matching all (${selectedFilterLabels.join(' & ')})`, count: distributionTestCases.length, testCases: distributionTestCases });
             }
-            selectedFilterLabels.forEach((label: string) => {
-                const tcsWithLabel = testCases.filter((tc: any) => getTCLabelsAsSet(tc, labelColumns).has(label));
-                if (tcsWithLabel.length > 0) {
-                    distributionMap.push({ name: `Total for '${label}'`, count: tcsWithLabel.length, testCases: tcsWithLabel });
-                }
-            });
         }
-
-        // Server-side Reusability Calculation
-        let reusabilityData = { count: 0, testCases: [] };
-        if (reusedInLabel && reusedFromLabels && reusedFromLabels.length > 0) {
-            const matchingTestCases = testCases.filter((tc: any) => {
-                const tcLabels = getTCLabelsAsSet(tc, labelColumns);
-                const hasReusedInLabel = tcLabels.has(reusedInLabel);
-                const hasReusedFromLabel = reusedFromLabels.some((fromLabel: string) => tcLabels.has(fromLabel));
-                return hasReusedInLabel && hasReusedFromLabel;
-            });
-            reusabilityData = { count: matchingTestCases.length, testCases: matchingTestCases };
-        }
-
+        
         return NextResponse.json({
             distribution: distributionMap,
             reusability: reusabilityData,
             totalTestCases: testCases.length,
-            uniqueLabels: sortedUniqueLabels,
+            uniqueLabels: uniqueLabels,
             headers: allHeaders,
         });
 
@@ -102,5 +180,4 @@ export async function POST(request: Request) {
         );
     }
 }
-
     

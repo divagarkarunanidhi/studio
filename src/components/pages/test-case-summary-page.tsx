@@ -64,8 +64,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [chartType, setChartType] = useState<ChartType>('pie');
   const [isClient, setIsClient] = useState(false);
 
-  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(DEFAULT_REUSED_FROM_LABELS);
-  const [reusedInLabel, setReusedInLabel] = useState<string>(DEFAULT_REUSED_IN_LABEL);
+  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
+  const [reusedInLabel, setReusedInLabel] = useState<string>('');
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
   
@@ -112,6 +112,19 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         setAllUniqueLabels(data.uniqueLabels);
         setHeaders(data.headers);
 
+        // Set default labels only once after the first successful data fetch
+        if (allUniqueLabels.length === 0 && data.uniqueLabels.length > 0) {
+            const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => data.uniqueLabels.includes(label));
+            setSelectedFilterLabels(availableDefaultLabels);
+
+            const availableReusedFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => data.uniqueLabels.includes(label));
+            setReusedFromLabels(availableReusedFrom);
+
+            if (data.uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+                setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+            }
+        }
+
     } catch (error: any) {
         toast({
             variant: 'destructive',
@@ -121,7 +134,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     } finally {
         setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, allUniqueLabels.length]); // dependency on allUniqueLabels.length ensures defaults are set only once
   
   // Initial load and subsequent fetches on filter change
   useEffect(() => {
@@ -132,21 +145,6 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     };
     fetchSummaryData(filters);
   }, [selectedFilterLabels, reusedFromLabels, reusedInLabel, fetchSummaryData]);
-
-  // Set default labels once unique labels are loaded
-  useEffect(() => {
-    if (allUniqueLabels.length > 0) {
-        const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => allUniqueLabels.includes(label));
-        setSelectedFilterLabels(availableDefaultLabels);
-
-        const availableReusedFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => allUniqueLabels.includes(label));
-        setReusedFromLabels(availableReusedFrom);
-
-        if (allUniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-            setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
-        }
-    }
-  }, [allUniqueLabels]);
 
 
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
@@ -307,7 +305,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         <Card>
             <CardHeader>
                 <CardTitle>Test Case Overview</CardTitle>
-                <CardDescription>Select labels to filter the test case distribution.</CardDescription>
+                <CardDescription>Select labels to see a distribution of test cases that match ALL selected labels.</CardDescription>
             </CardHeader>
             <CardContent>
                     <MultiSelect
@@ -498,5 +496,3 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     </div>
   );
 }
-
-    
