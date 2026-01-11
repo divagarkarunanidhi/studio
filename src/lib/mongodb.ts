@@ -61,7 +61,12 @@ async function setupMongo() {
 
 // getMongoDetails now ensures setup is complete before returning.
 const getMongoDetails = async () => {
-    return await setupMongo();
+    // setupMongo now caches the promise, so it's efficient to call it every time.
+    const details = await setupMongo();
+    if (!details.clientPromise || !details.dbName) {
+        throw new Error("Failed to initialize MongoDB details.");
+    }
+    return details;
 }
 
 export { getMongoDetails };
