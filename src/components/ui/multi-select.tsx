@@ -22,8 +22,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-
 
 export type MultiSelectOption = {
   value: string
@@ -70,7 +68,7 @@ export const MultiSelect = React.forwardRef<
       options,
       onValueChange,
       variant,
-      value, // This is the sole source of truth
+      value,
       placeholder = "Select options",
       animation = 0,
       maxCount = 3,
@@ -101,7 +99,6 @@ export const MultiSelect = React.forwardRef<
       onValueChange(newSelectedValues)
     }
 
-    // Directly use the 'value' prop to find selected and unselected options.
     const selectedOptions = options.filter((option) => value.includes(option.value));
     const unselectedOptions = options.filter((option) => !value.includes(option.value));
 
@@ -150,7 +147,7 @@ export const MultiSelect = React.forwardRef<
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <ChevronsUpDown className="h-4 w-4 ml-2" />
+                  <ChevronsUpDown className="h-4 w-4 ml-2 shrink-0 opacity-50" />
                 </div>
               </div>
             ) : (
@@ -158,7 +155,7 @@ export const MultiSelect = React.forwardRef<
                 <span className="text-sm text-muted-foreground mx-3">
                   {placeholder}
                 </span>
-                <ChevronsUpDown className="h-4 w-4 mx-2" />
+                <ChevronsUpDown className="h-4 w-4 mx-2 shrink-0 opacity-50" />
               </div>
             )}
           </Button>
@@ -193,7 +190,7 @@ export const MultiSelect = React.forwardRef<
                     <CommandSeparator />
                 </>
               )}
-                {selectedOptions.length > 0 && (
+                {(selectedOptions.length > 0) && (
                     <CommandGroup>
                         {selectedOptions.map((option) => {
                         const isSelected = value.includes(option.value)
