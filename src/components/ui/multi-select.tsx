@@ -70,7 +70,7 @@ export const MultiSelect = React.forwardRef<
       options,
       onValueChange,
       variant,
-      value, // Now the sole source of truth for selected values
+      value, // This is the sole source of truth
       placeholder = "Select options",
       animation = 0,
       maxCount = 3,
@@ -101,6 +101,7 @@ export const MultiSelect = React.forwardRef<
       onValueChange(newSelectedValues)
     }
 
+    // Directly use the 'value' prop to find selected and unselected options.
     const selectedOptions = options.filter((option) => value.includes(option.value));
     const unselectedOptions = options.filter((option) => !value.includes(option.value));
 
@@ -163,7 +164,7 @@ export const MultiSelect = React.forwardRef<
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-full p-0"
+          className="w-[--radix-popover-trigger-width] p-0"
           align="start"
           onEscapeKeyDown={() => setIsPopoverOpen(false)}
         >
@@ -273,5 +274,3 @@ export const MultiSelect = React.forwardRef<
   }
 )
 MultiSelect.displayName = "MultiSelect"
-
-    
