@@ -70,7 +70,7 @@ export const MultiSelect = React.forwardRef<
       options,
       onValueChange,
       variant,
-      value = [],
+      value, // Now the sole source of truth for selected values
       placeholder = "Select options",
       animation = 0,
       maxCount = 3,
