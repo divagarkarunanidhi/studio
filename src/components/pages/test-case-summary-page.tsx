@@ -109,20 +109,23 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         setDistributionData(data.distribution);
         setReusabilityData(data.reusability);
         setTotalTestCases(data.totalTestCases);
-        setAllUniqueLabels(data.uniqueLabels);
         setHeaders(data.headers);
 
-        // Set default filter labels only once after the first successful data fetch
-        if (selectedFilterLabels.length === 0 && data.uniqueLabels.length > 0) {
-            const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => data.uniqueLabels.includes(label));
-            setSelectedFilterLabels(availableDefaultLabels);
-        }
-        if (reusedFromLabels.length === 0 && data.uniqueLabels.length > 0) {
-            const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => data.uniqueLabels.includes(label));
-            setReusedFromLabels(availableDefaultFrom);
-        }
-        if (!reusedInLabel && data.uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-            setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+        // This is the critical change: set labels first, then set defaults.
+        setAllUniqueLabels(data.uniqueLabels);
+        if (data.uniqueLabels.length > 0) {
+            // Set default filter labels only once after the first successful data fetch
+            if (selectedFilterLabels.length === 0) {
+                const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => data.uniqueLabels.includes(label));
+                setSelectedFilterLabels(availableDefaultLabels);
+            }
+            if (reusedFromLabels.length === 0) {
+                const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => data.uniqueLabels.includes(label));
+                setReusedFromLabels(availableDefaultFrom);
+            }
+            if (!reusedInLabel && data.uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+                setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+            }
         }
 
     } catch (error: any) {
