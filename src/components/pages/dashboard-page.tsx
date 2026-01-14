@@ -251,7 +251,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const { toast } = useToast();
 
   const [showUploader, setShowUploader] = useState(false);
-  const [testCaseDataPresent, setTestCaseDataPresent] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -408,10 +407,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const handleClearData = () => {
     setActiveView('dashboard');
     setShowUploader(true);
-  };
-
-  const handleClearTestCaseData = () => {
-    setTestCaseDataPresent(false);
   };
   
   const handleLogout = async () => {
@@ -823,7 +818,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                     </AlertDialogContent>
                 </AlertDialog>
               )}
-               {userRole === 'admin' && activeView === 'test-case-summary' && testCaseDataPresent && (
+               {userRole === 'admin' && activeView === 'test-case-summary' && (
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="outline">
@@ -840,7 +835,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleClearTestCaseData}>Continue</AlertDialogAction>
+                        <AlertDialogAction onClick={() => setActiveView('test-case-summary')}>Continue</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -896,7 +891,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             )}
 
             {activeView === 'test-case-summary' && (
-              <TestCaseSummaryPage onDataPresentChange={setTestCaseDataPresent} showUploaderInitially={!testCaseDataPresent} />
+              <TestCaseSummaryPage />
             )}
             {activeView === 'selenium-dashboard' && (
               <SeleniumDashboardPage />

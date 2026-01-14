@@ -36,23 +36,18 @@ type TestCaseData = { [key: string]: string };
 type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar';
 type PageStatus = 'loading' | 'upload' | 'ready' | 'error';
 
-interface TestCaseSummaryPageProps {
-  onDataPresentChange: (isPresent: boolean) => void;
-  showUploaderInitially: boolean;
-}
-
 const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
 const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
 const DEFAULT_OVERVIEW_LABELS = ['FradleyPilot', 'ToshibaPilot', 'FordKOCPilot'];
 
-export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially }: TestCaseSummaryPageProps) {
+export function TestCaseSummaryPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const firestore = useFirestore();
   const [jiraLink, setJiraLink] = useState<string>('');
   
   // Data state
-  const [status, setStatus] = useState<PageStatus>(showUploaderInitially ? 'upload' : 'loading');
+  const [status, setStatus] = useState<PageStatus>('loading');
   const [totalTestCases, setTotalTestCases] = useState(0);
   const [headers, setHeaders] = useState<string[]>([]);
   const [distributionData, setDistributionData] = useState<any[]>([]);
@@ -88,12 +83,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     fetchConfig();
   }, [firestore]);
   
-  useEffect(() => {
-    onDataPresentChange(status === 'ready');
-  }, [status, onDataPresentChange]);
 
   const fetchSummaryData = useCallback(async (filters: any) => {
-    setStatus('loading');
     try {
         const response = await fetch('/api/test-cases/summary', {
             method: 'POST',
@@ -129,8 +120,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
 
   // Effect for initial data load
   useEffect(() => {
-    if (showUploaderInitially) return;
-
+    setStatus('loading');
     fetchSummaryData({}).then(data => {
         if (data && data.uniqueLabels && data.uniqueLabels.length > 0) {
             const uniqueLabels = data.uniqueLabels as string[];
@@ -146,7 +136,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showUploaderInitially]);
+  }, []);
 
   // Effect to refetch data when filters change, but only when ready
   useEffect(() => {
@@ -513,5 +503,3 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     </div>
   );
 }
-
-    
