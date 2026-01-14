@@ -3,54 +3,53 @@ import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 import { Collection } from "mongodb";
 
-// Helper function to get all labels from a test case
-const getTCLabelsAsSet = (tc: any, labelColumns: string[]): Set<string> => {
-    const labels = new Set<string>();
-    labelColumns.forEach(col => {
-        if (tc[col]) {
-            tc[col].split(',').forEach((l: string) => labels.add(l.trim()));
-        }
-    });
-    return labels;
-};
-
 // Helper to get unique labels from the collection using an aggregation pipeline
 const getUniqueLabels = async (collection: Collection, labelColumns: string[]): Promise<string[]> => {
     if (labelColumns.length === 0) return [];
     
-    // Unwind the testCases array
-    const pipeline: any[] = [{ $unwind: "$testCases" }];
-
-    // Project the label fields and combine them
-    const projectStage: any = { _id: 0 };
-    const labelArrays: any[] = [];
-    labelColumns.forEach(col => {
-        const arrayField = `labelArray_${col}`;
-        projectStage[arrayField] = { $split: [{ $ifNull: [`$testCases.${col}`, ""] }, ","] };
-        labelArrays.push(`$${arrayField}`);
-    });
-    projectStage.allLabels = { $concatArrays: labelArrays };
-    pipeline.push({ $project: projectStage });
-    
-    // Unwind the combined labels array
-    pipeline.push({ $unwind: "$allLabels" });
-    
-    // Trim whitespace from labels
-    pipeline.push({ $project: { label: { $trim: { input: "$allLabels" } } } });
-
-    // Group to get unique labels
-    pipeline.push({ $group: { _id: "$label" } });
-    
-    // Filter out null or empty string labels
-    pipeline.push({ $match: { _id: { $ne: null, $ne: "" } } });
-
-    // Sort the labels
-    pipeline.push({ $sort: { _id: 1 } });
+    // This pipeline correctly unnests all labels from all label columns,
+    // trims them, and returns a unique, sorted list.
+    const pipeline: any[] = [
+        // Deconstruct the testCases array field from the input documents to output a document for each element.
+        { $unwind: "$testCases" },
+        // Project a new field that concatenates all label columns into a single string
+        {
+            $project: {
+                _id: 0,
+                allLabelsString: {
+                    $concat: labelColumns.map(col => ({ $concat: [{ $ifNull: [`$testCases.${col}`, ""] }, ","] }))
+                }
+            }
+        },
+        // Split the concatenated string into an array of labels
+        {
+            $project: {
+                labels: { $split: ["$allLabelsString", ","] }
+            }
+        },
+        // Unwind the new labels array
+        { $unwind: "$labels" },
+        // Trim whitespace from each label
+        {
+            $project: {
+                trimmedLabel: { $trim: { input: "$labels" } }
+            }
+        },
+        // Group by the trimmed label to get unique values
+        { $group: { _id: "$trimmedLabel" } },
+        // Filter out any null or empty string results
+        { $match: { _id: { $ne: null, $ne: "" } } },
+        // Sort the unique labels alphabetically
+        { $sort: { _id: 1 } },
+        // Final projection to get just the name
+        { $project: { name: "$_id", _id: 0 } }
+    ];
     
     const result = await collection.aggregate(pipeline).toArray();
 
-    return result.map(item => item._id);
+    return result.map(item => item.name);
 };
+
 
 // Helper for distribution calculation using aggregation
 const getDistribution = async (collection: Collection, labels: string[], labelColumns: string[]) => {
@@ -73,7 +72,7 @@ const getDistribution = async (collection: Collection, labels: string[], labelCo
     }));
 
     pipeline.push({ $match: { $and: matchQueries } });
-
+    
     const result = await collection.aggregate(pipeline).toArray();
     
     return result.map(doc => doc.testCases);
