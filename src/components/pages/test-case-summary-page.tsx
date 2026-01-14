@@ -64,8 +64,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [chartType, setChartType] = useState<ChartType>('pie');
   const [isClient, setIsClient] = useState(false);
 
-  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
-  const [reusedInLabel, setReusedInLabel] = useState<string>('');
+  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(DEFAULT_REUSED_FROM_LABELS);
+  const [reusedInLabel, setReusedInLabel] = useState<string>(DEFAULT_REUSED_IN_LABEL);
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
   
@@ -112,17 +112,10 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         setAllUniqueLabels(data.uniqueLabels);
         setHeaders(data.headers);
 
-        // Set default labels only once after the first successful data fetch
-        if (allUniqueLabels.length === 0 && data.uniqueLabels.length > 0) {
+        // Set default filter labels only once after the first successful data fetch
+        if (selectedFilterLabels.length === 0 && data.uniqueLabels.length > 0) {
             const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => data.uniqueLabels.includes(label));
             setSelectedFilterLabels(availableDefaultLabels);
-
-            const availableReusedFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => data.uniqueLabels.includes(label));
-            setReusedFromLabels(availableReusedFrom);
-
-            if (data.uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-                setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
-            }
         }
 
     } catch (error: any) {
@@ -134,7 +127,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     } finally {
         setIsLoading(false);
     }
-  }, [toast, allUniqueLabels.length]); // dependency on allUniqueLabels.length ensures defaults are set only once
+  }, [toast, selectedFilterLabels.length]);
   
   // Initial load and subsequent fetches on filter change
   useEffect(() => {
@@ -354,7 +347,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         <label className="text-sm font-medium">Reused from</label>
                         <MultiSelect 
                             options={uniqueLabelOptions}
-                            value={reusedFromLabels}
+                            defaultValue={reusedFromLabels}
                             onValueChange={setReusedFromLabels}
                             placeholder="Select source labels..."
                             className="w-full"
