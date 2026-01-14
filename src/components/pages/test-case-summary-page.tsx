@@ -34,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 
 type TestCaseData = { [key: string]: string };
 type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar';
+type PageStatus = 'loading' | 'upload' | 'ready' | 'error';
 
 interface TestCaseSummaryPageProps {
   onDataPresentChange: (isPresent: boolean) => void;
@@ -51,14 +52,13 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [jiraLink, setJiraLink] = useState<string>('');
   
   // Data state
+  const [status, setStatus] = useState<PageStatus>(showUploaderInitially ? 'upload' : 'loading');
   const [totalTestCases, setTotalTestCases] = useState(0);
   const [headers, setHeaders] = useState<string[]>([]);
   const [distributionData, setDistributionData] = useState<any[]>([]);
   const [reusabilityData, setReusabilityData] = useState({ count: 0, testCases: [] });
   const [allUniqueLabels, setAllUniqueLabels] = useState<string[]>([]);
 
-  const [isLoading, setIsLoading] = useState(true);
-  
   // UI and Filter state
   const [selectedFilterLabels, setSelectedFilterLabels] = useState<string[]>([]);
   const [chartType, setChartType] = useState<ChartType>('pie');
@@ -76,13 +76,6 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    onDataPresentChange(totalTestCases > 0);
-  }, [totalTestCases, onDataPresentChange]);
-
-  useEffect(() => {
     const fetchConfig = async () => {
         if (!firestore) return;
         const configRef = doc(firestore, 'appConfiguration', 'global');
@@ -95,8 +88,12 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     fetchConfig();
   }, [firestore]);
   
+  useEffect(() => {
+    onDataPresentChange(status === 'ready');
+  }, [status, onDataPresentChange]);
+
   const fetchSummaryData = useCallback(async (filters: any) => {
-    setIsLoading(true);
+    setStatus('loading');
     try {
         const response = await fetch('/api/test-cases/summary', {
             method: 'POST',
@@ -106,60 +103,63 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         if (!response.ok) throw new Error('Failed to fetch summary data.');
 
         const data = await response.json();
+
+        if (data.totalTestCases === 0) {
+            setStatus('upload');
+            return;
+        }
+
         setDistributionData(data.distribution);
         setReusabilityData(data.reusability);
         setTotalTestCases(data.totalTestCases);
         setHeaders(data.headers);
         setAllUniqueLabels(data.uniqueLabels);
-        return data;
+        setStatus('ready');
 
+        return data; // Return data for chaining
     } catch (error: any) {
         toast({
             variant: 'destructive',
             title: 'Error Fetching Summary',
             description: error.message,
         });
-        return null;
-    } finally {
-        setIsLoading(false);
+        setStatus('error');
     }
   }, [toast]);
-  
-  // Effect for initial data load and setting defaults
+
+  // Effect for initial data load
   useEffect(() => {
-    const loadInitialData = async () => {
-      const data = await fetchSummaryData({});
-      if (data && data.uniqueLabels.length > 0) {
-        const uniqueLabels = data.uniqueLabels;
-        // Set default filter labels only once after the first successful data fetch
-        const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
-        setSelectedFilterLabels(availableDefaultLabels);
+    if (showUploaderInitially) return;
 
-        const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
-        setReusedFromLabels(availableDefaultFrom);
+    fetchSummaryData({}).then(data => {
+        if (data && data.uniqueLabels && data.uniqueLabels.length > 0) {
+            const uniqueLabels = data.uniqueLabels as string[];
+            const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
+            setSelectedFilterLabels(availableDefaultLabels);
 
-        if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-            setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+            const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
+            setReusedFromLabels(availableDefaultFrom);
+            
+            if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+                setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+            }
         }
-      }
-    };
-    loadInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // This effect should run only ONCE on mount
-
-  // Effect to refetch data when filters change
-  useEffect(() => {
-    // We don't want to run this on initial mount, so we check if there are labels.
-    if(allUniqueLabels.length > 0) {
-        const filters = {
-            selectedFilterLabels,
-            reusedFromLabels,
-            reusedInLabel,
-        };
-        fetchSummaryData(filters);
-    }
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFilterLabels, reusedFromLabels, reusedInLabel]); // Reruns when filters change, but not on initial load
+  }, [showUploaderInitially]);
+
+  // Effect to refetch data when filters change, but only when ready
+  useEffect(() => {
+    if (status !== 'ready') return;
+
+    const filters = {
+        selectedFilterLabels,
+        reusedFromLabels,
+        reusedInLabel,
+    };
+    fetchSummaryData(filters);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFilterLabels, reusedFromLabels, reusedInLabel]);
 
 
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
@@ -176,65 +176,37 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
       toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload data.' });
       return;
     }
-    setIsLoading(true);
+    setStatus('loading');
     try {
-        const tempParsed = JSON.parse(csvText); // A quick way to check if it's JSON array
-        const response = await fetch('/api/test-cases/upload', {
+        const response = await fetch('/api/test-cases/upload-csv', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ testCases: tempParsed, uploaderId: user.uid, fileName: fileName }),
+            body: JSON.stringify({ csv: csvText, uploaderId: user.uid, fileName: fileName }),
         });
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to save data to the server.');
+            throw new Error(errorData.error || 'Failed to save CSV data to the server.');
         }
-        toast({ title: 'Success!', description: `${tempParsed.length} test case records uploaded and saved.` });
-        // After upload, re-run the initial data load to refresh everything, including defaults
-        const data = await fetchSummaryData({});
-        if (data && data.uniqueLabels.length > 0) {
-            const uniqueLabels = data.uniqueLabels;
-            const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
-            setSelectedFilterLabels(availableDefaultLabels);
-            const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
-            setReusedFromLabels(availableDefaultFrom);
-            if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-                setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
-            }
-        }
+        const result = await response.json();
+        toast({ title: 'Success!', description: `${result.count} test case records uploaded from CSV.` });
+        
+        // After upload, re-run the initial data load to refresh everything
+        fetchSummaryData({}).then(data => {
+          if (data && data.uniqueLabels && data.uniqueLabels.length > 0) {
+              const uniqueLabels = data.uniqueLabels as string[];
+              setSelectedFilterLabels(DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label)));
+              setReusedFromLabels(DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label)));
+              if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+                  setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+              }
+          }
+        });
 
-
-    } catch (error) { // If JSON parsing fails, assume it's CSV
-        try {
-            const response = await fetch('/api/test-cases/upload-csv', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ csv: csvText, uploaderId: user.uid, fileName: fileName }),
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to save CSV data to the server.');
-            }
-            const result = await response.json();
-            toast({ title: 'Success!', description: `${result.count} test case records uploaded from CSV.` });
-             // After upload, re-run the initial data load to refresh everything, including defaults
-            const data = await fetchSummaryData({});
-            if (data && data.uniqueLabels.length > 0) {
-                const uniqueLabels = data.uniqueLabels;
-                const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
-                setSelectedFilterLabels(availableDefaultLabels);
-                const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
-                setReusedFromLabels(availableDefaultFrom);
-                if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-                    setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
-                }
-            }
-        } catch (csvError: any) {
-            toast({ variant: 'destructive', title: 'Error Processing File', description: csvError.message });
-        }
-    } finally {
-        setIsLoading(false);
+    } catch (csvError: any) {
+        toast({ variant: 'destructive', title: 'Error Processing File', description: csvError.message });
+        setStatus('upload');
     }
-}, [toast, user, fetchSummaryData]);
+  }, [toast, user, fetchSummaryData]);
 
 
   const handleExport = (testCasesToExport: TestCaseData[], sliceName: string) => {
@@ -309,7 +281,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   }, [distributionData, reusedFromLabels, reusedInLabel, reusabilityData.count, totalSavingHours, totalSavingDays]);
 
 
-  if (isLoading && showUploaderInitially) {
+  if (status === 'loading') {
     return (
         <div className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -320,7 +292,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     );
   }
 
-  if (showUploaderInitially) {
+  if (status === 'upload' || status === 'error') {
     return (
         <div className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex w-full max-w-lg flex-col items-center justify-center gap-4 text-center">
@@ -330,13 +302,20 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         <CardDescription>To get started, please upload a CSV or JSON file containing your test case details.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <FileUploader onDataUploaded={(data, file) => handleDataUploaded(data, file.name)} templatePath="/test-cases-template.csv" accept=".csv, .json" />
+                        {status === 'error' && (
+                            <Alert variant="destructive" className='mb-4'>
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertTitle>Loading Failed</AlertTitle>
+                                <AlertDescription>Could not load data. Please try uploading a file again.</AlertDescription>
+                            </Alert>
+                        )}
+                        <FileUploader onDataUploaded={(data, file) => handleDataUploaded(data, file.name)} templatePath="/test-cases-template.csv" accept=".csv" />
                     </CardContent>
                 </Card>
             </div>
         </div>
     );
-}
+  }
 
   return (
     <div className="space-y-6">
@@ -346,7 +325,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                 <CardDescription>Select labels to see a distribution of test cases that match ALL selected labels.</CardDescription>
             </CardHeader>
             <CardContent>
-                    <MultiSelect
+                <MultiSelect
                     options={uniqueLabelOptions}
                     value={selectedFilterLabels}
                     onValueChange={setSelectedFilterLabels}
@@ -368,7 +347,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                     <TestCaseDistributionChart
                         chartType={chartType}
                         data={[...distributionData, { name: 'Total Test Cases in File', count: totalTestCases, testCases: [] }]}
-                        isLoading={isLoading}
+                        isLoading={status === 'loading'}
                         title="Test Case Distribution"
                         description="Based on selected labels"
                         allHeaders={headers}
