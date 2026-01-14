@@ -110,8 +110,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         setReusabilityData(data.reusability);
         setTotalTestCases(data.totalTestCases);
         setHeaders(data.headers);
-        setAllUniqueLabels(data.uniqueLabels); // This will trigger the options memoization
-        return data.uniqueLabels;
+        setAllUniqueLabels(data.uniqueLabels);
+        return data;
 
     } catch (error: any) {
         toast({
@@ -119,7 +119,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
             title: 'Error Fetching Summary',
             description: error.message,
         });
-        return [];
+        return null;
     } finally {
         setIsLoading(false);
     }
@@ -128,8 +128,9 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   // Effect for initial data load and setting defaults
   useEffect(() => {
     const loadInitialData = async () => {
-      const uniqueLabels = await fetchSummaryData({});
-      if (uniqueLabels.length > 0) {
+      const data = await fetchSummaryData({});
+      if (data && data.uniqueLabels.length > 0) {
+        const uniqueLabels = data.uniqueLabels;
         // Set default filter labels only once after the first successful data fetch
         const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
         setSelectedFilterLabels(availableDefaultLabels);
@@ -144,7 +145,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     };
     loadInitialData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  }, []); // This effect should run only ONCE on mount
 
   // Effect to refetch data when filters change
   useEffect(() => {
@@ -157,7 +158,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         };
         fetchSummaryData(filters);
     }
-  }, [selectedFilterLabels, reusedFromLabels, reusedInLabel, allUniqueLabels.length, fetchSummaryData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFilterLabels, reusedFromLabels, reusedInLabel]); // Reruns when filters change, but not on initial load
 
 
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
@@ -187,7 +189,19 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
             throw new Error(errorData.error || 'Failed to save data to the server.');
         }
         toast({ title: 'Success!', description: `${tempParsed.length} test case records uploaded and saved.` });
-        await fetchSummaryData({ selectedFilterLabels, reusedFromLabels, reusedInLabel });
+        // After upload, re-run the initial data load to refresh everything, including defaults
+        const data = await fetchSummaryData({});
+        if (data && data.uniqueLabels.length > 0) {
+            const uniqueLabels = data.uniqueLabels;
+            const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
+            setSelectedFilterLabels(availableDefaultLabels);
+            const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
+            setReusedFromLabels(availableDefaultFrom);
+            if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+                setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+            }
+        }
+
 
     } catch (error) { // If JSON parsing fails, assume it's CSV
         try {
@@ -202,14 +216,25 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
             }
             const result = await response.json();
             toast({ title: 'Success!', description: `${result.count} test case records uploaded from CSV.` });
-            await fetchSummaryData({ selectedFilterLabels, reusedFromLabels, reusedInLabel });
+             // After upload, re-run the initial data load to refresh everything, including defaults
+            const data = await fetchSummaryData({});
+            if (data && data.uniqueLabels.length > 0) {
+                const uniqueLabels = data.uniqueLabels;
+                const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
+                setSelectedFilterLabels(availableDefaultLabels);
+                const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
+                setReusedFromLabels(availableDefaultFrom);
+                if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+                    setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+                }
+            }
         } catch (csvError: any) {
             toast({ variant: 'destructive', title: 'Error Processing File', description: csvError.message });
         }
     } finally {
         setIsLoading(false);
     }
-}, [toast, user, fetchSummaryData, selectedFilterLabels, reusedFromLabels, reusedInLabel]);
+}, [toast, user, fetchSummaryData]);
 
 
   const handleExport = (testCasesToExport: TestCaseData[], sliceName: string) => {
@@ -509,3 +534,5 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     </div>
   );
 }
+
+    
