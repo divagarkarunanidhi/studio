@@ -64,8 +64,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
   const [chartType, setChartType] = useState<ChartType>('pie');
   const [isClient, setIsClient] = useState(false);
 
-  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>(DEFAULT_REUSED_FROM_LABELS);
-  const [reusedInLabel, setReusedInLabel] = useState<string>(DEFAULT_REUSED_IN_LABEL);
+  const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
+  const [reusedInLabel, setReusedInLabel] = useState<string | undefined>(undefined);
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
   
@@ -117,6 +117,13 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
             const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => data.uniqueLabels.includes(label));
             setSelectedFilterLabels(availableDefaultLabels);
         }
+        if (reusedFromLabels.length === 0 && data.uniqueLabels.length > 0) {
+            const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => data.uniqueLabels.includes(label));
+            setReusedFromLabels(availableDefaultFrom);
+        }
+        if (!reusedInLabel && data.uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+            setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+        }
 
     } catch (error: any) {
         toast({
@@ -127,7 +134,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
     } finally {
         setIsLoading(false);
     }
-  }, [toast, selectedFilterLabels.length]);
+  }, [toast, selectedFilterLabels.length, reusedFromLabels.length, reusedInLabel]);
   
   // Initial load and subsequent fetches on filter change
   useEffect(() => {
@@ -347,7 +354,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         <label className="text-sm font-medium">Reused from</label>
                         <MultiSelect 
                             options={uniqueLabelOptions}
-                            defaultValue={reusedFromLabels}
+                            value={reusedFromLabels}
                             onValueChange={setReusedFromLabels}
                             placeholder="Select source labels..."
                             className="w-full"
@@ -358,7 +365,7 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
                         <SingleSelect
                             options={uniqueLabelOptionsSingle}
                             value={reusedInLabel}
-                            onValueChange={setReusedInLabel}
+                            onValueChange={(val) => setReusedInLabel(val)}
                             placeholder="Select target label..."
                             emptyMessage="No labels found."
                             />

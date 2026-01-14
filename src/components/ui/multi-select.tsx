@@ -53,7 +53,7 @@ interface MultiSelectProps
     VariantProps<typeof multiSelectVariants> {
   options: MultiSelectOption[]
   onValueChange: (value: string[]) => void
-  defaultValue: string[]
+  value: string[]
   placeholder?: string
   animation?: number
   maxCount?: number
@@ -70,7 +70,7 @@ export const MultiSelect = React.forwardRef<
       options,
       onValueChange,
       variant,
-      defaultValue = [],
+      value = [],
       placeholder = "Select options",
       animation = 0,
       maxCount = 3,
@@ -80,15 +80,7 @@ export const MultiSelect = React.forwardRef<
     },
     ref
   ) => {
-    const [selectedValues, setSelectedValues] =
-      React.useState<string[]>(defaultValue)
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false)
-
-    React.useEffect(() => {
-      if (JSON.stringify(selectedValues) !== JSON.stringify(defaultValue)) {
-        setSelectedValues(defaultValue)
-      }
-    }, [defaultValue, selectedValues])
 
     const handleInputKeyDown = (
       event: React.KeyboardEvent<HTMLInputElement>
@@ -96,23 +88,21 @@ export const MultiSelect = React.forwardRef<
       if (event.key === "Enter") {
         setIsPopoverOpen(true)
       } else if (event.key === "Backspace" && !event.currentTarget.value) {
-        const newSelectedValues = [...selectedValues]
+        const newSelectedValues = [...value]
         newSelectedValues.pop()
-        setSelectedValues(newSelectedValues)
         onValueChange(newSelectedValues)
       }
     }
 
-    const toggleOption = (value: string) => {
-      const newSelectedValues = selectedValues.includes(value)
-        ? selectedValues.filter((v) => v !== value)
-        : [...selectedValues, value]
-      setSelectedValues(newSelectedValues)
+    const toggleOption = (selectedValue: string) => {
+      const newSelectedValues = value.includes(selectedValue)
+        ? value.filter((v) => v !== selectedValue)
+        : [...value, selectedValue]
       onValueChange(newSelectedValues)
     }
 
-    const selectedOptions = options.filter((option) => selectedValues.includes(option.value));
-    const unselectedOptions = options.filter((option) => !selectedValues.includes(option.value));
+    const selectedOptions = options.filter((option) => value.includes(option.value));
+    const unselectedOptions = options.filter((option) => !value.includes(option.value));
 
     return (
       <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
@@ -126,7 +116,7 @@ export const MultiSelect = React.forwardRef<
               className
             )}
           >
-            {selectedValues.length > 0 ? (
+            {value.length > 0 ? (
               <div className="flex justify-between items-center w-full">
                 <div className="flex flex-wrap items-center">
                   {selectedOptions.slice(0, maxCount).map((option) => {
@@ -144,7 +134,7 @@ export const MultiSelect = React.forwardRef<
                       </Badge>
                     )
                   })}
-                  {selectedValues.length > maxCount && (
+                  {value.length > maxCount && (
                     <Badge
                       className={cn(
                         "bg-transparent text-foreground border-foreground/10 hover:bg-card",
@@ -154,7 +144,7 @@ export const MultiSelect = React.forwardRef<
                         animation: `animation-${animation}s`,
                       }}
                     >
-                      {`+ ${selectedValues.length - maxCount} more`}
+                      {`+ ${value.length - maxCount} more`}
                     </Badge>
                   )}
                 </div>
@@ -184,14 +174,11 @@ export const MultiSelect = React.forwardRef<
             />
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
-              {selectedValues.length > 0 && (
+              {value.length > 0 && (
                 <>
                     <CommandGroup>
                         <CommandItem
-                        onSelect={() => {
-                            setSelectedValues([])
-                            onValueChange([])
-                        }}
+                        onSelect={() => onValueChange([])}
                         style={{
                             pointerEvents: "auto",
                             opacity: 1,
@@ -208,7 +195,7 @@ export const MultiSelect = React.forwardRef<
                 {selectedOptions.length > 0 && (
                     <CommandGroup>
                         {selectedOptions.map((option) => {
-                        const isSelected = selectedValues.includes(option.value)
+                        const isSelected = value.includes(option.value)
                         return (
                             <CommandItem
                             key={option.value}
@@ -247,7 +234,7 @@ export const MultiSelect = React.forwardRef<
                 {unselectedOptions.length > 0 && (
                     <CommandGroup>
                         {unselectedOptions.map((option) => {
-                        const isSelected = selectedValues.includes(option.value)
+                        const isSelected = value.includes(option.value)
                         return (
                             <CommandItem
                             key={option.value}
