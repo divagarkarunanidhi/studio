@@ -110,23 +110,8 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
         setReusabilityData(data.reusability);
         setTotalTestCases(data.totalTestCases);
         setHeaders(data.headers);
-
-        // This is the critical change: set labels first, then set defaults.
-        setAllUniqueLabels(data.uniqueLabels);
-        if (data.uniqueLabels.length > 0) {
-            // Set default filter labels only once after the first successful data fetch
-            if (selectedFilterLabels.length === 0) {
-                const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => data.uniqueLabels.includes(label));
-                setSelectedFilterLabels(availableDefaultLabels);
-            }
-            if (reusedFromLabels.length === 0) {
-                const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => data.uniqueLabels.includes(label));
-                setReusedFromLabels(availableDefaultFrom);
-            }
-            if (!reusedInLabel && data.uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-                setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
-            }
-        }
+        setAllUniqueLabels(data.uniqueLabels); // This will trigger the options memoization
+        return data.uniqueLabels;
 
     } catch (error: any) {
         toast({
@@ -134,20 +119,45 @@ export function TestCaseSummaryPage({ onDataPresentChange, showUploaderInitially
             title: 'Error Fetching Summary',
             description: error.message,
         });
+        return [];
     } finally {
         setIsLoading(false);
     }
-  }, [toast, selectedFilterLabels.length, reusedFromLabels.length, reusedInLabel]);
+  }, [toast]);
   
-  // Initial load and subsequent fetches on filter change
+  // Effect for initial data load and setting defaults
   useEffect(() => {
-    const filters = {
-        selectedFilterLabels,
-        reusedFromLabels,
-        reusedInLabel,
+    const loadInitialData = async () => {
+      const uniqueLabels = await fetchSummaryData({});
+      if (uniqueLabels.length > 0) {
+        // Set default filter labels only once after the first successful data fetch
+        const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
+        setSelectedFilterLabels(availableDefaultLabels);
+
+        const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
+        setReusedFromLabels(availableDefaultFrom);
+
+        if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
+            setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
+        }
+      }
     };
-    fetchSummaryData(filters);
-  }, [selectedFilterLabels, reusedFromLabels, reusedInLabel, fetchSummaryData]);
+    loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
+
+  // Effect to refetch data when filters change
+  useEffect(() => {
+    // We don't want to run this on initial mount, so we check if there are labels.
+    if(allUniqueLabels.length > 0) {
+        const filters = {
+            selectedFilterLabels,
+            reusedFromLabels,
+            reusedInLabel,
+        };
+        fetchSummaryData(filters);
+    }
+  }, [selectedFilterLabels, reusedFromLabels, reusedInLabel, allUniqueLabels.length, fetchSummaryData]);
 
 
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
