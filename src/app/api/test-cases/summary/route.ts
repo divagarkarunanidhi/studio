@@ -26,7 +26,7 @@ const getUniqueLabels = async (collection: Collection, labelColumns: string[]): 
     const labelArrays: any[] = [];
     labelColumns.forEach(col => {
         const arrayField = `labelArray_${col}`;
-        projectStage[arrayField] = { $split: [`$testCases.${col}`, ","] };
+        projectStage[arrayField] = { $split: [{ $ifNull: [`$testCases.${col}`, ""] }, ","] };
         labelArrays.push(`$${arrayField}`);
     });
     projectStage.allLabels = { $concatArrays: labelArrays };
