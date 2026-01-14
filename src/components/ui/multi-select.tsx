@@ -122,7 +122,7 @@ export const MultiSelect = React.forwardRef<
             {...props}
             onClick={() => setIsPopoverOpen(!isPopoverOpen)}
             className={cn(
-              "flex w-full p-1 rounded-md border min-h-10 h-auto items-center justify-between bg-inherit hover:bg-card",
+              "flex w-full p-1 rounded-md border min-h-10 h-auto items-center justify-between bg-background hover:bg-card",
               className
             )}
           >

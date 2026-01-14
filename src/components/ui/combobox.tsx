@@ -47,7 +47,7 @@ export function Combobox({ options, value, onValueChange, placeholder = "Select 
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between h-auto min-h-10 p-1 bg-inherit hover:bg-card", className)}
+          className={cn("w-full justify-between h-auto min-h-10 p-1 bg-background hover:bg-card", className)}
         >
           {selectedOption ? (
              <Badge
