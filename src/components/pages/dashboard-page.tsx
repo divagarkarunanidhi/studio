@@ -674,7 +674,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     );
   }
   
-  const displayUploader = showUploader && activeView === 'dashboard';
+  const displayUploader = showUploader && (activeView === 'dashboard' || activeView === 'test-case-summary');
 
   return (
     <SidebarProvider>
@@ -835,7 +835,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => setActiveView('test-case-summary')}>Continue</AlertDialogAction>
+                        <AlertDialogAction onClick={() => setShowUploader(true)}>Continue</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
