@@ -785,7 +785,8 @@ export function SeleniumDashboardPage() {
             return dateB - dateA;
         });
 
-        // Use maps to track the latest status for each scenario per job
+        // Use maps to track the status for each scenario per job
+        // Priority rule: if it ever passed, it's passed. If multiple passed, take the latest.
         const uniqueScenariosMap = new Map<string, DetailedScenario>();
         const uniqueRawScenariosMap = new Map<string, { feature: Feature, scenario: Scenario }>();
         let totalExecutionTime = 0;
@@ -796,7 +797,12 @@ export function SeleniumDashboardPage() {
             // Map individual processed scenarios by [jobName|scenarioName]
             report.scenarios.forEach(sc => {
                 const key = `${report.jobName}|${sc.name}`;
-                if (!uniqueScenariosMap.has(key)) {
+                const existing = uniqueScenariosMap.get(key);
+                
+                // Logic:
+                // 1. If not in map, add it (this is the latest one due to sortedSelected)
+                // 2. If already in map as 'failed', but current sc is 'passed', replace it.
+                if (!existing || (existing.status === 'failed' && sc.status === 'passed')) {
                     uniqueScenariosMap.set(key, sc);
                 }
             });
@@ -805,7 +811,10 @@ export function SeleniumDashboardPage() {
             report.rawReport.test_results?.forEach(feature => {
                 feature.elements?.forEach(scenario => {
                     const key = `${report.jobName}|${scenario.name}`;
-                    if (!uniqueRawScenariosMap.has(key)) {
+                    const currentStatus = getScenarioStatus(scenario);
+                    const existing = uniqueRawScenariosMap.get(key);
+                    
+                    if (!existing || (getScenarioStatus(existing.scenario) === 'failed' && currentStatus === 'passed')) {
                         uniqueRawScenariosMap.set(key, { feature, scenario });
                     }
                 });
