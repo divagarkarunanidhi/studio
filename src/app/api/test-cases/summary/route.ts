@@ -72,8 +72,8 @@ const getDistribution = async (collection: Collection, fileId: ObjectId, labels:
 
 
 // Helper for reusability calculation, filtering for Issue Type = Test
-const getReusability = async (collection: Collection, fileId: ObjectId, reusedInLabel: string, reusedFromLabels: string[], labelColumns: string[]) => {
-    if (!reusedInLabel || !reusedFromLabels || reusedFromLabels.length === 0) {
+const getReusability = async (collection: Collection, fileId: ObjectId, reusedInLabels: string[], reusedFromLabels: string[], labelColumns: string[]) => {
+    if (!reusedInLabels || reusedInLabels.length === 0 || !reusedFromLabels || reusedFromLabels.length === 0) {
         return { count: 0, testCases: [] };
     }
 
@@ -90,10 +90,14 @@ const getReusability = async (collection: Collection, fileId: ObjectId, reusedIn
         }
     ];
 
-    const escapedInLabel = reusedInLabel.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const matchConditions = {
         $and: [
-            { "searchableLabels": { $regex: `\\b${escapedInLabel}\\b`, $options: "i" } },
+            { 
+                $or: reusedInLabels.map(inLabel => {
+                    const escapedIn = inLabel.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    return { "searchableLabels": { $regex: `\\b${escapedIn}\\b`, $options: "i" } };
+                })
+            },
             { 
                 $or: reusedFromLabels.map(fromLabel => {
                     const escapedFrom = fromLabel.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -120,7 +124,7 @@ export async function POST(request: Request) {
         const collection = db.collection("testCases");
 
         const body = await request.json();
-        const { selectedFilterLabels, reusedFromLabels, reusedInLabel } = body;
+        const { selectedFilterLabels, reusedFromLabels, reusedInLabels } = body;
 
         // Fetch the latest test case document
         const latestFile = await collection.find({}).sort({ _id: -1 }).limit(1).toArray();
@@ -152,7 +156,7 @@ export async function POST(request: Request) {
         ] = await Promise.all([
             getUniqueLabels(collection, fileId, labelColumns),
             selectedFilterLabels && selectedFilterLabels.length > 0 ? getDistribution(collection, fileId, selectedFilterLabels, labelColumns) : Promise.resolve([]),
-            getReusability(collection, fileId, reusedInLabel, reusedFromLabels, labelColumns)
+            getReusability(collection, fileId, reusedInLabels, reusedFromLabels, labelColumns)
         ]);
 
         const distributionMap: { name: string; count: number, testCases: any[] }[] = [];

@@ -13,7 +13,6 @@ import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
 import { FileText, Loader2, Download, Wand2, AlertTriangle, PieChart, BarChart, LineChart, AreaChart, Radar } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
-import { SingleSelect, type SingleSelectOption } from '../ui/single-select';
 import { Input } from '@/components/ui/input';
 import { TestCaseDistributionChart } from '../dashboard/test-case-distribution-chart';
 import {
@@ -36,7 +35,7 @@ type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar';
 type PageStatus = 'loading' | 'upload' | 'ready' | 'error';
 
 const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
-const DEFAULT_REUSED_IN_LABEL = 'FordKOCPilot';
+const DEFAULT_REUSED_IN_LABELS = ['FordKOCPilot'];
 const DEFAULT_OVERVIEW_LABELS = ['FradleyPilot', 'ToshibaPilot', 'FordKOCPilot'];
 
 export function TestCaseSummaryPage() {
@@ -59,7 +58,7 @@ export function TestCaseSummaryPage() {
   const [isClient, setIsClient] = useState(false);
 
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
-  const [reusedInLabel, setReusedInLabel] = useState<string | undefined>(undefined);
+  const [reusedInLabels, setReusedInLabels] = useState<string[]>([]);
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
   
@@ -129,9 +128,8 @@ export function TestCaseSummaryPage() {
             const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
             setReusedFromLabels(availableDefaultFrom);
             
-            if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-                setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
-            }
+            const availableDefaultIn = DEFAULT_REUSED_IN_LABELS.filter(label => uniqueLabels.includes(label));
+            setReusedInLabels(availableDefaultIn);
         }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,21 +142,17 @@ export function TestCaseSummaryPage() {
     const filters = {
         selectedFilterLabels,
         reusedFromLabels,
-        reusedInLabel,
+        reusedInLabels,
     };
     fetchSummaryData(filters);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFilterLabels, reusedFromLabels, reusedInLabel]);
+  }, [selectedFilterLabels, reusedFromLabels, reusedInLabels]);
 
 
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
     return allUniqueLabels.map(label => ({ value: label, label: label }));
   }, [allUniqueLabels]);
   
-  const uniqueLabelOptionsSingle: SingleSelectOption[] = useMemo(() => {
-    return allUniqueLabels.map(label => ({ value: label, label: label }));
-  }, [allUniqueLabels]);
-
 
   const handleDataUploaded = useCallback(async (csvText: string, fileName: string) => {
     if (!user) {
@@ -185,9 +179,7 @@ export function TestCaseSummaryPage() {
               const uniqueLabels = data.uniqueLabels as string[];
               setSelectedFilterLabels(DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label)));
               setReusedFromLabels(DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label)));
-              if (uniqueLabels.includes(DEFAULT_REUSED_IN_LABEL)) {
-                  setReusedInLabel(DEFAULT_REUSED_IN_LABEL);
-              }
+              setReusedInLabels(DEFAULT_REUSED_IN_LABELS.filter(label => uniqueLabels.includes(label)));
           }
         });
 
@@ -249,7 +241,7 @@ export function TestCaseSummaryPage() {
     const distributionDataString = JSON.stringify(distributionData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
     const reusabilityPayloadString = JSON.stringify({
         reused_from_labels: reusedFromLabels,
-        reused_in_label: reusedInLabel,
+        reused_in_labels: reusedInLabels,
         reusability_count: reusabilityData.count,
         effort_saving_hours: totalSavingHours,
         effort_saving_days: totalSavingDays.toFixed(2)
@@ -267,7 +259,7 @@ export function TestCaseSummaryPage() {
     } finally {
         setIsAnalysisLoading(false);
     }
-  }, [distributionData, reusedFromLabels, reusedInLabel, reusabilityData.count, totalSavingHours, totalSavingDays]);
+  }, [distributionData, reusedFromLabels, reusedInLabels, reusabilityData.count, totalSavingHours, totalSavingDays]);
 
 
   if (status === 'loading') {
@@ -368,13 +360,13 @@ export function TestCaseSummaryPage() {
                     </div>
                     <div className="w-full sm:w-1/2 space-y-2">
                         <label className="text-sm font-medium">Reused in</label>
-                        <SingleSelect
-                            options={uniqueLabelOptionsSingle}
-                            value={reusedInLabel}
-                            onValueChange={(val) => setReusedInLabel(val)}
-                            placeholder="Select target label..."
-                            emptyMessage="No labels found."
-                            />
+                        <MultiSelect 
+                            options={uniqueLabelOptions}
+                            value={reusedInLabels}
+                            onValueChange={setReusedInLabels}
+                            placeholder="Select target labels..."
+                            className="w-full"
+                        />
                     </div>
                 </div>
 
@@ -412,7 +404,7 @@ export function TestCaseSummaryPage() {
                                 <DialogHeader>
                                     <DialogTitle>Reusable Test Cases ({reusabilityData.count})</DialogTitle>
                                     <DialogDescription>
-                                        Test cases in '{reusedInLabel}' that are also in '{reusedFromLabels.join(', ')}'.
+                                        Test cases in '{reusedInLabels.join(', ')}' that are also in '{reusedFromLabels.join(', ')}'.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <ScrollArea className="h-72 w-full rounded-md border">
@@ -493,7 +485,7 @@ export function TestCaseSummaryPage() {
                             <FileText className="h-4 w-4" />
                             <AlertTitle>Ready to Analyze</AlertTitle>
                             <AlertDescription>Click the button to generate an AI summary of your current test case data.</AlertDescription>
-                        </Alert>
+                            </Alert>
                         )
                     )}
                 </div>
