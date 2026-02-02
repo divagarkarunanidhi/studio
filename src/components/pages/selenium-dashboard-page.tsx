@@ -171,12 +171,12 @@ const SmallStatusChart = ({ passed, failed }: { passed: number; failed: number }
         { name: 'Failed', value: failed, fill: '#ef4444' }, // Red
     ].filter(d => d.value > 0);
 
-    if (data.length === 0) return <div className="h-8 w-8 bg-muted rounded-full" />;
+    if (data.length === 0) return <div className="h-12 w-12 bg-muted rounded-full" />;
 
     return (
-        <div className="h-8 w-8 flex items-center justify-center">
+        <div className="h-12 w-12 flex items-center justify-center">
             <ChartContainer config={{}} className="h-full w-full">
-                <PieChart width={32} height={32}>
+                <PieChart width={48} height={48}>
                     <Tooltip
                         content={({ active, payload }) => {
                             if (active && payload && payload.length) {
@@ -194,7 +194,7 @@ const SmallStatusChart = ({ passed, failed }: { passed: number; failed: number }
                         cx="50%"
                         cy="50%"
                         innerRadius={0}
-                        outerRadius={14}
+                        outerRadius={22}
                         paddingAngle={0}
                         dataKey="value"
                         isAnimationActive={false}
@@ -804,8 +804,8 @@ export function SeleniumDashboardPage() {
                     uniqueScenariosMap.set(key, sc);
                 } else {
                     // Logic:
-                    // If sc is passed, replace (matches latest pass rule)
-                    // If sc is failed, only replace if existing is also failed (matches latest fail rule)
+                    // If current status is 'passed', replace existing (favor pass)
+                    // If current status is 'failed', only replace if existing is also 'failed' (keep newest fail)
                     if (sc.status === 'passed') {
                         uniqueScenariosMap.set(key, sc);
                     } else if (sc.status === 'failed' && existing.status === 'failed') {
