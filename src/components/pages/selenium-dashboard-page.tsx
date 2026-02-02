@@ -777,16 +777,65 @@ export function SeleniumDashboardPage() {
     
         const selected = processedReports.filter(r => selectedReportIds.includes(r.id));
         if (selected.length === 0) return null;
+
+        // Sort by date descending so the first run we encounter for a job is the latest one
+        const sortedSelected = [...selected].sort((a, b) => {
+            const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+            const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+            return dateB - dateA;
+        });
+
+        // Use maps to track the latest status for each scenario per job
+        const uniqueScenariosMap = new Map<string, DetailedScenario>();
+        const uniqueRawScenariosMap = new Map<string, { feature: Feature, scenario: Scenario }>();
+        let totalExecutionTime = 0;
+
+        sortedSelected.forEach(report => {
+            totalExecutionTime += report.totalExecutionTime;
+            
+            // Map individual processed scenarios by [jobName|scenarioName]
+            report.scenarios.forEach(sc => {
+                const key = `${report.jobName}|${sc.name}`;
+                if (!uniqueScenariosMap.has(key)) {
+                    uniqueScenariosMap.set(key, sc);
+                }
+            });
+
+            // Map raw test results similarly for the detail modal view
+            report.rawReport.test_results?.forEach(feature => {
+                feature.elements?.forEach(scenario => {
+                    const key = `${report.jobName}|${scenario.name}`;
+                    if (!uniqueRawScenariosMap.has(key)) {
+                        uniqueRawScenariosMap.set(key, { feature, scenario });
+                    }
+                });
+            });
+        });
+
+        const uniqueScenarios = Array.from(uniqueScenariosMap.values());
+        const passedCount = uniqueScenarios.filter(s => s.status === 'passed').length;
+        const failedCount = uniqueScenarios.length - passedCount;
+
+        // Reconstruct rawReport.test_results from uniqueRawScenariosMap
+        const consolidatedFeatures: Feature[] = [];
+        uniqueRawScenariosMap.forEach(({ feature, scenario }) => {
+            let existingFeature = consolidatedFeatures.find(f => f.name === feature.name);
+            if (!existingFeature) {
+                existingFeature = { ...feature, elements: [] };
+                consolidatedFeatures.push(existingFeature);
+            }
+            existingFeature.elements.push(scenario);
+        });
     
-        const emptyAcc: ReportSummary = {
+        return {
             id: "consolidated",
             solution: "Consolidated Report",
             jobName: `${selected.length} Reports Combined`,
-            totalTests: 0,
-            passed: 0,
-            failed: 0,
-            scenarios: [],
-            totalExecutionTime: 0,
+            totalTests: uniqueScenarios.length,
+            passed: passedCount,
+            failed: failedCount,
+            scenarios: uniqueScenarios,
+            totalExecutionTime,
             rawReport: {
                 _id: "consolidated",
                 fileName: "consolidated",
@@ -794,7 +843,7 @@ export function SeleniumDashboardPage() {
                 environment: "consolidated",
                 Config: "consolidated",
                 "Report Path": "N/A",
-                test_results: [],
+                test_results: consolidatedFeatures,
                 uploaderId: "",
                 uploadedAt: new Date().toISOString(),
             },
@@ -802,27 +851,6 @@ export function SeleniumDashboardPage() {
             environment: "Consolidated",
             uploadedAt: new Date().toISOString(),
         };
-    
-        const consolidated = selected.reduce((acc, report) => {
-            acc.totalTests += report.totalTests;
-            acc.passed += report.passed;
-            acc.failed += report.failed;
-            acc.totalExecutionTime += report.totalExecutionTime;
-            acc.scenarios.push(...report.scenarios);
-            
-            report.rawReport.test_results.forEach(feature => {
-                const existingFeature = acc.rawReport.test_results.find(f => f.uri === feature.uri);
-                if (existingFeature) {
-                    existingFeature.elements.push(...feature.elements);
-                } else {
-                    acc.rawReport.test_results.push({ ...feature });
-                }
-            });
-            
-            return acc;
-        }, emptyAcc);
-        
-        return consolidated;
     }, [selectedReportIds, processedReports]);
     
     const handlePageChange = (newPage: number) => {
