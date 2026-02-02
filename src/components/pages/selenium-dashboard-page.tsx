@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers, Terminal } from 'lucide-react';
+import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers, Terminal, Camera } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -52,10 +52,16 @@ interface StepResult {
     error_message?: string;
 }
 
+interface Embedding {
+    data: string;
+    mime_type: string;
+}
+
 interface Step {
     result: StepResult;
     name: string;
     keyword: string;
+    embeddings?: Embedding[];
 }
 
 interface Scenario {
@@ -358,8 +364,8 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     }, [report, allProcessedReports, isMostRecentReport]);
 
     const pieData = [
-        { name: 'Passed', value: report.passed, fill: 'hsl(var(--chart-1))' },
-        { name: 'Failed', value: report.failed, fill: 'hsl(var(--chart-2))' },
+        { name: 'Passed', value: report.passed, fill: '#22c55e' },
+        { name: 'Failed', value: report.failed, fill: '#ef4444' },
     ];
     
     const scenariosByFeature = useMemo(() => {
@@ -600,29 +606,62 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
                                                                                     <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>
                                                                                         <div className="flex flex-col gap-1">
                                                                                             <span>{step.result.status}</span>
-                                                                                            {step.result.error_message && (
-                                                                                                <Dialog>
-                                                                                                    <DialogTrigger asChild>
-                                                                                                        <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-destructive underline justify-start flex gap-1">
-                                                                                                            <Terminal className="h-2.5 w-2.5" />
-                                                                                                            View Logs
-                                                                                                        </Button>
-                                                                                                    </DialogTrigger>
-                                                                                                    <DialogContent className="max-w-3xl">
-                                                                                                        <DialogHeader>
-                                                                                                            <DialogTitle>Failure Logs</DialogTitle>
-                                                                                                            <DialogDescription>
-                                                                                                                Step: {step.keyword}{step.name}
-                                                                                                            </DialogDescription>
-                                                                                                        </DialogHeader>
-                                                                                                        <ScrollArea className="max-h-[60vh] rounded-md border bg-muted p-4">
-                                                                                                            <pre className="text-xs whitespace-pre-wrap font-mono text-foreground/90 leading-relaxed">
-                                                                                                                {step.result.error_message}
-                                                                                                            </pre>
-                                                                                                        </ScrollArea>
-                                                                                                    </DialogContent>
-                                                                                                </Dialog>
-                                                                                            )}
+                                                                                            <div className="flex gap-2">
+                                                                                                {step.result.error_message && (
+                                                                                                    <Dialog>
+                                                                                                        <DialogTrigger asChild>
+                                                                                                            <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-destructive underline justify-start flex gap-1">
+                                                                                                                <Terminal className="h-2.5 w-2.5" />
+                                                                                                                View Logs
+                                                                                                            </Button>
+                                                                                                        </DialogTrigger>
+                                                                                                        <DialogContent className="max-w-3xl">
+                                                                                                            <DialogHeader>
+                                                                                                                <DialogTitle>Failure Logs</DialogTitle>
+                                                                                                                <DialogDescription>
+                                                                                                                    Step: {step.keyword}{step.name}
+                                                                                                                </DialogDescription>
+                                                                                                            </DialogHeader>
+                                                                                                            <ScrollArea className="max-h-[60vh] rounded-md border bg-muted p-4">
+                                                                                                                <pre className="text-xs whitespace-pre-wrap font-mono text-foreground/90 leading-relaxed">
+                                                                                                                    {step.result.error_message}
+                                                                                                                </pre>
+                                                                                                            </ScrollArea>
+                                                                                                        </DialogContent>
+                                                                                                    </Dialog>
+                                                                                                )}
+                                                                                                {step.embeddings && step.embeddings.some(e => e.mime_type.startsWith('image/')) && (
+                                                                                                    <Dialog>
+                                                                                                        <DialogTrigger asChild>
+                                                                                                            <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-blue-600 underline justify-start flex gap-1">
+                                                                                                                <Camera className="h-2.5 w-2.5" />
+                                                                                                                View Screenshot
+                                                                                                            </Button>
+                                                                                                        </DialogTrigger>
+                                                                                                        <DialogContent className="max-w-5xl">
+                                                                                                            <DialogHeader>
+                                                                                                                <DialogTitle>Step Screenshot</DialogTitle>
+                                                                                                                <DialogDescription>
+                                                                                                                    Step: {step.keyword}{step.name}
+                                                                                                                </DialogDescription>
+                                                                                                            </DialogHeader>
+                                                                                                            <ScrollArea className="max-h-[80vh] flex flex-col items-center justify-center bg-muted p-2 rounded-md border">
+                                                                                                                {step.embeddings
+                                                                                                                    .filter(e => e.mime_type.startsWith('image/'))
+                                                                                                                    .map((e, idx) => (
+                                                                                                                        <img 
+                                                                                                                            key={idx} 
+                                                                                                                            src={`data:${e.mime_type};base64,${e.data}`} 
+                                                                                                                            alt={`Screenshot ${idx}`} 
+                                                                                                                            className="max-w-full h-auto shadow-md rounded-sm mb-4 last:mb-0"
+                                                                                                                        />
+                                                                                                                    ))
+                                                                                                                }
+                                                                                                            </ScrollArea>
+                                                                                                        </DialogContent>
+                                                                                                    </Dialog>
+                                                                                                )}
+                                                                                            </div>
                                                                                         </div>
                                                                                     </TableCell>
                                                                                     <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
@@ -673,7 +712,7 @@ export function SeleniumDashboardPage() {
             const configSnap = await getDoc(configRef);
             if (configSnap.exists()) {
                 const configData = configSnap.data() as AppConfiguration;
-                setJLink(configData.jiraLink);
+                setJiraLink(configData.jiraLink);
             }
         };
         fetchConfig();
