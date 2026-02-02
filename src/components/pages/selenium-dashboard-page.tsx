@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers } from 'lucide-react';
+import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers, Terminal } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -597,7 +597,34 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
                                                                             {scenario.steps.map((step, stIndex) => (
                                                                                 <TableRow key={stIndex}>
                                                                                     <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
-                                                                                    <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>{step.result.status}</TableCell>
+                                                                                    <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>
+                                                                                        <div className="flex flex-col gap-1">
+                                                                                            <span>{step.result.status}</span>
+                                                                                            {step.result.error_message && (
+                                                                                                <Dialog>
+                                                                                                    <DialogTrigger asChild>
+                                                                                                        <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-destructive underline justify-start flex gap-1">
+                                                                                                            <Terminal className="h-2.5 w-2.5" />
+                                                                                                            View Logs
+                                                                                                        </Button>
+                                                                                                    </DialogTrigger>
+                                                                                                    <DialogContent className="max-w-3xl">
+                                                                                                        <DialogHeader>
+                                                                                                            <DialogTitle>Failure Logs</DialogTitle>
+                                                                                                            <DialogDescription>
+                                                                                                                Step: {step.keyword}{step.name}
+                                                                                                            </DialogDescription>
+                                                                                                        </DialogHeader>
+                                                                                                        <ScrollArea className="max-h-[60vh] rounded-md border bg-muted p-4">
+                                                                                                            <pre className="text-xs whitespace-pre-wrap font-mono text-foreground/90 leading-relaxed">
+                                                                                                                {step.result.error_message}
+                                                                                                            </pre>
+                                                                                                        </ScrollArea>
+                                                                                                    </DialogContent>
+                                                                                                </Dialog>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </TableCell>
                                                                                     <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
                                                                                 </TableRow>
                                                                             ))}
@@ -646,7 +673,7 @@ export function SeleniumDashboardPage() {
             const configSnap = await getDoc(configRef);
             if (configSnap.exists()) {
                 const configData = configSnap.data() as AppConfiguration;
-                setJiraLink(configData.jiraLink);
+                setJLink(configData.jiraLink);
             }
         };
         fetchConfig();
@@ -804,8 +831,8 @@ export function SeleniumDashboardPage() {
                     uniqueScenariosMap.set(key, sc);
                 } else {
                     // Logic:
-                    // If current status is 'passed', replace existing (favor pass)
-                    // If current status is 'failed', only replace if existing is also 'failed' (keep newest fail)
+                    // If current scenario passed, prioritize it.
+                    // If both statuses are same, prioritize latest.
                     if (sc.status === 'passed') {
                         uniqueScenariosMap.set(key, sc);
                     } else if (sc.status === 'failed' && existing.status === 'failed') {
