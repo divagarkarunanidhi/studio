@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 import { Collection } from "mongodb";
@@ -67,9 +66,13 @@ const getDistribution = async (collection: Collection, labels: string[], labelCo
         }
     ];
 
-    const matchQueries = labels.map(label => ({
-        "searchableLabels": { $regex: `\\b${label}\\b`, $options: "i" }
-    }));
+    const matchQueries = labels.map(label => {
+        // Escape special characters for regex and trim input
+        const escapedLabel = label.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return {
+            "searchableLabels": { $regex: `\\b${escapedLabel}\\b`, $options: "i" }
+        };
+    });
 
     pipeline.push({ $match: { $and: matchQueries } });
     
@@ -97,13 +100,15 @@ const getReusability = async (collection: Collection, reusedInLabel: string, reu
         }
     ];
 
+    const escapedInLabel = reusedInLabel.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const matchConditions = {
         $and: [
-            { "searchableLabels": { $regex: `\\b${reusedInLabel}\\b`, $options: "i" } },
+            { "searchableLabels": { $regex: `\\b${escapedInLabel}\\b`, $options: "i" } },
             { 
-                $or: reusedFromLabels.map(fromLabel => ({
-                    "searchableLabels": { $regex: `\\b${fromLabel}\\b`, $options: "i" }
-                }))
+                $or: reusedFromLabels.map(fromLabel => {
+                    const escapedFrom = fromLabel.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    return { "searchableLabels": { $regex: `\\b${escapedFrom}\\b`, $options: "i" } };
+                })
             }
         ]
     };
@@ -144,10 +149,10 @@ export async function POST(request: Request) {
         const allHeaders = Object.keys(testCases[0] || {});
         const labelColumns = allHeaders.filter(h => h.toLowerCase().startsWith('label')).sort();
 
-        // Perform calculations using aggregation pipelines in parallel
+        // Perform primary calculations in parallel
         const [
             uniqueLabels,
-            distributionTestCases,
+            intersectionTestCases, // Intersection: test cases matching ALL selected labels
             reusabilityData
         ] = await Promise.all([
             getUniqueLabels(collection, labelColumns),
@@ -155,12 +160,29 @@ export async function POST(request: Request) {
             getReusability(collection, reusedInLabel, reusedFromLabels, labelColumns)
         ]);
 
-        // Server-side Distribution Calculation from aggregated results
         const distributionMap: { name: string; count: number, testCases: any[] }[] = [];
+        
         if (selectedFilterLabels && selectedFilterLabels.length > 0) {
-            if (distributionTestCases.length > 0) {
-                distributionMap.push({ name: `Matching all (${selectedFilterLabels.join(' & ')})`, count: distributionTestCases.length, testCases: distributionTestCases });
+            // 1. Add the intersection slice ("Matching all")
+            if (intersectionTestCases.length > 0) {
+                distributionMap.push({ 
+                    name: `Matching all (${selectedFilterLabels.join(' & ')})`, 
+                    count: intersectionTestCases.length, 
+                    testCases: intersectionTestCases 
+                });
             }
+
+            // 2. Add individual slices for each selected label to show their total counts
+            const individualSlices = await Promise.all(selectedFilterLabels.map(async (label) => {
+                const results = await getDistribution(collection, [label], labelColumns);
+                return {
+                    name: `Total for '${label}'`,
+                    count: results.length,
+                    testCases: results
+                };
+            }));
+            
+            distributionMap.push(...individualSlices);
         }
         
         return NextResponse.json({
@@ -179,4 +201,3 @@ export async function POST(request: Request) {
         );
     }
 }
-    
