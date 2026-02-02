@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -749,10 +748,13 @@ export function SeleniumDashboardPage() {
         const updatedRaw = { ...currentRaw };
         
         if (range) {
-            updatedRaw[domain] = {
-                from: range.from?.toISOString(),
-                to: range.to?.toISOString()
-            };
+            const rangeObj: any = {};
+            if (range.from) rangeObj.from = range.from.toISOString();
+            if (range.to) rangeObj.to = range.to.toISOString();
+            
+            // Firebase doesn't support 'undefined' field values. 
+            // We ensure both properties are set correctly or omitted if they don't exist.
+            updatedRaw[domain] = rangeObj;
         } else {
             delete updatedRaw[domain];
         }
