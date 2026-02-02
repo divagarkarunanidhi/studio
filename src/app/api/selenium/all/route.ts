@@ -17,7 +17,7 @@ const findDefectIdForTestCase = (testCaseId: string | null, defectMap: Map<strin
 };
 
 
-// Helper function to process a single report document
+// Helper function to process a single report document into a summary
 const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseDefectMap: Map<string, string>) => {
     let totalTests = 0;
     let passed = 0;
@@ -79,7 +79,8 @@ const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseD
         failed: totalTests - passed,
         scenarios: detailedScenarios,
         totalExecutionTime,
-        rawReport: report, // Keep raw report for detailed modal view
+        // CRITICAL: We exclude rawReport (test_results) from the list view to prevent huge payload sizes
+        // and JSON truncation errors. The frontend will fetch details on demand.
         domain: report.solution || "N/A",
         environment: report.environment || "N/A",
         uploadedAt: executionTimestamp,

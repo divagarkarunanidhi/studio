@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -103,7 +104,7 @@ interface ReportSummary {
     failed: number;
     scenarios: DetailedScenario[];
     totalExecutionTime: number; // in nanoseconds
-    rawReport: StoredReportData;
+    rawReport?: StoredReportData; // rawReport is now optional, fetched on demand
     domain: string;
     environment: string;
     uploadedAt: string;
@@ -291,13 +292,31 @@ const ClickableStat = ({
     )
 }
 
-const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: ReportSummary; jiraLink: string; allProcessedReports: ReportSummary[] }) => {
+const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportSummary: ReportSummary; jiraLink: string; allProcessedReports: ReportSummary[] }) => {
+    const [fullReport, setFullReport] = useState<StoredReportData | null>(reportSummary.rawReport || null);
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
     const [openFeatures, setOpenFeatures] = useState<Set<string>>(new Set());
     const [isStatusOpen, setIsStatusOpen] = useState(true);
     const [isComparisonOpen, setIsComparisonOpen] = useState(true);
     const [isFailedOpen, setIsFailedOpen] = useState(true);
     const [isScenarioDetailsOpen, setIsScenarioDetailsOpen] = useState(true);
     const [openScenarios, setOpenScenarios] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        // Only fetch if details are missing AND it's a real MongoDB ID (not a local consolidation)
+        if (!fullReport?.test_results && !reportSummary.id.startsWith('consolidated')) {
+            setIsLoadingDetails(true);
+            fetch(`/api/selenium/details?id=${reportSummary.id}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.test_results) {
+                        setFullReport(data);
+                    }
+                })
+                .catch(err => console.error("Error fetching report details:", err))
+                .finally(() => setIsLoadingDetails(false));
+        }
+    }, [reportSummary.id, fullReport]);
 
     const toggleScenario = (scenarioName: string) => {
         setOpenScenarios(prev => {
@@ -312,11 +331,11 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     };
 
     const failedScenarios = useMemo(() => {
-        return report.scenarios.filter(s => s.status === 'failed');
-    }, [report.scenarios]);
+        return reportSummary.scenarios.filter(s => s.status === 'failed');
+    }, [reportSummary.scenarios]);
     const passedScenarios = useMemo(() => {
-        return report.scenarios.filter(s => s.status === 'passed');
-    }, [report.scenarios]);
+        return reportSummary.scenarios.filter(s => s.status === 'passed');
+    }, [reportSummary.scenarios]);
 
     const toggleFeature = (featureName: string) => {
         setOpenFeatures(prev => {
@@ -331,9 +350,9 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     };
 
     const isMostRecentReport = useMemo(() => {
-        if (report.id.startsWith('consolidated')) return false;
+        if (reportSummary.id.startsWith('consolidated')) return false;
         
-        const reportsForSameJob = allProcessedReports.filter(p => p.jobName === report.jobName && !p.id.startsWith('consolidated'));
+        const reportsForSameJob = allProcessedReports.filter(p => p.jobName === reportSummary.jobName && !p.id.startsWith('consolidated'));
         if (reportsForSameJob.length <= 1) return false;
 
         const mostRecentReport = reportsForSameJob.sort((a,b) => {
@@ -342,14 +361,14 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
             return dateB - dateA;
         })[0];
 
-        return mostRecentReport.id === report.id;
-    }, [report, allProcessedReports]);
+        return mostRecentReport.id === reportSummary.id;
+    }, [reportSummary, allProcessedReports]);
 
     const comparisonData = useMemo(() => {
-        if (report.id.startsWith('consolidated') || !isMostRecentReport) return null;
+        if (reportSummary.id.startsWith('consolidated') || !isMostRecentReport) return null;
 
         const previousRuns = allProcessedReports
-            .filter(p => p.jobName === report.jobName && !p.id.startsWith('consolidated') && p.uploadedAt && report.uploadedAt && new Date(p.uploadedAt) < new Date(report.uploadedAt))
+            .filter(p => p.jobName === reportSummary.jobName && !p.id.startsWith('consolidated') && p.uploadedAt && reportSummary.uploadedAt && new Date(p.uploadedAt) < new Date(reportSummary.uploadedAt))
             .sort((a, b) => {
                 const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
                 const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
@@ -360,13 +379,13 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
 
         if (!previousReport) return null;
         
-        const currentFailed = new Set(report.scenarios.filter(s => s.status === 'failed').map(s => s.name));
+        const currentFailed = new Set(reportSummary.scenarios.filter(s => s.status === 'failed').map(s => s.name));
         const prevFailed = new Set(previousReport.scenarios.filter(s => s.status === 'failed').map(s => s.name));
 
-        const newFailures = report.scenarios.filter(s => currentFailed.has(s.name) && !prevFailed.has(s.name));
+        const newFailures = reportSummary.scenarios.filter(s => currentFailed.has(s.name) && !prevFailed.has(s.name));
         const fixes = previousReport.scenarios.filter(s => prevFailed.has(s.name) && !currentFailed.has(s.name));
 
-        const timeDifference = report.totalExecutionTime - previousReport.totalExecutionTime;
+        const timeDifference = reportSummary.totalExecutionTime - previousReport.totalExecutionTime;
 
         return {
             newFailures,
@@ -375,29 +394,29 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
             previousReportDate: previousReport.uploadedAt,
         }
 
-    }, [report, allProcessedReports, isMostRecentReport]);
+    }, [reportSummary, allProcessedReports, isMostRecentReport]);
 
     const pieData = [
-        { name: 'Passed', value: report.passed, fill: '#22c55e' },
-        { name: 'Failed', value: report.failed, fill: '#ef4444' },
+        { name: 'Passed', value: reportSummary.passed, fill: '#22c55e' },
+        { name: 'Failed', value: reportSummary.failed, fill: '#ef4444' },
     ];
     
     const scenariosByFeature = useMemo(() => {
         const featureMap = new Map<string, Scenario[]>();
-        report.rawReport.test_results?.forEach(feature => {
+        fullReport?.test_results?.forEach(feature => {
             const existingScenarios = featureMap.get(feature.name) || [];
             featureMap.set(feature.name, [...existingScenarios, ...feature.elements]);
         });
         return Array.from(featureMap.entries());
-    }, [report.rawReport.test_results]);
+    }, [fullReport]);
 
 
     return (
         <DialogContent className="max-w-6xl">
             <DialogHeader>
-                <DialogTitle>Detailed Report for: {report.solution}</DialogTitle>
+                <DialogTitle>Detailed Report for: {reportSummary.solution}</DialogTitle>
                 <DialogDescription>
-                    {report.jobName} | Run on: {report.uploadedAt ? format(parseISO(report.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                    {reportSummary.jobName} | Run on: {reportSummary.uploadedAt ? format(parseISO(reportSummary.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[80vh]">
@@ -436,10 +455,10 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
                             </Card>
                         </Collapsible>
                         <div className='flex flex-col gap-2 text-sm justify-center'>
-                           <ClickableStat title="Total Test Cases" count={report.totalTests} scenarios={report.scenarios} jiraLink={jiraLink} />
-                            <ClickableStat title="Passed" count={report.passed} scenarios={passedScenarios} jiraLink={jiraLink} className='text-green-600 bg-green-500/10' />
-                            <ClickableStat title="Failed" count={report.failed} scenarios={failedScenarios} jiraLink={jiraLink} className='text-red-600 bg-red-500/10' />
-                            <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Execution Time:</span> <strong>{formatNanosToTime(report.totalExecutionTime)}</strong></div>
+                           <ClickableStat title="Total Test Cases" count={reportSummary.totalTests} scenarios={reportSummary.scenarios} jiraLink={jiraLink} />
+                            <ClickableStat title="Passed" count={reportSummary.passed} scenarios={passedScenarios} jiraLink={jiraLink} className='text-green-600 bg-green-500/10' />
+                            <ClickableStat title="Failed" count={reportSummary.failed} scenarios={failedScenarios} jiraLink={jiraLink} className='text-red-600 bg-red-500/10' />
+                            <div className='flex justify-between p-2 rounded-md bg-muted/50'><span>Total Execution Time:</span> <strong>{formatNanosToTime(reportSummary.totalExecutionTime)}</strong></div>
                         </div>
                     </div>
 
@@ -581,120 +600,133 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
                             </CollapsibleTrigger>
                             <CollapsibleContent>
                                 <CardContent>
-                                    <div className='max-h-96 overflow-y-auto'>
-                                    {scenariosByFeature.map(([featureName, scenarios], fIndex) => (
-                                        <Collapsible key={`${featureName}-${fIndex}`} open={openFeatures.has(featureName)} onOpenChange={() => toggleFeature(featureName)}>
-                                            <CollapsibleTrigger asChild>
-                                                <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
-                                                    <h3 className='font-semibold'>Feature: {featureName}</h3>
-                                                    {openFeatures.has(featureName) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4" />}
-                                                </div>
-                                            </CollapsibleTrigger>
-                                            <CollapsibleContent className="pl-4 pt-2 space-y-2">
-                                                {scenarios.map((scenario, sIndex) => (
-                                                    <Collapsible key={`${scenario.name}-${sIndex}`} open={openScenarios.has(scenario.name)} onOpenChange={() => toggleScenario(scenario.name)}>
-                                                        <Card className='overflow-hidden'>
-                                                            <CollapsibleTrigger asChild>
-                                                                <CardHeader className='p-3 bg-muted/50 flex flex-row items-center justify-between cursor-pointer'>
-                                                                    <CardTitle className='text-sm flex items-center gap-2'>
-                                                                        {getScenarioStatus(scenario) === 'passed' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                                                                        Scenario: {scenario.name}
-                                                                    </CardTitle>
-                                                                    <ChevronDown className={cn("h-4 w-4 transition-transform", !openScenarios.has(scenario.name) && "-rotate-90")} />
-                                                                </CardHeader>
-                                                            </CollapsibleTrigger>
-                                                            <CollapsibleContent>
-                                                                <CardContent className='p-0'>
-                                                                    <Table>
-                                                                        <TableHeader>
-                                                                            <TableRow>
-                                                                                <TableHead>Step</TableHead>
-                                                                                <TableHead>Status</TableHead>
-                                                                                <TableHead>Duration</TableHead>
-                                                                            </TableRow>
-                                                                        </TableHeader>
-                                                                        <TableBody>
-                                                                            {scenario.steps.map((step, stIndex) => {
-                                                                                const screenshots = [...(step.embeddings || []), ...(step.result?.embeddings || [])].filter(e => e.mime_type?.startsWith('image/'));
-                                                                                const hasScreenshots = screenshots.length > 0;
+                                    {isLoadingDetails ? (
+                                        <div className="flex flex-col items-center justify-center p-8 gap-2">
+                                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                            <p className="text-sm text-muted-foreground">Loading full report logs and screenshots...</p>
+                                        </div>
+                                    ) : scenariosByFeature.length > 0 ? (
+                                        <div className='max-h-96 overflow-y-auto'>
+                                        {scenariosByFeature.map(([featureName, scenarios], fIndex) => (
+                                            <Collapsible key={`${featureName}-${fIndex}`} open={openFeatures.has(featureName)} onOpenChange={() => toggleFeature(featureName)}>
+                                                <CollapsibleTrigger asChild>
+                                                    <div className='flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer'>
+                                                        <h3 className='font-semibold'>Feature: {featureName}</h3>
+                                                        {openFeatures.has(featureName) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4" />}
+                                                    </div>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent className="pl-4 pt-2 space-y-2">
+                                                    {scenarios.map((scenario, sIndex) => (
+                                                        <Collapsible key={`${scenario.name}-${sIndex}`} open={openScenarios.has(scenario.name)} onOpenChange={() => toggleScenario(scenario.name)}>
+                                                            <Card className='overflow-hidden'>
+                                                                <CollapsibleTrigger asChild>
+                                                                    <CardHeader className='p-3 bg-muted/50 flex flex-row items-center justify-between cursor-pointer'>
+                                                                        <CardTitle className='text-sm flex items-center gap-2'>
+                                                                            {getScenarioStatus(scenario) === 'passed' ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                                                            Scenario: {scenario.name}
+                                                                        </CardTitle>
+                                                                        <ChevronDown className={cn("h-4 w-4 transition-transform", !openScenarios.has(scenario.name) && "-rotate-90")} />
+                                                                    </CardHeader>
+                                                                </CollapsibleTrigger>
+                                                                <CollapsibleContent>
+                                                                    <CardContent className='p-0'>
+                                                                        <Table>
+                                                                            <TableHeader>
+                                                                                <TableRow>
+                                                                                    <TableHead>Step</TableHead>
+                                                                                    <TableHead>Status</TableHead>
+                                                                                    <TableHead>Duration</TableHead>
+                                                                                </TableRow>
+                                                                            </TableHeader>
+                                                                            <TableBody>
+                                                                                {scenario.steps.map((step, stIndex) => {
+                                                                                    const screenshots = [...(step.embeddings || []), ...(step.result?.embeddings || [])].filter(e => e.mime_type?.startsWith('image/'));
+                                                                                    const hasScreenshots = screenshots.length > 0;
 
-                                                                                return (
-                                                                                    <TableRow key={stIndex}>
-                                                                                        <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
-                                                                                        <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>
-                                                                                            <div className="flex flex-col gap-1">
-                                                                                                <span>{step.result.status}</span>
-                                                                                                <div className="flex gap-2">
-                                                                                                    {step.result.error_message && (
-                                                                                                        <Dialog>
-                                                                                                            <DialogTrigger asChild>
-                                                                                                                <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-destructive underline justify-start flex gap-1">
-                                                                                                                    <Terminal className="h-2.5 w-2.5" />
-                                                                                                                    View Logs
-                                                                                                                </Button>
-                                                                                                            </DialogTrigger>
-                                                                                                            <DialogContent className="max-w-3xl">
-                                                                                                                <DialogHeader>
-                                                                                                                    <DialogTitle>Failure Logs</DialogTitle>
-                                                                                                                    <DialogDescription>
-                                                                                                                        Step: {step.keyword}{step.name}
-                                                                                                                    </DialogDescription>
-                                                                                                                </DialogHeader>
-                                                                                                                <ScrollArea className="max-h-[60vh] rounded-md border bg-muted p-4">
-                                                                                                                    <pre className="text-xs whitespace-pre-wrap font-mono text-foreground/90 leading-relaxed">
-                                                                                                                        {step.result.error_message}
-                                                                                                                    </pre>
-                                                                                                                </ScrollArea>
-                                                                                                            </DialogContent>
-                                                                                                        </Dialog>
-                                                                                                    )}
-                                                                                                    {hasScreenshots && (
-                                                                                                        <Dialog>
-                                                                                                            <DialogTrigger asChild>
-                                                                                                                <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-blue-600 underline justify-start flex gap-1">
-                                                                                                                    <Camera className="h-2.5 w-2.5" />
-                                                                                                                    View Screenshot
-                                                                                                                </Button>
-                                                                                                            </DialogTrigger>
-                                                                                                            <DialogContent className="max-w-5xl">
-                                                                                                                <DialogHeader>
-                                                                                                                    <DialogTitle>Step Screenshot</DialogTitle>
-                                                                                                                    <DialogDescription>
-                                                                                                                        Step: {step.keyword}{step.name}
-                                                                                                                    </DialogDescription>
-                                                                                                                </DialogHeader>
-                                                                                                                <ScrollArea className="max-h-[80vh] flex flex-col items-center justify-center bg-muted p-2 rounded-md border">
-                                                                                                                    {screenshots.map((e, idx) => (
-                                                                                                                            <img 
-                                                                                                                                key={idx} 
-                                                                                                                                src={`data:${e.mime_type};base64,${e.data}`} 
-                                                                                                                                alt={`Screenshot ${idx}`} 
-                                                                                                                                className="max-w-full h-auto shadow-md rounded-sm mb-4 last:mb-0"
-                                                                                                                            />
-                                                                                                                        ))
-                                                                                                                    }
-                                                                                                                </ScrollArea>
-                                                                                                            </DialogContent>
-                                                                                                        </Dialog>
-                                                                                                    )}
+                                                                                    return (
+                                                                                        <TableRow key={stIndex}>
+                                                                                            <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
+                                                                                            <TableCell className={cn('text-xs', step.result.status === 'passed' ? 'text-green-600' : 'text-red-600')}>
+                                                                                                <div className="flex flex-col gap-1">
+                                                                                                    <span>{step.result.status}</span>
+                                                                                                    <div className="flex gap-2">
+                                                                                                        {step.result.error_message && (
+                                                                                                            <Dialog>
+                                                                                                                <DialogTrigger asChild>
+                                                                                                                    <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-destructive underline justify-start flex gap-1">
+                                                                                                                        <Terminal className="h-2.5 w-2.5" />
+                                                                                                                        View Logs
+                                                                                                                    </Button>
+                                                                                                                </DialogTrigger>
+                                                                                                                <DialogContent className="max-w-3xl">
+                                                                                                                    <DialogHeader>
+                                                                                                                        <DialogTitle>Failure Logs</DialogTitle>
+                                                                                                                        <DialogDescription>
+                                                                                                                            Step: {step.keyword}{step.name}
+                                                                                                                        </DialogDescription>
+                                                                                                                    </DialogHeader>
+                                                                                                                    <ScrollArea className="max-h-[60vh] rounded-md border bg-muted p-4">
+                                                                                                                        <pre className="text-xs whitespace-pre-wrap font-mono text-foreground/90 leading-relaxed">
+                                                                                                                            {step.result.error_message}
+                                                                                                                        </pre>
+                                                                                                                    </ScrollArea>
+                                                                                                                </DialogContent>
+                                                                                                            </Dialog>
+                                                                                                        )}
+                                                                                                        {hasScreenshots && (
+                                                                                                            <Dialog>
+                                                                                                                <DialogTrigger asChild>
+                                                                                                                    <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-blue-600 underline justify-start flex gap-1">
+                                                                                                                        <Camera className="h-2.5 w-2.5" />
+                                                                                                                        View Screenshot
+                                                                                                                    </Button>
+                                                                                                                </DialogTrigger>
+                                                                                                                <DialogContent className="max-w-5xl">
+                                                                                                                    <DialogHeader>
+                                                                                                                        <DialogTitle>Step Screenshot</DialogTitle>
+                                                                                                                        <DialogDescription>
+                                                                                                                            Step: {step.keyword}{step.name}
+                                                                                                                        </DialogDescription>
+                                                                                                                    </DialogHeader>
+                                                                                                                    <ScrollArea className="max-h-[80vh] flex flex-col items-center justify-center bg-muted p-2 rounded-md border">
+                                                                                                                        {screenshots.map((e, idx) => (
+                                                                                                                                <img 
+                                                                                                                                    key={idx} 
+                                                                                                                                    src={`data:${e.mime_type};base64,${e.data}`} 
+                                                                                                                                    alt={`Screenshot ${idx}`} 
+                                                                                                                                    className="max-w-full h-auto shadow-md rounded-sm mb-4 last:mb-0"
+                                                                                                                                />
+                                                                                                                            ))
+                                                                                                                        }
+                                                                                                                    </ScrollArea>
+                                                                                                                </DialogContent>
+                                                                                                            </Dialog>
+                                                                                                        )}
+                                                                                                    </div>
                                                                                                 </div>
-                                                                                            </div>
-                                                                                        </TableCell>
-                                                                                        <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
-                                                                                    </TableRow>
-                                                                                )
-                                                                            })}
-                                                                        </TableBody>
-                                                                    </Table>
-                                                                </CardContent>
-                                                            </CollapsibleContent>
-                                                        </Card>
-                                                    </Collapsible>
-                                                ))}
-                                            </CollapsibleContent>
-                                        </Collapsible>
-                                    ))}
-                                    </div>
+                                                                                            </TableCell>
+                                                                                            <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
+                                                                                        </TableRow>
+                                                                                    )
+                                                                                })}
+                                                                            </TableBody>
+                                                                        </Table>
+                                                                    </CardContent>
+                                                                </CollapsibleContent>
+                                                            </Card>
+                                                        </Collapsible>
+                                                    ))}
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        ))}
+                                        </div>
+                                    ) : (
+                                        <div className="p-8 text-center text-sm text-muted-foreground border rounded-md bg-muted/20">
+                                            {reportSummary.id.startsWith('consolidated') 
+                                                ? "Scenario logs and steps are not available for consolidated domain views. Please view individual reports for details."
+                                                : "No detailed step data found for this report execution."}
+                                        </div>
+                                    )}
                                 </CardContent>
                             </CollapsibleContent>
                         </Card>
@@ -751,9 +783,6 @@ export function SeleniumDashboardPage() {
             const rangeObj: any = {};
             if (range.from) rangeObj.from = range.from.toISOString();
             if (range.to) rangeObj.to = range.to.toISOString();
-            
-            // Firebase doesn't support 'undefined' field values. 
-            // We ensure both properties are set correctly or omitted if they don't exist.
             updatedRaw[domain] = rangeObj;
         } else {
             delete updatedRaw[domain];
@@ -828,7 +857,14 @@ export function SeleniumDashboardPage() {
         }
 
         try {
-            const uploadedJson = JSON.parse(fileContent);
+            // CRITICAL FIX: Sanitize illegal control characters before parsing JSON.
+            // This prevents "Bad control character in string literal" errors from messy logs.
+            const sanitizedContent = fileContent.replace(/[\x00-\x1F\x7F-\x9F]/g, (match) => {
+                // Keep only printable characters and standard whitespace (newline, carriage return, tab)
+                return (match === '\n' || match === '\r' || match === '\t') ? match : '';
+            });
+
+            const uploadedJson = JSON.parse(sanitizedContent);
 
             if (!uploadedJson || !Array.isArray(uploadedJson) || uploadedJson.length === 0) {
                  throw new Error("JSON file must be a non-empty array of test results.");
@@ -889,49 +925,40 @@ export function SeleniumDashboardPage() {
 
     /**
      * Consolidates a list of reports into a single ReportSummary.
-     * Logic:
-     * - For each unique scenario (grouped by jobName + scenarioName):
-     * - If it passed in any execution, mark as Passed (and use data from the latest successful execution).
-     * - If it failed in ALL executions, mark as Failed (and use data from the latest run).
+     * Updated to handle summaries without rawReport.
      */
     const consolidateReports = useCallback((reportsToConsolidate: ReportSummary[], id: string, title: string, jobDesc: string) => {
         if (reportsToConsolidate.length === 0) return null;
 
-        // Sort by execution date ascending (oldest to newest) to process history in order
         const sorted = [...reportsToConsolidate].sort((a, b) => {
             const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
             const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
             return dateA - dateB;
         });
 
-        const scenarioRegistry = new Map<string, { summary: DetailedScenario, raw: { feature: Feature, scenario: Scenario } }>();
+        const scenarioRegistry = new Map<string, { summary: DetailedScenario, raw?: { feature: Feature, scenario: Scenario } }>();
         let totalExecutionTime = 0;
 
         sorted.forEach(report => {
             totalExecutionTime += report.totalExecutionTime;
             
-            // Map raw report results for easy lookup
             const rawScenarioMap = new Map<string, { feature: Feature, scenario: Scenario }>();
-            report.rawReport.test_results?.forEach(feature => {
-                feature.elements?.forEach(scenario => {
-                    rawScenarioMap.set(scenario.name, { feature, scenario });
+            if (report.rawReport?.test_results) {
+                report.rawReport.test_results.forEach(feature => {
+                    feature.elements?.forEach(scenario => {
+                        rawScenarioMap.set(scenario.name, { feature, scenario });
+                    });
                 });
-            });
+            }
 
             report.scenarios.forEach(sc => {
                 const key = `${report.jobName}|${sc.name}`;
                 const existing = scenarioRegistry.get(key);
                 const rawData = rawScenarioMap.get(sc.name);
 
-                if (!rawData) return;
-
                 if (!existing) {
                     scenarioRegistry.set(key, { summary: sc, raw: rawData });
                 } else {
-                    // Logic: 
-                    // 1. If current scenario passed, it becomes the definitive result (even if a later one fails)
-                    // 2. If existing was already passed and current passes too, update to current (latest pass)
-                    // 3. If current failed and existing was failed, update to current (latest fail)
                     if (sc.status === 'passed') {
                         scenarioRegistry.set(key, { summary: sc, raw: rawData });
                     } else if (sc.status === 'failed' && existing.summary.status === 'failed') {
@@ -948,12 +975,14 @@ export function SeleniumDashboardPage() {
 
         const consolidatedFeatures: Feature[] = [];
         consolidatedScenarios.forEach(({ raw }) => {
-            let existingFeature = consolidatedFeatures.find(f => f.name === raw.feature.name);
-            if (!existingFeature) {
-                existingFeature = { ...raw.feature, elements: [] };
-                consolidatedFeatures.push(existingFeature);
+            if (raw) {
+                let existingFeature = consolidatedFeatures.find(f => f.name === raw.feature.name);
+                if (!existingFeature) {
+                    existingFeature = { ...raw.feature, elements: [] };
+                    consolidatedFeatures.push(existingFeature);
+                }
+                existingFeature.elements.push(raw.scenario);
             }
-            existingFeature.elements.push(raw.scenario);
         });
 
         return {
@@ -995,7 +1024,6 @@ export function SeleniumDashboardPage() {
         return domains.map(domain => {
             let domainReports = processedReports.filter(r => r.domain === domain);
             
-            // Apply date filter if set for this domain
             const range = domainDateRanges[domain];
             if (range?.from) {
                 domainReports = domainReports.filter(r => {
@@ -1156,7 +1184,7 @@ export function SeleniumDashboardPage() {
                                             <DialogTrigger asChild>
                                                 <Button variant="outline" size="sm" className="w-full text-xs h-8">View Details</Button>
                                             </DialogTrigger>
-                                            <DetailModal report={report} jiraLink={jiraLink} allProcessedReports={processedReports} />
+                                            <DetailModal reportSummary={report} jiraLink={jiraLink} allProcessedReports={processedReports} />
                                         </Dialog>
                                     </CardFooter>
                                 </Card>
@@ -1177,7 +1205,7 @@ export function SeleniumDashboardPage() {
                                         View Consolidated Report ({selectedReportIds.length})
                                     </Button>
                                 </DialogTrigger>
-                                <DetailModal report={consolidatedReport} jiraLink={jiraLink} allProcessedReports={processedReports} />
+                                <DetailModal reportSummary={consolidatedReport} jiraLink={jiraLink} allProcessedReports={processedReports} />
                             </Dialog>
                         )}
                     </div>
@@ -1249,7 +1277,7 @@ export function SeleniumDashboardPage() {
                                                     <DialogTrigger asChild>
                                                         <Button variant='link' size="sm">View Details</Button>
                                                     </DialogTrigger>
-                                                    <DetailModal report={summary} jiraLink={jiraLink} allProcessedReports={processedReports} />
+                                                    <DetailModal reportSummary={summary} jiraLink={jiraLink} allProcessedReports={processedReports} />
                                                 </Dialog>
                                             </TableCell>
                                         </TableRow>
