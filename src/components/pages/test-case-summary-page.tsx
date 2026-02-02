@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -405,7 +404,7 @@ export function TestCaseSummaryPage() {
                         <h3 className="text-lg font-medium text-muted-foreground">Reusability Count</h3>
                         <Dialog>
                             <DialogTrigger asChild>
-                                <button className="text-4xl font-bold text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:no-underline disabled:opacity-50" disabled={reusabilityData.count === 0}>
+                                <button className="text-4xl font-bold text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50" disabled={reusabilityData.count === 0}>
                                     {reusabilityData.count}
                                 </button>
                             </DialogTrigger>
@@ -421,7 +420,7 @@ export function TestCaseSummaryPage() {
                                         {(reusabilityData.testCases as TestCaseData[]).map((tc, idx) => {
                                             const id = tc['Issue key'] || `item-${idx}`;
                                             return (
-                                                <Badge key={id} variant="secondary">
+                                                <Badge key={`${id}-${idx}`} variant="secondary">
                                                     {jiraLink && id !== 'N/A' && !id.startsWith('item-') ? (
                                                         <a
                                                             href={`${jiraLink}/browse/${id}`}

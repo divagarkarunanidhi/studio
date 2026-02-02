@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -348,7 +347,7 @@ export function TestCaseDistributionChart({
                         {item.testCases && item.testCases.map((tc, idx) => {
                             const id = tc['Issue key'] || `item-${idx}`;
                             return (
-                                <Badge key={id} variant="secondary">
+                                <Badge key={`${id}-${idx}`} variant="secondary">
                                     {jiraLink && id !== 'N/A' && !id.startsWith('item-') ? (
                                         <a
                                             href={`${jiraLink}/browse/${id}`}
