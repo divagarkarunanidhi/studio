@@ -58,9 +58,11 @@ const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseD
                     });
 
                     scenario.steps.forEach((step: any) => {
-                        const duration = step.result?.duration?.$numberLong;
-                        if (duration) {
-                            totalExecutionTime += Number(duration);
+                        const durationVal = step.result?.duration;
+                        if (typeof durationVal === 'number') {
+                            totalExecutionTime += durationVal;
+                        } else if (durationVal && typeof durationVal === 'object' && '$numberLong' in durationVal) {
+                            totalExecutionTime += Number(durationVal.$numberLong);
                         }
                     });
                 });

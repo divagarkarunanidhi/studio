@@ -136,11 +136,22 @@ const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
 };
 
 const formatNanosToTime = (nanos: number) => {
-    if (nanos === 0) return "0s";
-    const seconds = nanos / 1e9;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.round(seconds % 60);
-    return `${minutes}m ${remainingSeconds}s`;
+    if (nanos <= 0) return "0s";
+    const totalSeconds = nanos / 1e9;
+    
+    if (totalSeconds < 1) {
+        return `${totalSeconds.toFixed(3)}s`;
+    }
+    
+    if (totalSeconds < 60) {
+        return `${totalSeconds.toFixed(1)}s`;
+    }
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    
+    if (minutes === 0) return `${seconds}s`;
+    return `${minutes}m ${seconds}s`;
 };
 
 const handleExport = (scenariosToExport: DetailedScenario[], sliceName: string) => {
