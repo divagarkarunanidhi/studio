@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers, Terminal, Camera } from 'lucide-react';
+import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers, Terminal, Camera, Settings } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -40,6 +40,8 @@ import {
   TooltipProvider as UITooltipProvider,
   TooltipTrigger as UITooltipTrigger,
 } from "@/components/ui/tooltip";
+import { DateRangePicker } from '../ui/date-range-picker';
+import type { DateRange } from 'react-day-picker';
 
 
 type TestCase = {
@@ -719,6 +721,7 @@ export function SeleniumDashboardPage() {
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
     const [jiraLink, setJiraLink] = useState<string>("");
     const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
+    const [domainDateRanges, setDomainDateRanges] = useState<Record<string, DateRange | undefined>>({});
 
     useEffect(() => {
         const fetchConfig = async () => {
@@ -959,10 +962,31 @@ export function SeleniumDashboardPage() {
         const domains = Array.from(new Set(processedReports.map(r => r.domain)));
         
         return domains.map(domain => {
-            const domainReports = processedReports.filter(r => r.domain === domain);
+            let domainReports = processedReports.filter(r => r.domain === domain);
+            
+            // Apply date filter if set for this domain
+            const range = domainDateRanges[domain];
+            if (range?.from) {
+                domainReports = domainReports.filter(r => {
+                    if (!r.uploadedAt) return false;
+                    const reportDate = new Date(r.uploadedAt);
+                    const fromDate = new Date(range.from!);
+                    fromDate.setHours(0, 0, 0, 0);
+                    
+                    if (range.to) {
+                        const toDate = new Date(range.to);
+                        toDate.setHours(23, 59, 59, 999);
+                        return reportDate >= fromDate && reportDate <= toDate;
+                    }
+                    return reportDate >= fromDate;
+                });
+            }
+
+            if (domainReports.length === 0) return null;
+
             return consolidateReports(domainReports, `consolidated-domain-${domain}`, domain, `Domain Consolidated Report`);
         }).filter((r): r is ReportSummary => r !== null);
-    }, [processedReports, consolidateReports]);
+    }, [processedReports, consolidateReports, domainDateRanges]);
     
     const handlePageChange = (newPage: number) => {
         setCurrentPage(newPage);
@@ -1028,14 +1052,47 @@ export function SeleniumDashboardPage() {
 
             {domainConsolidatedReports.length > 0 && (
                 <Card className='bg-muted/30'>
-                    <CardHeader>
-                        <div className='flex items-center gap-2'>
-                            <Layers className='h-5 w-5 text-primary' />
-                            <CardTitle>Domain-wise Consolidated Reports</CardTitle>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                        <div className="space-y-1.5">
+                            <div className='flex items-center gap-2'>
+                                <Layers className='h-5 w-5 text-primary' />
+                                <CardTitle>Domain-wise Consolidated Reports</CardTitle>
+                            </div>
+                            <CardDescription>
+                                Aggregated results per domain. Logic: Latest "Passed" status is prioritized for each scenario.
+                            </CardDescription>
                         </div>
-                        <CardDescription>
-                            Aggregated results per domain. Logic: Latest "Passed" status is prioritized for each scenario.
-                        </CardDescription>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" title="Configure Domain Date Ranges">
+                                    <Settings className="h-5 w-5" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>Configure Domain Date Ranges</DialogTitle>
+                                    <DialogDescription>
+                                        Set specific date ranges for each domain to consolidate reports within those periods.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <ScrollArea className="max-h-[60vh] pr-4">
+                                    <div className="space-y-6 py-4">
+                                        {Array.from(new Set(processedReports.map(r => r.domain))).sort().map(domain => (
+                                            <div key={domain} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 last:border-0">
+                                                <div className="font-medium text-sm min-w-[120px]">{domain}</div>
+                                                <DateRangePicker 
+                                                    date={domainDateRanges[domain]} 
+                                                    onDateChange={(range) => setDomainDateRanges(prev => ({ ...prev, [domain]: range }))} 
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setDomainDateRanges({})}>Reset All Ranges</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1080,20 +1137,20 @@ export function SeleniumDashboardPage() {
 
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <div>
+                    <div className="flex items-center gap-4">
                         <CardTitle>Individual Reports</CardTitle>
-                        <CardDescription>View detailed results for each individual test execution.</CardDescription>
+                        {selectedReportIds.length > 0 && consolidatedReport && (
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button size="sm">
+                                        View Consolidated Report ({selectedReportIds.length})
+                                    </Button>
+                                </DialogTrigger>
+                                <DetailModal report={consolidatedReport} jiraLink={jiraLink} allProcessedReports={processedReports} />
+                            </Dialog>
+                        )}
                     </div>
-                    {selectedReportIds.length > 0 && consolidatedReport && (
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button size="sm">
-                                    View Consolidated Report ({selectedReportIds.length})
-                                </Button>
-                            </DialogTrigger>
-                            <DetailModal report={consolidatedReport} jiraLink={jiraLink} allProcessedReports={processedReports} />
-                        </Dialog>
-                    )}
+                    <CardDescription>View detailed results for each individual test execution.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
                     <div className="w-full overflow-hidden rounded-md border">
