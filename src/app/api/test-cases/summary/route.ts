@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
-import { Collection } from "mongodb";
+import { Collection, ObjectId } from "mongodb";
 
-// Helper to get unique labels from the collection using an aggregation pipeline
-const getUniqueLabels = async (collection: Collection, labelColumns: string[]): Promise<string[]> => {
+// Helper to get unique labels from the collection for a specific file, filtering for Issue Type = Test
+const getUniqueLabels = async (collection: Collection, fileId: ObjectId, labelColumns: string[]): Promise<string[]> => {
     if (labelColumns.length === 0) return [];
     
-    // This pipeline correctly unnests all labels from all label columns,
-    // trims them, and returns a unique, sorted list.
     const pipeline: any[] = [
-        // Deconstruct the testCases array field from the input documents to output a document for each element.
+        { $match: { _id: fileId } },
         { $unwind: "$testCases" },
-        // Project a new field that concatenates all label columns into a single string
+        { $match: { "testCases.Issue Type": "Test" } },
         {
             $project: {
                 _id: 0,
@@ -20,43 +18,36 @@ const getUniqueLabels = async (collection: Collection, labelColumns: string[]): 
                 }
             }
         },
-        // Split the concatenated string into an array of labels
         {
             $project: {
                 labels: { $split: ["$allLabelsString", ","] }
             }
         },
-        // Unwind the new labels array
         { $unwind: "$labels" },
-        // Trim whitespace from each label
         {
             $project: {
                 trimmedLabel: { $trim: { input: "$labels" } }
             }
         },
-        // Group by the trimmed label to get unique values
         { $group: { _id: "$trimmedLabel" } },
-        // Filter out any null or empty string results
         { $match: { _id: { $ne: null, $ne: "" } } },
-        // Sort the unique labels alphabetically
         { $sort: { _id: 1 } },
-        // Final projection to get just the name
         { $project: { name: "$_id", _id: 0 } }
     ];
     
     const result = await collection.aggregate(pipeline).toArray();
-
     return result.map(item => item.name);
 };
 
 
-// Helper for distribution calculation using aggregation
-const getDistribution = async (collection: Collection, labels: string[], labelColumns: string[]) => {
+// Helper for distribution calculation, filtering for Issue Type = Test
+const getDistribution = async (collection: Collection, fileId: ObjectId, labels: string[], labelColumns: string[]) => {
     if (!labels || labels.length === 0) return [];
 
     const pipeline: any[] = [
+        { $match: { _id: fileId } },
         { $unwind: "$testCases" },
-        // Add a field that is a concatenated string of all label values for easy searching
+        { $match: { "testCases.Issue Type": "Test" } },
         {
             $addFields: {
                 "searchableLabels": {
@@ -67,7 +58,6 @@ const getDistribution = async (collection: Collection, labels: string[], labelCo
     ];
 
     const matchQueries = labels.map(label => {
-        // Escape special characters for regex and trim input
         const escapedLabel = label.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         return {
             "searchableLabels": { $regex: `\\b${escapedLabel}\\b`, $options: "i" }
@@ -77,20 +67,20 @@ const getDistribution = async (collection: Collection, labels: string[], labelCo
     pipeline.push({ $match: { $and: matchQueries } });
     
     const result = await collection.aggregate(pipeline).toArray();
-    
     return result.map(doc => doc.testCases);
 };
 
 
-// Helper for reusability calculation using aggregation
-const getReusability = async (collection: Collection, reusedInLabel: string, reusedFromLabels: string[], labelColumns: string[]) => {
+// Helper for reusability calculation, filtering for Issue Type = Test
+const getReusability = async (collection: Collection, fileId: ObjectId, reusedInLabel: string, reusedFromLabels: string[], labelColumns: string[]) => {
     if (!reusedInLabel || !reusedFromLabels || reusedFromLabels.length === 0) {
         return { count: 0, testCases: [] };
     }
 
     const pipeline: any[] = [
+        { $match: { _id: fileId } },
         { $unwind: "$testCases" },
-         // Add a field that is a concatenated string of all label values for easy searching
+        { $match: { "testCases.Issue Type": "Test" } },
         {
             $addFields: {
                 "searchableLabels": {
@@ -132,7 +122,7 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { selectedFilterLabels, reusedFromLabels, reusedInLabel } = body;
 
-        // Fetch the latest test case document to get headers and total count
+        // Fetch the latest test case document
         const latestFile = await collection.find({}).sort({ _id: -1 }).limit(1).toArray();
 
         if (latestFile.length === 0 || !latestFile[0].testCases) {
@@ -145,25 +135,29 @@ export async function POST(request: Request) {
             });
         }
         
-        const testCases = latestFile[0].testCases;
-        const allHeaders = Object.keys(testCases[0] || {});
+        const fileId = latestFile[0]._id;
+        const allTestCases = latestFile[0].testCases;
+        
+        // Filter test cases to only include those with Issue Type = "Test" for counts and headers
+        const testCases = allTestCases.filter((tc: any) => tc['Issue Type'] === 'Test');
+        
+        const allHeaders = Object.keys(allTestCases[0] || {});
         const labelColumns = allHeaders.filter(h => h.toLowerCase().startsWith('label')).sort();
 
-        // Perform primary calculations in parallel
+        // Perform primary calculations in parallel, passing the fileId and Issue Type filter
         const [
             uniqueLabels,
-            intersectionTestCases, // Intersection: test cases matching ALL selected labels
+            intersectionTestCases,
             reusabilityData
         ] = await Promise.all([
-            getUniqueLabels(collection, labelColumns),
-            selectedFilterLabels && selectedFilterLabels.length > 0 ? getDistribution(collection, selectedFilterLabels, labelColumns) : Promise.resolve([]),
-            getReusability(collection, reusedInLabel, reusedFromLabels, labelColumns)
+            getUniqueLabels(collection, fileId, labelColumns),
+            selectedFilterLabels && selectedFilterLabels.length > 0 ? getDistribution(collection, fileId, selectedFilterLabels, labelColumns) : Promise.resolve([]),
+            getReusability(collection, fileId, reusedInLabel, reusedFromLabels, labelColumns)
         ]);
 
         const distributionMap: { name: string; count: number, testCases: any[] }[] = [];
         
         if (selectedFilterLabels && selectedFilterLabels.length > 0) {
-            // 1. Add the intersection slice ("Matching all")
             if (intersectionTestCases.length > 0) {
                 distributionMap.push({ 
                     name: `Matching all (${selectedFilterLabels.join(' & ')})`, 
@@ -172,9 +166,8 @@ export async function POST(request: Request) {
                 });
             }
 
-            // 2. Add individual slices for each selected label to show their total counts
             const individualSlices = await Promise.all(selectedFilterLabels.map(async (label) => {
-                const results = await getDistribution(collection, [label], labelColumns);
+                const results = await getDistribution(collection, fileId, [label], labelColumns);
                 return {
                     name: `Total for '${label}'`,
                     count: results.length,
