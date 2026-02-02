@@ -1003,17 +1003,7 @@ export function SeleniumDashboardPage() {
     return (
         <div className="space-y-6">
              <div className='flex justify-between items-center'>
-                <div className='flex items-center gap-4'>
-                    <h2 className="text-2xl font-bold">Selenium Dashboard</h2>
-                    {selectedReportIds.length > 0 && consolidatedReport && (
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button>View Consolidated Report ({selectedReportIds.length})</Button>
-                            </DialogTrigger>
-                            <DetailModal report={consolidatedReport} jiraLink={jiraLink} allProcessedReports={processedReports} />
-                        </Dialog>
-                    )}
-                </div>
+                <h2 className="text-2xl font-bold">Selenium Dashboard</h2>
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="outline">
@@ -1089,9 +1079,21 @@ export function SeleniumDashboardPage() {
             )}
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Individual Reports</CardTitle>
-                    <CardDescription>View detailed results for each individual test execution.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                    <div>
+                        <CardTitle>Individual Reports</CardTitle>
+                        <CardDescription>View detailed results for each individual test execution.</CardDescription>
+                    </div>
+                    {selectedReportIds.length > 0 && consolidatedReport && (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button size="sm">
+                                    View Consolidated Report ({selectedReportIds.length})
+                                </Button>
+                            </DialogTrigger>
+                            <DetailModal report={consolidatedReport} jiraLink={jiraLink} allProcessedReports={processedReports} />
+                        </Dialog>
+                    )}
                 </CardHeader>
                 <CardContent className="pt-0">
                     <div className="w-full overflow-hidden rounded-md border">
