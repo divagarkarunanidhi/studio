@@ -161,8 +161,8 @@ const handleExport = (scenariosToExport: DetailedScenario[], sliceName: string) 
 
 const SmallStatusChart = ({ passed, failed }: { passed: number; failed: number }) => {
     const data = [
-        { name: 'Passed', value: passed, fill: 'hsl(var(--chart-1))' },
-        { name: 'Failed', value: failed, fill: 'hsl(var(--chart-2))' },
+        { name: 'Passed', value: passed, fill: '#22c55e' }, // Green
+        { name: 'Failed', value: failed, fill: '#ef4444' }, // Red
     ].filter(d => d.value > 0);
 
     if (data.length === 0) return <div className="h-8 w-8 bg-muted rounded-full" />;
@@ -171,6 +171,18 @@ const SmallStatusChart = ({ passed, failed }: { passed: number; failed: number }
         <div className="h-8 w-8 flex items-center justify-center">
             <ChartContainer config={{}} className="h-full w-full">
                 <PieChart width={32} height={32}>
+                    <Tooltip
+                        content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                                return (
+                                    <div className="bg-background border rounded p-1 text-[10px] shadow-sm z-50">
+                                        {payload[0].name}: {payload[0].value}
+                                    </div>
+                                );
+                            }
+                            return null;
+                        }}
+                    />
                     <Pie
                         data={data}
                         cx="50%"
