@@ -103,9 +103,8 @@ export function TestCaseSummaryPage() {
         setTotalTestCases(data.totalTestCases);
         setHeaders(data.headers);
         setAllUniqueLabels(data.uniqueLabels);
-        setStatus('ready');
-
-        return data; // Return data for chaining
+        
+        return data; 
     } catch (error: any) {
         toast({
             variant: 'destructive',
@@ -116,22 +115,42 @@ export function TestCaseSummaryPage() {
     }
   }, [toast]);
 
-  // Effect for initial data load
+  // Effect for initial data load - refactored to ensure data is present before 'ready'
   useEffect(() => {
-    setStatus('loading');
-    fetchSummaryData({}).then(data => {
-        if (data && data.uniqueLabels && data.uniqueLabels.length > 0) {
-            const uniqueLabels = data.uniqueLabels as string[];
-            const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
-            setSelectedFilterLabels(availableDefaultLabels);
-
-            const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
-            setReusedFromLabels(availableDefaultFrom);
+    const initializePage = async () => {
+        setStatus('loading');
+        // First, fetch the foundational data (unique labels, headers, etc)
+        const initialData = await fetchSummaryData({});
+        
+        if (initialData && initialData.uniqueLabels && initialData.uniqueLabels.length > 0) {
+            const uniqueLabels = initialData.uniqueLabels as string[];
             
+            // Determine default filters based on available labels
+            const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
+            const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
             const availableDefaultIn = DEFAULT_REUSED_IN_LABELS.filter(label => uniqueLabels.includes(label));
+
+            // Setting these states synchronously
+            setSelectedFilterLabels(availableDefaultLabels);
+            setReusedFromLabels(availableDefaultFrom);
             setReusedInLabels(availableDefaultIn);
+
+            // Fetch the actual initial distribution for these defaults
+            const distributionFilters = {
+                selectedFilterLabels: availableDefaultLabels,
+                reusedFromLabels: availableDefaultFrom,
+                reusedInLabels: availableDefaultIn,
+            };
+            await fetchSummaryData(distributionFilters);
         }
-    });
+        
+        // Final transition to ready state
+        if (status !== 'upload' && status !== 'error') {
+            setStatus('ready');
+        }
+    };
+
+    initializePage();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -144,7 +163,7 @@ export function TestCaseSummaryPage() {
         reusedFromLabels,
         reusedInLabels,
     };
-    fetchSummaryData(filters);
+    fetchSummaryData(filters).then(() => setStatus('ready'));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFilterLabels, reusedFromLabels, reusedInLabels]);
 
@@ -174,14 +193,14 @@ export function TestCaseSummaryPage() {
         toast({ title: 'Success!', description: `${result.count} test case records uploaded from CSV.` });
         
         // After upload, re-run the initial data load to refresh everything
-        fetchSummaryData({}).then(data => {
-          if (data && data.uniqueLabels && data.uniqueLabels.length > 0) {
-              const uniqueLabels = data.uniqueLabels as string[];
-              setSelectedFilterLabels(DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label)));
-              setReusedFromLabels(DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label)));
-              setReusedInLabels(DEFAULT_REUSED_IN_LABELS.filter(label => uniqueLabels.includes(label)));
-          }
-        });
+        const freshData = await fetchSummaryData({});
+        if (freshData && freshData.uniqueLabels) {
+            const uniqueLabels = freshData.uniqueLabels as string[];
+            setSelectedFilterLabels(DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label)));
+            setReusedFromLabels(DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label)));
+            setReusedInLabels(DEFAULT_REUSED_IN_LABELS.filter(label => uniqueLabels.includes(label)));
+        }
+        setStatus('ready');
 
     } catch (csvError: any) {
         toast({ variant: 'destructive', title: 'Error Processing File', description: csvError.message });

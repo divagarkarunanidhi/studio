@@ -155,8 +155,11 @@ export function TestCaseDistributionChart({
         </Card>
     )
   }
+
+  // Filter out the 'Total Test Cases in File' slice from being rendered in the chart itself
+  const chartSlices = data ? data.filter(d => d.name !== 'Total Test Cases in File') : [];
   
-  if (!data || data.length === 0) {
+  if (!data || data.length === 0 || chartSlices.length === 0) {
     return (
         <Alert>
             <PieChartIcon className="h-4 w-4" />
@@ -168,14 +171,13 @@ export function TestCaseDistributionChart({
     );
   }
 
-  // Filter out the 'Total Test Cases in File' slice from being rendered in the chart itself
-  const chartSlices = data.filter(d => d.name !== 'Total Test Cases in File');
-
   const renderChart = () => {
+    // Adding a unique key based on chartType ensures the chart re-mounts correctly 
+    // when switching visualizations, preventing layout issues.
     switch (chartType) {
         case 'bar':
             return (
-                <ChartContainer config={chartConfig} className="w-11/12 mx-auto aspect-video max-h-[250px]">
+                <ChartContainer key="bar" config={chartConfig} className="w-full mx-auto aspect-video max-h-[250px]">
                     <BarChart accessibilityLayer data={chartSlices} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis
@@ -202,7 +204,7 @@ export function TestCaseDistributionChart({
             );
         case 'line':
             return (
-                <ChartContainer config={chartConfig} className="w-11/12 mx-auto aspect-video max-h-[250px]">
+                <ChartContainer key="line" config={chartConfig} className="w-full mx-auto aspect-video max-h-[250px]">
                     <LineChart accessibilityLayer data={chartSlices} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis
@@ -230,7 +232,7 @@ export function TestCaseDistributionChart({
             );
         case 'area':
             return (
-                <ChartContainer config={chartConfig} className="w-11/12 mx-auto aspect-video max-h-[250px]">
+                <ChartContainer key="area" config={chartConfig} className="w-full mx-auto aspect-video max-h-[250px]">
                     <AreaChart accessibilityLayer data={chartSlices} margin={{ top: 20, right: 20, bottom: 5, left: 20 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis
@@ -256,7 +258,7 @@ export function TestCaseDistributionChart({
             );
         case 'radar':
             return (
-                <ChartContainer config={chartConfig} className="w-full aspect-square max-h-[300px]">
+                <ChartContainer key="radar" config={chartConfig} className="w-full aspect-square max-h-[300px]">
                     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartSlices}>
                         <PolarGrid />
                         <PolarAngleAxis dataKey="name" tick={(props) => {
@@ -274,8 +276,9 @@ export function TestCaseDistributionChart({
         default:
             return (
                 <ChartContainer
+                    key="pie"
                     config={chartConfig}
-                    className="mx-auto aspect-square max-h-[300px]"
+                    className="w-full mx-auto aspect-square max-h-[300px]"
                     >
                     <PieChart>
                         <Tooltip
