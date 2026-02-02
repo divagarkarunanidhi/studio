@@ -11,7 +11,7 @@ import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers, Terminal, Camera, Settings } from 'lucide-react';
+import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers, Terminal, Camera, Settings, Info } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -117,23 +117,8 @@ interface DetailedScenario {
     status: 'passed' | 'failed';
     testCaseId: string | null;
     defectId: string | null;
+    sourceReportId: string | null;
 }
-
-const getStepDuration = (step: Step): number => {
-    if (!step.result || step.result.duration === undefined) {
-      return 0;
-    }
-  
-    if (typeof step.result.duration === 'number') {
-      return step.result.duration;
-    }
-  
-    if (typeof step.result.duration === 'object' && step.result.duration && '$numberLong' in step.result.duration) {
-      return Number(step.result.duration.$numberLong);
-    }
-    
-    return 0;
-};
 
 const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
     return scenario.steps.some(step => step.result.status === 'failed') ? 'failed' : 'passed';
@@ -160,7 +145,7 @@ const formatNanosToTime = (nanos: number) => {
 
 /**
  * Standard consolidation logic used by both the dashboard list and the detail modal.
- * Can handle both ReportSummary (lightweight) and full Report details.
+ * Optimized to preserve source report IDs for smart fetching.
  */
 const performConsolidation = (reportsToConsolidate: any[], id: string, title: string, jobDesc: string): ReportSummary => {
     const sorted = [...reportsToConsolidate].sort((a, b) => {
@@ -177,7 +162,6 @@ const performConsolidation = (reportsToConsolidate: any[], id: string, title: st
         totalExecutionTime += totalTime;
         
         const rawScenarioMap = new Map<string, { feature: Feature, scenario: Scenario }>();
-        // Check for test_results in rawReport (ReportSummary format) OR top-level (StoredReportData format)
         const results = report.rawReport?.test_results || report.test_results;
         
         if (results) {
@@ -188,8 +172,6 @@ const performConsolidation = (reportsToConsolidate: any[], id: string, title: st
             });
         }
 
-        // report.scenarios is present in our ReportSummary type.
-        // If we are consolidating full report objects, we derive summaries.
         let scenariosToProcess = report.scenarios || [];
         if (scenariosToProcess.length === 0 && results) {
              results.forEach((feature: Feature) => {
@@ -200,7 +182,8 @@ const performConsolidation = (reportsToConsolidate: any[], id: string, title: st
                         name: scenario.name,
                         status: status,
                         testCaseId: null, 
-                        defectId: null
+                        defectId: null,
+                        sourceReportId: report.id || report._id?.toString()
                     });
                 });
             });
@@ -213,14 +196,12 @@ const performConsolidation = (reportsToConsolidate: any[], id: string, title: st
             const rawData = rawScenarioMap.get(sc.name);
 
             if (!existing) {
-                scenarioRegistry.set(key, { summary: sc, raw: rawData });
+                scenarioRegistry.set(key, { summary: { ...sc, sourceReportId: sc.sourceReportId || report.id || report._id?.toString() }, raw: rawData });
             } else {
-                // Consolidation Logic: Latest "Passed" status wins
                 if (sc.status === 'passed') {
-                    scenarioRegistry.set(key, { summary: sc, raw: rawData });
+                    scenarioRegistry.set(key, { summary: { ...sc, sourceReportId: sc.sourceReportId || report.id || report._id?.toString() }, raw: rawData });
                 } else if (sc.status === 'failed' && existing.summary.status === 'failed') {
-                    // Update raw pointer to the latest failure if both failed
-                    scenarioRegistry.set(key, { summary: sc, raw: rawData });
+                    scenarioRegistry.set(key, { summary: { ...sc, sourceReportId: sc.sourceReportId || report.id || report._id?.toString() }, raw: rawData });
                 }
             }
         });
@@ -271,9 +252,7 @@ const performConsolidation = (reportsToConsolidate: any[], id: string, title: st
 };
 
 const handleExport = (scenariosToExport: DetailedScenario[], sliceName: string) => {
-    if (!scenariosToExport || scenariosToExport.length === 0) {
-        return;
-    }
+    if (!scenariosToExport || scenariosToExport.length === 0) return;
 
     const worksheetData = scenariosToExport.map(sc => ({
         'Test Case ID': sc.testCaseId || 'N/A',
@@ -283,26 +262,17 @@ const handleExport = (scenariosToExport: DetailedScenario[], sliceName: string) 
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    
-    worksheet['!cols'] = [
-        { wch: 15 }, // Test Case ID
-        { wch: 60 }, // Test Case Name
-        { wch: 15 }, // Defect ID
-        { wch: 10 }, // Status
-    ];
-
+    worksheet['!cols'] = [{ wch: 15 }, { wch: 60 }, { wch: 15 }, { wch: 10 }];
     XLSX.utils.sheet_add_aoa(worksheet, [Object.keys(worksheetData[0])], { origin: 'A1' });
-
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Scenarios');
-    const fileName = `selenium_scenarios_${sliceName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
+    XLSX.writeFile(workbook, `selenium_scenarios_${sliceName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
 };
 
 const SmallStatusChart = ({ passed, failed, size = 48 }: { passed: number; failed: number; size?: number }) => {
     const data = [
-        { name: 'Passed', value: passed, fill: '#22c55e' }, // Green
-        { name: 'Failed', value: failed, fill: '#ef4444' }, // Red
+        { name: 'Passed', value: passed, fill: '#22c55e' },
+        { name: 'Failed', value: failed, fill: '#ef4444' },
     ].filter(d => d.value > 0);
 
     if (data.length === 0) return <div style={{ width: size, height: size }} className="bg-muted rounded-full" />;
@@ -314,28 +284,13 @@ const SmallStatusChart = ({ passed, failed, size = 48 }: { passed: number; faile
                     <Tooltip
                         content={({ active, payload }) => {
                             if (active && payload && payload.length) {
-                                return (
-                                    <div className="bg-background border rounded p-1 text-[10px] shadow-sm z-50">
-                                        {payload[0].name}: {payload[0].value}
-                                    </div>
-                                );
+                                return <div className="bg-background border rounded p-1 text-[10px] shadow-sm z-50">{payload[0].name}: {payload[0].value}</div>;
                             }
                             return null;
                         }}
                     />
-                    <Pie
-                        data={data}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={0}
-                        outerRadius={(size / 2) - 2}
-                        paddingAngle={0}
-                        dataKey="value"
-                        isAnimationActive={false}
-                    >
-                        {data.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
-                        ))}
+                    <Pie data={data} cx="50%" cy="50%" innerRadius={0} outerRadius={(size / 2) - 2} paddingAngle={0} dataKey="value" isAnimationActive={false}>
+                        {data.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />)}
                     </Pie>
                 </PieChart>
             </ChartContainer>
@@ -344,23 +299,8 @@ const SmallStatusChart = ({ passed, failed, size = 48 }: { passed: number; faile
 };
 
 
-const ClickableStat = ({
-    title,
-    count,
-    scenarios,
-    jiraLink,
-    className
-}: {
-    title: string;
-    count: number;
-    scenarios: DetailedScenario[];
-    jiraLink: string;
-    className?: string;
-}) => {
-    if (count === 0) {
-        return null;
-    }
-
+const ClickableStat = ({ title, count, scenarios, jiraLink, className }: { title: string; count: number; scenarios: DetailedScenario[]; jiraLink: string; className?: string }) => {
+    if (count === 0) return null;
     return (
         <Dialog>
             <DialogTrigger asChild>
@@ -379,25 +319,15 @@ const ClickableStat = ({
                         {scenarios.map((scenario, idx) => (
                             <Badge key={`${scenario.id}-${idx}`} variant="secondary">
                                 {scenario.testCaseId ? (
-                                    <a
-                                        href={`${jiraLink}/browse/${scenario.testCaseId}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="hover:underline"
-                                    >
-                                        {scenario.testCaseId}
-                                    </a>
-                                ) : (
-                                    <span title={scenario.name}>ID N/A</span>
-                                )}
+                                    <a href={`${jiraLink}/browse/${scenario.testCaseId}`} target="_blank" rel="noopener noreferrer" className="hover:underline">{scenario.testCaseId}</a>
+                                ) : <span title={scenario.name}>ID N/A</span>}
                             </Badge>
                         ))}
                     </div>
                 </ScrollArea>
                  <DialogFooter>
                     <Button variant="outline" onClick={() => handleExport(scenarios, title)} disabled={!scenarios || scenarios.length === 0}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Export to Excel
+                        <Download className="mr-2 h-4 w-4" /> Export to Excel
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -408,6 +338,7 @@ const ClickableStat = ({
 const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportSummary: ReportSummary; jiraLink: string; allProcessedReports: ReportSummary[] }) => {
     const [fullReport, setFullReport] = useState<StoredReportData | null>(reportSummary.rawReport || null);
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+    const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
     const [openFeatures, setOpenFeatures] = useState<Set<string>>(new Set());
     const [isStatusOpen, setIsStatusOpen] = useState(true);
     const [isComparisonOpen, setIsComparisonOpen] = useState(true);
@@ -416,128 +347,97 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
     const [openScenarios, setOpenScenarios] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        // CASE 1: Full details already available (e.g. from state)
         if (fullReport?.test_results && fullReport.test_results.length > 0) return;
 
-        // CASE 2: Consolidated report - Needs to fetch all individuals and merge locally
-        if (reportSummary.id.startsWith('consolidated')) {
-            const constituentIds = reportSummary.constituentIds || [];
-            if (constituentIds.length === 0) return;
+        const loadDeepData = async () => {
+            setIsLoadingDetails(true);
+            try {
+                if (reportSummary.id.startsWith('consolidated')) {
+                    // Optimized fetching: only fetch reports that are actually "winners" for at least one scenario
+                    const requiredIds = Array.from(new Set(reportSummary.scenarios.map(s => s.sourceReportId).filter(id => id !== null)));
+                    
+                    if (requiredIds.length === 0) return;
+                    
+                    setLoadingProgress({ current: 0, total: requiredIds.length });
+                    
+                    const fetchedReports: any[] = [];
+                    // Sequential batch fetching to avoid memory issues with massive JSONs
+                    for (let i = 0; i < requiredIds.length; i++) {
+                        const id = requiredIds[i];
+                        const res = await fetch(`/api/selenium/details?id=${id}`);
+                        const data = await res.json();
+                        if (data && data.test_results) {
+                            fetchedReports.push(data);
+                        }
+                        setLoadingProgress({ current: i + 1, total: requiredIds.length });
+                    }
 
-            setIsLoadingDetails(true);
-            Promise.all(constituentIds.map(id => 
-                fetch(`/api/selenium/details?id=${id}`)
-                    .then(res => res.json())
-                    .catch(err => {
-                        console.error(`Failed to fetch constituent report ${id}`, err);
-                        return null;
-                    })
-            )).then(reports => {
-                const validReports = reports.filter(r => r && r.test_results);
-                const deepConsolidation = performConsolidation(validReports, reportSummary.id, reportSummary.solution, reportSummary.jobName);
-                if (deepConsolidation.rawReport) {
-                    setFullReport(deepConsolidation.rawReport);
-                }
-            }).finally(() => setIsLoadingDetails(false));
-        } 
-        
-        // CASE 3: Individual MongoDB report - standard single fetch
-        else {
-            setIsLoadingDetails(true);
-            fetch(`/api/selenium/details?id=${reportSummary.id}`)
-                .then(res => res.json())
-                .then(data => {
+                    const deepConsolidation = performConsolidation(fetchedReports, reportSummary.id, reportSummary.solution, reportSummary.jobName);
+                    if (deepConsolidation.rawReport) {
+                        setFullReport(deepConsolidation.rawReport);
+                    }
+                } else {
+                    const res = await fetch(`/api/selenium/details?id=${reportSummary.id}`);
+                    const data = await res.json();
                     if (data && data.test_results) {
                         setFullReport(data);
                     }
-                })
-                .catch(err => console.error("Error fetching report details:", err))
-                .finally(() => setIsLoadingDetails(false));
-        }
-    }, [reportSummary.id, fullReport, reportSummary.constituentIds, reportSummary.solution, reportSummary.jobName]);
+                }
+            } catch (err) {
+                console.error("Error fetching report details:", err);
+            } finally {
+                setIsLoadingDetails(false);
+            }
+        };
+
+        loadDeepData();
+    }, [reportSummary.id, fullReport, reportSummary.constituentIds, reportSummary.solution, reportSummary.jobName, reportSummary.scenarios]);
 
     const toggleScenario = (scenarioName: string) => {
         setOpenScenarios(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(scenarioName)) {
-                newSet.delete(scenarioName);
-            } else {
-                newSet.add(scenarioName);
-            }
+            if (newSet.has(scenarioName)) newSet.delete(scenarioName);
+            else newSet.add(scenarioName);
             return newSet;
         });
     };
 
-    const failedScenarios = useMemo(() => {
-        return reportSummary.scenarios.filter(s => s.status === 'failed');
-    }, [reportSummary.scenarios]);
-    const passedScenarios = useMemo(() => {
-        return reportSummary.scenarios.filter(s => s.status === 'passed');
-    }, [reportSummary.scenarios]);
+    const failedScenarios = useMemo(() => reportSummary.scenarios.filter(s => s.status === 'failed'), [reportSummary.scenarios]);
+    const passedScenarios = useMemo(() => reportSummary.scenarios.filter(s => s.status === 'passed'), [reportSummary.scenarios]);
 
     const toggleFeature = (featureName: string) => {
         setOpenFeatures(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(featureName)) {
-                newSet.delete(featureName);
-            } else {
-                newSet.add(featureName);
-            }
+            if (newSet.has(featureName)) newSet.delete(featureName);
+            else newSet.add(featureName);
             return newSet;
         });
     };
 
-    const isMostRecentReport = useMemo(() => {
-        if (reportSummary.id.startsWith('consolidated')) return false;
-        
-        const reportsForSameJob = allProcessedReports.filter(p => p.jobName === reportSummary.jobName && !p.id.startsWith('consolidated'));
-        if (reportsForSameJob.length <= 1) return false;
-
-        const mostRecentReport = reportsForSameJob.sort((a,b) => {
-            const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
-            const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
-            return dateB - dateA;
-        })[0];
-
-        return mostRecentReport.id === reportSummary.id;
-    }, [reportSummary, allProcessedReports]);
-
     const comparisonData = useMemo(() => {
-        if (reportSummary.id.startsWith('consolidated') || !isMostRecentReport) return null;
+        if (reportSummary.id.startsWith('consolidated')) return null;
+        const reportsForSameJob = allProcessedReports.filter(p => p.jobName === reportSummary.jobName && !p.id.startsWith('consolidated'));
+        if (reportsForSameJob.length <= 1) return null;
+        const mostRecent = reportsForSameJob.sort((a,b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())[0];
+        if (mostRecent.id !== reportSummary.id) return null;
 
         const previousRuns = allProcessedReports
-            .filter(p => p.jobName === reportSummary.jobName && !p.id.startsWith('consolidated') && p.uploadedAt && reportSummary.uploadedAt && new Date(p.uploadedAt) < new Date(reportSummary.uploadedAt))
-            .sort((a, b) => {
-                const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
-                const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
-                return dateB - dateA;
-            });
+            .filter(p => p.jobName === reportSummary.jobName && !p.id.startsWith('consolidated') && new Date(p.uploadedAt) < new Date(reportSummary.uploadedAt))
+            .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
     
         const previousReport = previousRuns[0];
-
         if (!previousReport) return null;
         
         const currentFailed = new Set(reportSummary.scenarios.filter(s => s.status === 'failed').map(s => s.name));
         const prevFailed = new Set(previousReport.scenarios.filter(s => s.status === 'failed').map(s => s.name));
-
         const newFailures = reportSummary.scenarios.filter(s => currentFailed.has(s.name) && !prevFailed.has(s.name));
         const fixes = previousReport.scenarios.filter(s => prevFailed.has(s.name) && !currentFailed.has(s.name));
-
         const timeDifference = reportSummary.totalExecutionTime - previousReport.totalExecutionTime;
 
-        return {
-            newFailures,
-            fixes,
-            timeDifference,
-            previousReportDate: previousReport.uploadedAt,
-        }
+        return { newFailures, fixes, timeDifference, previousReportDate: previousReport.uploadedAt };
+    }, [reportSummary, allProcessedReports]);
 
-    }, [reportSummary, allProcessedReports, isMostRecentReport]);
-
-    const pieData = [
-        { name: 'Passed', value: reportSummary.passed, fill: '#22c55e' },
-        { name: 'Failed', value: reportSummary.failed, fill: '#ef4444' },
-    ];
+    const pieData = [{ name: 'Passed', value: reportSummary.passed, fill: '#22c55e' }, { name: 'Failed', value: reportSummary.failed, fill: '#ef4444' }];
     
     const scenariosByFeature = useMemo(() => {
         const featureMap = new Map<string, Scenario[]>();
@@ -574,9 +474,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                             <PieChart>
                                                 <Tooltip content={<ChartTooltipContent hideLabel />} />
                                                 <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
-                                                {pieData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                                                ))}
+                                                {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
                                                 </Pie>
                                             </PieChart>
                                         </ChartContainer>
@@ -618,46 +516,20 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                             <div>
                                                 <h4 className="font-semibold mb-2">New Failures ({comparisonData.newFailures.length})</h4>
                                                 <ScrollArea className="h-40 rounded-md border p-2">
-                                                    {comparisonData.newFailures.length > 0 ? (
-                                                        comparisonData.newFailures.map(s => (
-                                                            <a
-                                                                key={s.id}
-                                                                href={`${jiraLink}/browse/${s.testCaseId}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="block text-xs p-1 rounded-md hover:bg-muted text-primary hover:underline"
-                                                            >
-                                                                {s.testCaseId || 'N/A'}
-                                                            </a>
-                                                        ))
-                                                    ) : <p className="text-muted-foreground text-xs">No new failures.</p>}
+                                                    {comparisonData.newFailures.length > 0 ? comparisonData.newFailures.map(s => <a key={s.id} href={`${jiraLink}/browse/${s.testCaseId}`} target="_blank" rel="noopener noreferrer" className="block text-xs p-1 rounded-md hover:bg-muted text-primary hover:underline">{s.testCaseId || 'N/A'}</a>) : <p className="text-muted-foreground text-xs">No new failures.</p>}
                                                 </ScrollArea>
                                             </div>
                                             <div>
                                                 <h4 className="font-semibold mb-2">Fixes ({comparisonData.fixes.length})</h4>
                                                 <ScrollArea className="h-40 rounded-md border p-2">
-                                                    {comparisonData.fixes.length > 0 ? (
-                                                         comparisonData.fixes.map(s => (
-                                                            <a
-                                                                key={s.id}
-                                                                href={`${jiraLink}/browse/${s.testCaseId}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="block text-xs p-1 rounded-md hover:bg-muted text-primary hover:underline"
-                                                            >
-                                                                {s.testCaseId || 'N/A'}
-                                                            </a>
-                                                        ))
-                                                    ) : <p className="text-muted-foreground text-xs">No new fixes.</p>}
+                                                    {comparisonData.fixes.length > 0 ? comparisonData.fixes.map(s => <a key={s.id} href={`${jiraLink}/browse/${s.testCaseId}`} target="_blank" rel="noopener noreferrer" className="block text-xs p-1 rounded-md hover:bg-muted text-primary hover:underline">{s.testCaseId || 'N/A'}</a>) : <p className="text-muted-foreground text-xs">No new fixes.</p>}
                                                 </ScrollArea>
                                             </div>
                                             <div>
                                                 <h4 className="font-semibold mb-2">Execution Time</h4>
                                                 <div className={cn("flex items-center gap-2 p-2 rounded-md", comparisonData.timeDifference > 0 ? "bg-red-500/10 text-red-600" : "bg-green-500/10 text-green-600")}>
                                                      {comparisonData.timeDifference > 0 ? <TrendingUp /> : <TrendingDown />}
-                                                    <span>
-                                                        {formatNanosToTime(Math.abs(comparisonData.timeDifference))} {comparisonData.timeDifference > 0 ? 'slower' : 'faster'}
-                                                    </span>
+                                                    <span>{formatNanosToTime(Math.abs(comparisonData.timeDifference))} {comparisonData.timeDifference > 0 ? 'slower' : 'faster'}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -689,35 +561,9 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                             <TableBody>
                                                 {failedScenarios.map(scenario => (
                                                     <TableRow key={scenario.id}>
-                                                        <TableCell>
-                                                        {scenario.testCaseId ? (
-                                                                <a
-                                                                    href={`${jiraLink}/browse/${scenario.testCaseId}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="text-primary hover:underline"
-                                                                >
-                                                                    {scenario.testCaseId}
-                                                                </a>
-                                                            ) : (
-                                                                'N/A'
-                                                            )}
-                                                        </TableCell>
+                                                        <TableCell>{scenario.testCaseId ? <a href={`${jiraLink}/browse/${scenario.testCaseId}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{scenario.testCaseId}</a> : 'N/A'}</TableCell>
                                                         <TableCell>{scenario.name}</TableCell>
-                                                        <TableCell>
-                                                            {scenario.defectId ? (
-                                                                <a
-                                                                    href={`${jiraLink}/browse/${scenario.defectId}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="text-primary hover:underline"
-                                                                >
-                                                                    {scenario.defectId}
-                                                                </a>
-                                                            ) : (
-                                                                'N/A'
-                                                            )}
-                                                        </TableCell>
+                                                        <TableCell>{scenario.defectId ? <a href={`${jiraLink}/browse/${scenario.defectId}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{scenario.defectId}</a> : 'N/A'}</TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
@@ -739,9 +585,20 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                             <CollapsibleContent>
                                 <CardContent>
                                     {isLoadingDetails ? (
-                                        <div className="flex flex-col items-center justify-center p-8 gap-2">
-                                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                            <p className="text-sm text-muted-foreground">Loading full report logs and screenshots...</p>
+                                        <div className="flex flex-col items-center justify-center p-8 gap-4">
+                                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                            <div className='text-center space-y-2'>
+                                                <p className="text-sm font-medium">Deep Consolidation in Progress...</p>
+                                                <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                                                    <Info className='h-3 w-3' />
+                                                    Consolidated views merge multiple large reports (30MB+ each). We are fetching only necessary data to speed up the process.
+                                                </p>
+                                                {loadingProgress.total > 0 && (
+                                                    <p className="text-[10px] text-primary font-mono uppercase tracking-wider">
+                                                        Fetching constituent reports: {loadingProgress.current} / {loadingProgress.total}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     ) : scenariosByFeature.length > 0 ? (
                                         <div className='max-h-96 overflow-y-auto'>
@@ -778,14 +635,11 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                                                             </TableHeader>
                                                                             <TableBody>
                                                                                 {scenario.steps.map((step, stIndex) => {
-                                                                                    // Capture screenshots from all possible locations
                                                                                     const screenshots = [
                                                                                         ...(step.embeddings || []), 
                                                                                         ...(step.result?.embeddings || [])
                                                                                     ].filter(e => e.mime_type?.startsWith('image/'));
-                                                                                    
                                                                                     const hasScreenshots = screenshots.length > 0;
-
                                                                                     return (
                                                                                         <TableRow key={stIndex}>
                                                                                             <TableCell className='text-xs'>{step.keyword}{step.name}</TableCell>
@@ -797,22 +651,12 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                                                                                             <Dialog>
                                                                                                                 <DialogTrigger asChild>
                                                                                                                     <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-destructive underline justify-start flex gap-1">
-                                                                                                                        <Terminal className="h-2.5 w-2.5" />
-                                                                                                                        View Logs
+                                                                                                                        <Terminal className="h-2.5 w-2.5" /> View Logs
                                                                                                                     </Button>
                                                                                                                 </DialogTrigger>
                                                                                                                 <DialogContent className="max-w-3xl">
-                                                                                                                    <DialogHeader>
-                                                                                                                        <DialogTitle>Failure Logs</DialogTitle>
-                                                                                                                        <DialogDescription>
-                                                                                                                            Step: {step.keyword}{step.name}
-                                                                                                                        </DialogDescription>
-                                                                                                                    </DialogHeader>
-                                                                                                                    <ScrollArea className="max-h-[60vh] rounded-md border bg-muted p-4">
-                                                                                                                        <pre className="text-xs whitespace-pre-wrap font-mono text-foreground/90 leading-relaxed">
-                                                                                                                            {step.result.error_message}
-                                                                                                                        </pre>
-                                                                                                                    </ScrollArea>
+                                                                                                                    <DialogHeader><DialogTitle>Failure Logs</DialogTitle><DialogDescription>Step: {step.keyword}{step.name}</DialogDescription></DialogHeader>
+                                                                                                                    <ScrollArea className="max-h-[60vh] rounded-md border bg-muted p-4"><pre className="text-xs whitespace-pre-wrap font-mono text-foreground/90 leading-relaxed">{step.result.error_message}</pre></ScrollArea>
                                                                                                                 </DialogContent>
                                                                                                             </Dialog>
                                                                                                         )}
@@ -820,35 +664,19 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                                                                                             <Dialog>
                                                                                                                 <DialogTrigger asChild>
                                                                                                                     <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-blue-600 underline justify-start flex gap-1">
-                                                                                                                        <Camera className="h-2.5 w-2.5" />
-                                                                                                                        View Screenshot
+                                                                                                                        <Camera className="h-2.5 w-2.5" /> View Screenshot
                                                                                                                     </Button>
                                                                                                                 </DialogTrigger>
                                                                                                                 <DialogContent className="max-w-5xl">
-                                                                                                                    <DialogHeader>
-                                                                                                                        <DialogTitle>Step Screenshot</DialogTitle>
-                                                                                                                        <DialogDescription>
-                                                                                                                            Step: {step.keyword}{step.name}
-                                                                                                                        </DialogDescription>
-                                                                                                                    </DialogHeader>
-                                                                                                                    <ScrollArea className="max-h-[80vh] flex flex-col items-center justify-center bg-muted p-2 rounded-md border">
-                                                                                                                        {screenshots.map((e, idx) => (
-                                                                                                                                <img 
-                                                                                                                                    key={idx} 
-                                                                                                                                    src={`data:${e.mime_type};base64,${e.data}`} 
-                                                                                                                                    alt={`Screenshot ${idx}`} 
-                                                                                                                                    className="max-w-full h-auto shadow-md rounded-sm mb-4 last:mb-0"
-                                                                                                                                />
-                                                                                                                            ))
-                                                                                                                        }
-                                                                                                                    </ScrollArea>
+                                                                                                                    <DialogHeader><DialogTitle>Step Screenshot</DialogTitle><DialogDescription>Step: {step.keyword}{step.name}</DialogDescription></DialogHeader>
+                                                                                                                    <ScrollArea className="max-h-[80vh] flex flex-col items-center justify-center bg-muted p-2 rounded-md border">{screenshots.map((e, idx) => <img key={idx} src={`data:${e.mime_type};base64,${e.data}`} alt={`Screenshot ${idx}`} className="max-w-full h-auto shadow-md rounded-sm mb-4 last:mb-0" />)}</ScrollArea>
                                                                                                                 </DialogContent>
                                                                                                             </Dialog>
                                                                                                         )}
                                                                                                     </div>
                                                                                                 </div>
                                                                                             </TableCell>
-                                                                                            <TableCell className='text-xs'>{formatNanosToTime(getStepDuration(step))}</TableCell>
+                                                                                            <TableCell className='text-xs'>{formatNanosToTime(step.result.duration ? (typeof step.result.duration === 'number' ? step.result.duration : Number((step.result.duration as any).$numberLong || 0)) : 0)}</TableCell>
                                                                                         </TableRow>
                                                                                     )
                                                                                 })}
@@ -864,9 +692,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                         ))}
                                         </div>
                                     ) : (
-                                        <div className="p-8 text-center text-sm text-muted-foreground border rounded-md bg-muted/20">
-                                            No detailed step data found for this test execution.
-                                        </div>
+                                        <div className="p-8 text-center text-sm text-muted-foreground border rounded-md bg-muted/20">No detailed step data found for this test execution.</div>
                                     )}
                                 </CardContent>
                             </CollapsibleContent>
@@ -941,9 +767,7 @@ export function SeleniumDashboardPage() {
         setIsLoading(true);
         try {
             const reportResponse = await fetch(`/api/selenium/all?page=${page}&limit=${PAGE_SIZE}`);
-            if (!reportResponse.ok) {
-                throw new Error('Failed to fetch selenium reports.');
-            }
+            if (!reportResponse.ok) throw new Error('Failed to fetch selenium reports.');
             const { reports, total } = await reportResponse.json();
             setProcessedReports(reports);
             setTotalReports(total);
@@ -960,19 +784,12 @@ export function SeleniumDashboardPage() {
         const loadInitialData = async () => {
             setIsLoading(true);
             try {
-                const [tcResponse] = await Promise.all([
-                    fetch('/api/test-cases/latest'),
-                ]);
-    
+                const tcResponse = await fetch('/api/test-cases/latest');
                 if (tcResponse.ok) {
                     const tcData = await tcResponse.json();
-                    if (tcData && tcData.testCases) {
-                        setTestCaseDetails(tcData.testCases);
-                    }
+                    if (tcData && tcData.testCases) setTestCaseDetails(tcData.testCases);
                 }
-                
                 await fetchReports(1);
-
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Error Initializing Dashboard', description: error.message });
                 setShowUploader(true);
@@ -980,31 +797,19 @@ export function SeleniumDashboardPage() {
                 setIsLoading(false);
             }
         };
-    
         loadInitialData();
     }, [toast, fetchReports]);
 
 
     const handleDataUploaded = useCallback(async (fileContent: string, file: File) => {
         if (!user) {
-            toast({
-              variant: 'destructive',
-              title: 'Authentication Error',
-              description: 'You must be logged in to upload a report.',
-            });
+            toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload a report.' });
             return;
         }
-
         try {
-            const sanitizedContent = fileContent.replace(/[\x00-\x1F\x7F-\x9F]/g, (match) => {
-                return (match === '\n' || match === '\r' || match === '\t') ? match : '';
-            });
-
+            const sanitizedContent = fileContent.replace(/[\x00-\x1F\x7F-\x9F]/g, (match) => (match === '\n' || match === '\r' || match === '\t') ? match : '');
             const uploadedJson = JSON.parse(sanitizedContent);
-
-            if (!uploadedJson || !Array.isArray(uploadedJson) || uploadedJson.length === 0) {
-                 throw new Error("JSON file must be a non-empty array of test results.");
-            }
+            if (!uploadedJson || !Array.isArray(uploadedJson) || uploadedJson.length === 0) throw new Error("JSON file must be a non-empty array of test results.");
 
             const response = await fetch('/api/selenium/upload', {
                 method: 'POST',
@@ -1019,45 +824,17 @@ export function SeleniumDashboardPage() {
                   "Report Path": "N/A"
                 }),
             });
-      
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to save the report to the server.');
-            }
-            
-            toast({
-                title: "Report Uploaded",
-                description: `Successfully processed and saved ${file.name}. Refreshing data...`
-            });
+            if (!response.ok) throw new Error('Failed to save the report to the server.');
+            toast({ title: "Report Uploaded", description: `Successfully processed ${file.name}.` });
             await fetchReports(1);
-            setCurrentPage(1);
             setShowUploader(false);
-            
         } catch (error: any) {
-            console.error("Error processing JSON report:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Error Loading Report',
-                description: error.message || 'Could not parse the JSON file.',
-            });
+            toast({ variant: 'destructive', title: 'Error Loading Report', description: error.message || 'Could not parse JSON.' });
         }
     }, [toast, user, fetchReports]);
 
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            setSelectedReportIds(processedReports.map(r => r.id));
-        } else {
-            setSelectedReportIds([]);
-        }
-    };
-    
-    const handleSelectRow = (reportId: string, checked: boolean) => {
-        if (checked) {
-            setSelectedReportIds(prev => [...prev, reportId]);
-        } else {
-            setSelectedReportIds(prev => prev.filter(id => id !== reportId));
-        }
-    };
+    const handleSelectAll = (checked: boolean) => setSelectedReportIds(checked ? processedReports.map(r => r.id) : []);
+    const handleSelectRow = (reportId: string, checked: boolean) => setSelectedReportIds(prev => checked ? [...prev, reportId] : prev.filter(id => id !== reportId));
 
     const consolidatedReport = useMemo((): ReportSummary | null => {
         if (selectedReportIds.length === 0) return null;
@@ -1068,10 +845,8 @@ export function SeleniumDashboardPage() {
     const domainConsolidatedReports = useMemo((): ReportSummary[] => {
         if (processedReports.length === 0) return [];
         const domains = Array.from(new Set(processedReports.map(r => r.domain)));
-        
         return domains.map(domain => {
             let domainReports = processedReports.filter(r => r.domain === domain);
-            
             const range = domainDateRanges[domain];
             if (range?.from) {
                 domainReports = domainReports.filter(r => {
@@ -1079,7 +854,6 @@ export function SeleniumDashboardPage() {
                     const reportDate = new Date(r.uploadedAt);
                     const fromDate = new Date(range.from!);
                     fromDate.setHours(0, 0, 0, 0);
-                    
                     if (range.to) {
                         const toDate = new Date(range.to);
                         toDate.setHours(23, 59, 59, 999);
@@ -1088,9 +862,7 @@ export function SeleniumDashboardPage() {
                     return reportDate >= fromDate;
                 });
             }
-
             if (domainReports.length === 0) return null;
-
             return performConsolidation(domainReports, `consolidated-domain-${domain}`, domain, `Domain Consolidated Report`);
         }).filter((r): r is ReportSummary => r !== null);
     }, [processedReports, domainDateRanges]);
@@ -1105,10 +877,7 @@ export function SeleniumDashboardPage() {
     if (isLoading && currentPage === 1) {
         return (
             <div className="flex flex-1 flex-col items-center justify-center p-4">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                    <p>Loading Selenium Reports...</p>
-                </div>
+                <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin" /><p>Loading Selenium Reports...</p></div>
             </div>
         );
     }
@@ -1118,13 +887,8 @@ export function SeleniumDashboardPage() {
             <div className="flex flex-1 flex-col items-center justify-center p-4">
                 <div className="flex w-full max-w-lg flex-col items-center justify-center gap-4 text-center">
                     <Card className="w-full">
-                        <CardHeader>
-                            <CardTitle>Upload Selenium Report</CardTitle>
-                            <CardDescription>To get started, please upload a Cucumber JSON report file.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <FileUploader onDataUploaded={handleDataUploaded} accept=".json" templatePath="" />
-                        </CardContent>
+                        <CardHeader><CardTitle>Upload Selenium Report</CardTitle><CardDescription>Please upload a Cucumber JSON report file.</CardDescription></CardHeader>
+                        <CardContent><FileUploader onDataUploaded={handleDataUploaded} accept=".json" templatePath="" /></CardContent>
                     </Card>
                 </div>
             </div>
@@ -1136,23 +900,10 @@ export function SeleniumDashboardPage() {
              <div className='flex justify-between items-center'>
                 <h2 className="text-2xl font-bold">Selenium Dashboard</h2>
                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="outline">
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload New Report
-                        </Button>
-                    </AlertDialogTrigger>
+                    <AlertDialogTrigger asChild><Button variant="outline"><Upload className="mr-2 h-4 w-4" /> Upload New Report</Button></AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Upload a new Selenium report?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will take you to the uploader. After uploading, the new report will appear in this list.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => setShowUploader(true)}>Continue</AlertDialogAction>
-                        </AlertDialogFooter>
+                        <AlertDialogHeader><AlertDialogTitle>Upload a new Selenium report?</AlertDialogTitle><AlertDialogDescription>This will take you to the uploader.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => setShowUploader(true)}>Continue</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
@@ -1161,43 +912,24 @@ export function SeleniumDashboardPage() {
                 <Card className='bg-muted/30'>
                     <CardHeader className="flex flex-row items-start justify-between space-y-0">
                         <div className="space-y-1.5">
-                            <div className='flex items-center gap-2'>
-                                <Layers className='h-5 w-5 text-primary' />
-                                <CardTitle>Domain-wise Consolidated Reports</CardTitle>
-                            </div>
-                            <CardDescription>
-                                Aggregated results per domain. Logic: Latest "Passed" status is prioritized for each scenario.
-                            </CardDescription>
+                            <div className='flex items-center gap-2'><Layers className='h-5 w-5 text-primary' /><CardTitle>Domain-wise Consolidated Reports</CardTitle></div>
+                            <CardDescription>Aggregated results per domain. Logic: Latest "Passed" status is prioritized for each scenario.</CardDescription>
                         </div>
                         <Dialog>
-                            <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" title="Configure Domain Date Ranges">
-                                    <Settings className="h-5 w-5" />
-                                </Button>
-                            </DialogTrigger>
+                            <DialogTrigger asChild><Button variant="ghost" size="icon" title="Configure Domain Date Ranges"><Settings className="h-5 w-5" /></Button></DialogTrigger>
                             <DialogContent className="max-w-2xl">
-                                <DialogHeader>
-                                    <DialogTitle>Configure Domain Date Ranges</DialogTitle>
-                                    <DialogDescription>
-                                        Set specific date ranges for each domain to consolidate reports within those periods.
-                                    </DialogDescription>
-                                </DialogHeader>
+                                <DialogHeader><DialogTitle>Configure Domain Date Ranges</DialogTitle><DialogDescription>Set specific date ranges for each domain to consolidate reports.</DialogDescription></DialogHeader>
                                 <ScrollArea className="max-h-[60vh] pr-4">
                                     <div className="space-y-6 py-4">
                                         {Array.from(new Set(processedReports.map(r => r.domain))).sort().map(domain => (
                                             <div key={domain} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 last:border-0">
                                                 <div className="font-medium text-sm min-w-[120px]">{domain}</div>
-                                                <DateRangePicker 
-                                                    date={domainDateRanges[domain]} 
-                                                    onDateChange={(range) => setDomainDateRange(domain, range)} 
-                                                />
+                                                <DateRangePicker date={domainDateRanges[domain]} onDateChange={(range) => setDomainDateRange(domain, range)} />
                                             </div>
                                         ))}
                                     </div>
                                 </ScrollArea>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={resetAllRanges}>Reset All Ranges</Button>
-                                </DialogFooter>
+                                <DialogFooter><Button variant="outline" onClick={resetAllRanges}>Reset All Ranges</Button></DialogFooter>
                             </DialogContent>
                         </Dialog>
                     </CardHeader>
@@ -1205,33 +937,20 @@ export function SeleniumDashboardPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {domainConsolidatedReports.map(report => (
                                 <Card key={report.id} className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-lg truncate" title={report.domain}>{report.domain}</CardTitle>
-                                    </CardHeader>
+                                    <CardHeader className="pb-2"><CardTitle className="text-lg truncate" title={report.domain}>{report.domain}</CardTitle></CardHeader>
                                     <CardContent>
                                         <div className="flex items-center justify-between gap-4">
                                             <div className="space-y-1 grow">
-                                                <p className="text-xs text-muted-foreground flex items-center justify-between gap-4">
-                                                    <span>Total:</span> 
-                                                    <span className='font-semibold text-foreground'>{report.totalTests}</span>
-                                                </p>
-                                                <p className="text-xs text-green-600 flex items-center justify-between gap-4">
-                                                    <span>Passed:</span>
-                                                    <span className='font-bold'>{report.passed}</span>
-                                                </p>
-                                                <p className="text-xs text-red-600 flex items-center justify-between gap-4">
-                                                    <span>Failed:</span>
-                                                    <span className='font-bold'>{report.failed}</span>
-                                                </p>
+                                                <p className="text-xs text-muted-foreground flex items-center justify-between gap-4"><span>Total:</span> <span className='font-semibold text-foreground'>{report.totalTests}</span></p>
+                                                <p className="text-xs text-green-600 flex items-center justify-between gap-4"><span>Passed:</span><span className='font-bold'>{report.passed}</span></p>
+                                                <p className="text-xs text-red-600 flex items-center justify-between gap-4"><span>Failed:</span><span className='font-bold'>{report.failed}</span></p>
                                             </div>
                                             <SmallStatusChart passed={report.passed} failed={report.failed} size={80} />
                                         </div>
                                     </CardContent>
                                     <CardFooter className="pt-2">
                                         <Dialog>
-                                            <DialogTrigger asChild>
-                                                <Button variant="outline" size="sm" className="w-full text-xs h-8">View Details</Button>
-                                            </DialogTrigger>
+                                            <DialogTrigger asChild><Button variant="outline" size="sm" className="w-full text-xs h-8">View Details</Button></DialogTrigger>
                                             <DetailModal reportSummary={report} jiraLink={jiraLink} allProcessedReports={processedReports} />
                                         </Dialog>
                                     </CardFooter>
@@ -1248,11 +967,7 @@ export function SeleniumDashboardPage() {
                         <CardTitle>Individual Reports</CardTitle>
                         {selectedReportIds.length > 0 && consolidatedReport && (
                             <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button size="sm">
-                                        View Consolidated Report ({selectedReportIds.length})
-                                    </Button>
-                                </DialogTrigger>
+                                <DialogTrigger asChild><Button size="sm">View Consolidated Report ({selectedReportIds.length})</Button></DialogTrigger>
                                 <DetailModal reportSummary={consolidatedReport} jiraLink={jiraLink} allProcessedReports={processedReports} />
                             </Dialog>
                         )}
@@ -1265,109 +980,33 @@ export function SeleniumDashboardPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[40px]">
-                                            <Checkbox
-                                                checked={processedReports.length > 0 && selectedReportIds.length === processedReports.length}
-                                                onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                                                aria-label="Select all rows"
-                                            />
-                                        </TableHead>
-                                        <TableHead>Job Name</TableHead>
-                                        <TableHead>Domain</TableHead>
-                                        <TableHead>Total</TableHead>
-                                        <TableHead>Passed</TableHead>
-                                        <TableHead>Failed</TableHead>
-                                        <TableHead>Status Chart</TableHead>
-                                        <TableHead>Execution Date</TableHead>
-                                        <TableHead>Detailed Report</TableHead>
+                                        <TableHead className="w-[40px]"><Checkbox checked={processedReports.length > 0 && selectedReportIds.length === processedReports.length} onCheckedChange={(checked) => handleSelectAll(!!checked)} /></TableHead>
+                                        <TableHead>Job Name</TableHead><TableHead>Domain</TableHead><TableHead>Total</TableHead><TableHead>Passed</TableHead><TableHead>Failed</TableHead><TableHead>Status Chart</TableHead><TableHead>Execution Date</TableHead><TableHead>Detailed Report</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {isLoading ? (
-                                        Array.from({ length: 5 }).map((_, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell colSpan={9}>
-                                                <Skeleton className="h-8 w-full" />
-                                            </TableCell>
-                                        </TableRow>
-                                        ))
-                                    ) : processedReports.map(summary => (
+                                    {isLoading ? Array.from({ length: 5 }).map((_, i) => <TableRow key={i}><TableCell colSpan={9}><Skeleton className="h-8 w-full" /></TableCell></TableRow>) : processedReports.map(summary => (
                                         <TableRow key={summary.id} data-state={selectedReportIds.includes(summary.id) && "selected"}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={selectedReportIds.includes(summary.id)}
-                                                    onCheckedChange={(checked) => handleSelectRow(summary.id, !!checked)}
-                                                    aria-label={`Select row ${summary.id}`}
-                                                />
-                                            </TableCell>
-                                            <TableCell className='max-w-xs truncate'>
-                                                <UITooltip>
-                                                    <UITooltipTrigger asChild>
-                                                        <span className="cursor-default">{summary.jobName}</span>
-                                                    </UITooltipTrigger>
-                                                    <UITooltipContent>
-                                                        <p>{summary.jobName}</p>
-                                                    </UITooltipContent>
-                                                </UITooltip>
-                                            </TableCell>
-                                            <TableCell>{summary.domain}</TableCell>
-                                            <TableCell>{summary.totalTests}</TableCell>
-                                            <TableCell className='text-green-600'>{summary.passed}</TableCell>
-                                            <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
-                                            <TableCell>
-                                                <SmallStatusChart passed={summary.passed} failed={summary.failed} />
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-xs">
-                                                {summary.uploadedAt ? format(parseISO(summary.uploadedAt), 'MMM d, yyyy') : 'N/A'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <Button variant='link' size="sm">View Details</Button>
-                                                    </DialogTrigger>
-                                                    <DetailModal reportSummary={summary} jiraLink={jiraLink} allProcessedReports={processedReports} />
-                                                </Dialog>
-                                            </TableCell>
+                                            <TableCell><Checkbox checked={selectedReportIds.includes(summary.id)} onCheckedChange={(checked) => handleSelectRow(summary.id, !!checked)} /></TableCell>
+                                            <TableCell className='max-w-xs truncate'><UITooltip><UITooltipTrigger asChild><span className="cursor-default">{summary.jobName}</span></UITooltipTrigger><UITooltipContent><p>{summary.jobName}</p></UITooltipContent></UITooltip></TableCell>
+                                            <TableCell>{summary.domain}</TableCell><TableCell>{summary.totalTests}</TableCell><TableCell className='text-green-600'>{summary.passed}</TableCell><TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell><TableCell><SmallStatusChart passed={summary.passed} failed={summary.failed} /></TableCell><TableCell className="text-muted-foreground text-xs">{summary.uploadedAt ? format(parseISO(summary.uploadedAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                            <TableCell><Dialog><DialogTrigger asChild><Button variant='link' size="sm">View Details</Button></DialogTrigger><DetailModal reportSummary={summary} jiraLink={jiraLink} allProcessedReports={processedReports} /></Dialog></TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </UITooltipProvider>
                     </div>
-                     {totalReports === 0 && !isLoading && (
-                        <Alert className="mt-4">
-                            <AlertTitle>No Reports to Display</AlertTitle>
-                            <AlertDescription>
-                                No Selenium reports found. Please use the upload button to add one.
-                            </AlertDescription>
-                        </Alert>
-                    )}
+                     {totalReports === 0 && !isLoading && <Alert className="mt-4"><AlertTitle>No Reports to Display</AlertTitle><AlertDescription>No Selenium reports found.</AlertDescription></Alert>}
                      <div className="mt-4 flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">
-                            Showing page {currentPage} of {totalPages} ({totalReports} reports total).
-                        </span>
+                        <span className="text-sm text-muted-foreground">Showing page {currentPage} of {totalPages} ({totalReports} reports total).</span>
                         <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1}
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages || totalPages === 0}
-                            >
-                                Next
-                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>Previous</Button>
+                            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0}>Next</Button>
                         </div>
                     </div>
                 </CardContent>
             </Card>
-
         </div>
     );
 }

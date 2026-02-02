@@ -25,6 +25,7 @@ const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseD
     const detailedScenarios: any[] = [];
     let jobName = "N/A";
     let executionTimestamp = report.uploadedAt;
+    const reportId = report._id.toString();
 
     if (report.test_results && report.test_results.length > 0) {
         jobName = report.test_results[0].name || "N/A";
@@ -55,6 +56,7 @@ const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseD
                         status: status,
                         testCaseId: testCaseId,
                         defectId: defectId,
+                        sourceReportId: reportId, // Crucial for smart deep fetching
                     });
 
                     scenario.steps.forEach((step: any) => {
@@ -71,7 +73,7 @@ const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseD
     }
 
     return {
-        id: report._id.toString(),
+        id: reportId,
         solution: report.solution || 'N/A',
         jobName: jobName,
         totalTests,
@@ -79,8 +81,6 @@ const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseD
         failed: totalTests - passed,
         scenarios: detailedScenarios,
         totalExecutionTime,
-        // CRITICAL: We exclude rawReport (test_results) from the list view to prevent huge payload sizes
-        // and JSON truncation errors. The frontend will fetch details on demand.
         domain: report.solution || "N/A",
         environment: report.environment || "N/A",
         uploadedAt: executionTimestamp,
