@@ -165,18 +165,18 @@ const handleExport = (scenariosToExport: DetailedScenario[], sliceName: string) 
     XLSX.writeFile(workbook, fileName);
 };
 
-const SmallStatusChart = ({ passed, failed }: { passed: number; failed: number }) => {
+const SmallStatusChart = ({ passed, failed, size = 48 }: { passed: number; failed: number; size?: number }) => {
     const data = [
         { name: 'Passed', value: passed, fill: '#22c55e' }, // Green
         { name: 'Failed', value: failed, fill: '#ef4444' }, // Red
     ].filter(d => d.value > 0);
 
-    if (data.length === 0) return <div className="h-12 w-12 bg-muted rounded-full" />;
+    if (data.length === 0) return <div style={{ width: size, height: size }} className="bg-muted rounded-full" />;
 
     return (
-        <div className="h-12 w-12 flex items-center justify-center">
+        <div style={{ width: size, height: size }} className="flex items-center justify-center shrink-0">
             <ChartContainer config={{}} className="h-full w-full">
-                <PieChart width={48} height={48}>
+                <PieChart width={size} height={size}>
                     <Tooltip
                         content={({ active, payload }) => {
                             if (active && payload && payload.length) {
@@ -194,7 +194,7 @@ const SmallStatusChart = ({ passed, failed }: { passed: number; failed: number }
                         cx="50%"
                         cy="50%"
                         innerRadius={0}
-                        outerRadius={22}
+                        outerRadius={(size / 2) - 2}
                         paddingAngle={0}
                         dataKey="value"
                         isAnimationActive={false}
@@ -980,8 +980,8 @@ export function SeleniumDashboardPage() {
                                         <CardTitle className="text-lg truncate" title={report.domain}>{report.domain}</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="flex items-center justify-between">
-                                            <div className="space-y-1">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="space-y-1 grow">
                                                 <p className="text-xs text-muted-foreground flex items-center justify-between gap-4">
                                                     <span>Total:</span> 
                                                     <span className='font-semibold text-foreground'>{report.totalTests}</span>
@@ -995,7 +995,7 @@ export function SeleniumDashboardPage() {
                                                     <span className='font-bold'>{report.failed}</span>
                                                 </p>
                                             </div>
-                                            <SmallStatusChart passed={report.passed} failed={report.failed} />
+                                            <SmallStatusChart passed={report.passed} failed={report.failed} size={80} />
                                         </div>
                                     </CardContent>
                                     <CardFooter className="pt-2">
