@@ -1,129 +1,92 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileText } from 'lucide-react';
-import { FileUploader } from '../dashboard/file-uploader';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 
 type TestCase = {
   [key: string]: string;
 };
 
-const parseCSV = (text: string): string[][] => {
-    const result: string[][] = [];
-    let currentRow: string[] = [];
-    let currentField = '';
-    let inQuotes = false;
-    let i = 0;
-
-    const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-    while (i < normalizedText.length) {
-        const char = normalizedText[i];
-
-        if (inQuotes) {
-            if (char === '"') {
-                if (i + 1 < normalizedText.length && normalizedText[i + 1] === '"') {
-                    currentField += '"';
-                    i++;
-                } else {
-                    inQuotes = false;
-                }
-            } else {
-                currentField += char;
-            }
-        } else {
-            if (char === ',') {
-                currentRow.push(currentField);
-                currentField = '';
-            } else if (char === '\n') {
-                currentRow.push(currentField);
-                result.push(currentRow);
-                currentRow = [];
-                currentField = '';
-            } else if (char === '"' && currentField === '') {
-                inQuotes = true;
-            } else {
-                currentField += char;
-            }
-        }
-        i++;
-    }
-
-    if (currentField || currentRow.length > 0) {
-        currentRow.push(currentField);
-        result.push(currentRow);
-    }
-    
-    return result.filter(row => row.some(field => field.trim() !== ''));
-};
-
 export function TestCaseDetailsPage() {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const handleDataUploaded = useCallback((csvText: string) => {
+  const fetchTestCases = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const rows = parseCSV(csvText);
-      if (rows.length < 2) {
-        throw new Error('CSV must have a header and at least one data row.');
+      const response = await fetch('/api/test-cases/latest');
+      if (!response.ok) {
+        throw new Error('Failed to fetch test cases from server.');
       }
-      
-      const headerRow = rows[0].map(h => h.trim());
-      setHeaders(headerRow);
-      
-      const parsedTestCases = rows.slice(1).map((values) => {
-        return headerRow.reduce((obj, header, index) => {
-          obj[header] = values[index] || '';
-          return obj;
-        }, {} as TestCase);
-      });
-
-      setTestCases(parsedTestCases);
-      toast({
-        title: 'Success!',
-        description: `${parsedTestCases.length} test cases loaded.`,
-      });
+      const data = await response.json();
+      if (data && data.testCases && data.testCases.length > 0) {
+        const cases = data.testCases;
+        setTestCases(cases);
+        setHeaders(Object.keys(cases[0]));
+      } else {
+        setTestCases([]);
+        setHeaders([]);
+      }
     } catch (error: any) {
-      setTestCases([]);
-      setHeaders([]);
       toast({
         variant: 'destructive',
-        title: 'Error processing file',
-        description: error.message || 'An unknown error occurred.',
+        title: 'Error Loading Test Cases',
+        description: error.message,
       });
+    } finally {
+      setIsLoading(false);
     }
   }, [toast]);
+
+  useEffect(() => {
+    fetchTestCases();
+  }, [fetchTestCases]);
+
+  if (isLoading) {
+    return (
+        <div className="flex flex-1 flex-col items-center justify-center p-8">
+            <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <p>Loading test case records...</p>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {testCases.length === 0 ? (
-         <div className="flex flex-1 flex-col items-center justify-center p-4">
-         <div className="flex flex-col items-center justify-center gap-4 text-center">
-           <div className="rounded-lg bg-card p-6 shadow-sm">
-             <h2 className="text-2xl font-bold">Upload Test Case Data</h2>
-             <p className="mt-2 text-muted-foreground">
-               To get started, please upload a CSV file containing your test case details.
-             </p>
-           </div>
-           <div className="flex w-full max-w-lg flex-col items-stretch justify-center gap-4">
-            <FileUploader onDataUploaded={handleDataUploaded} templatePath="/test-cases-template.csv" />
-           </div>
-         </div>
-       </div>
+         <Card>
+            <CardHeader>
+                <CardTitle>No Test Case Data</CardTitle>
+                <CardDescription>There are no test case records stored on the server. Please go to the Test Case Summary page to upload a file.</CardDescription>
+            </CardHeader>
+            <CardContent className='flex justify-center py-8'>
+                <Button variant="outline" onClick={fetchTestCases}>
+                    <RefreshCw className='mr-2 h-4 w-4' />
+                    Check for Data
+                </Button>
+            </CardContent>
+         </Card>
       ) : (
         <Card>
-          <CardHeader>
-            <CardTitle>Test Case Details</CardTitle>
-            <CardDescription>
-              Displaying {testCases.length} uploaded test cases.
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>Test Case Details</CardTitle>
+                <CardDescription>
+                Displaying {testCases.length} persistent test case records.
+                </CardDescription>
+            </div>
+            <Button variant="ghost" size="icon" onClick={fetchTestCases} title="Refresh Data">
+                <RefreshCw className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto rounded-md border">
@@ -140,18 +103,13 @@ export function TestCaseDetailsPage() {
                     <TableRow key={index}>
                       {headers.map((header) => (
                         <TableCell key={header} className="max-w-sm truncate">
-                          {testCase[header]}
+                          {testCase[header] || '-'}
                         </TableCell>
                       ))}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </div>
-            <div className="mt-6 flex justify-center">
-                <Button variant="outline" onClick={() => { setTestCases([]); setHeaders([]); }}>
-                    Upload a different file
-                </Button>
             </div>
           </CardContent>
         </Card>

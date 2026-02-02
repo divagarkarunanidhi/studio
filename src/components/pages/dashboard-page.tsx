@@ -27,7 +27,6 @@ import {
   PieChart,
   AlertTriangle,
   Upload,
-  Server,
   LogOut,
   Users,
   Settings,
@@ -35,8 +34,7 @@ import {
   Download,
   FileText,
   MonitorPlay,
-  ClipboardCheck,
-  Clipboard,
+  List,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -56,12 +54,6 @@ import {
     SelectTrigger,
     SelectValue,
   } from '@/components/ui/select';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-  } from "@/components/ui/dropdown-menu"
 import { useToast } from '@/hooks/use-toast';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
 import { useUser, useAuth, useFirestore } from '@/firebase';
@@ -84,10 +76,11 @@ import { FeedbackManagementPage } from './feedback-management-page';
 import * as XLSX from 'xlsx';
 import { doc, getDoc } from 'firebase/firestore';
 import { TestCaseSummaryPage } from './test-case-summary-page';
+import { TestCaseDetailsPage } from './test-case-details-page';
 import { SeleniumDashboardPage } from './selenium-dashboard-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'test-case-details' | 'selenium-dashboard';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -98,7 +91,6 @@ const parseCSV = (text: string): string[][] => {
     let inQuotes = false;
     let i = 0;
 
-    // Normalize line endings
     const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
     while (i < normalizedText.length) {
@@ -106,10 +98,9 @@ const parseCSV = (text: string): string[][] => {
 
         if (inQuotes) {
             if (char === '"') {
-                // Check for escaped quote
                 if (i + 1 < normalizedText.length && normalizedText[i + 1] === '"') {
                     currentField += '"';
-                    i++; // Skip the second quote
+                    i++;
                 } else {
                     inQuotes = false;
                 }
@@ -134,13 +125,11 @@ const parseCSV = (text: string): string[][] => {
         i++;
     }
 
-    // Add the last field and row if the text doesn't end with a newline
     if (currentField || currentRow.length > 0) {
         currentRow.push(currentField);
         result.push(currentRow);
     }
     
-    // Filter out completely empty rows
     return result.filter(row => row.some(field => field.trim() !== ''));
 };
 
@@ -148,13 +137,11 @@ const parseCSV = (text: string): string[][] => {
 const parseDate = (dateString: string): Date | null => {
     if (!dateString) return null;
   
-    // Attempt 1: Standard ISO format (and others recognized by new Date())
     let date = new Date(dateString);
     if (!isNaN(date.getTime())) {
       return date;
     }
   
-    // Attempt 2: Jira/Excel format 'DD/MMM/YY h:mm a' e.g., "30/May/24 5:20 PM"
     const jiraFormat = dateString.match(/(\d{1,2})\/(\w{3})\/(\d{2,4})\s+(\d{1,2}):(\d{2})\s+([AP]M)/i);
     if (jiraFormat) {
         const day = parseInt(jiraFormat[1], 10);
@@ -178,7 +165,6 @@ const parseDate = (dateString: string): Date | null => {
         }
     }
 
-    // Attempt 3: Format 'M/D/YYYY H:mm' e.g., "5/30/2024 17:20"
     const simpleFormat = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
     if (simpleFormat) {
         const month = parseInt(simpleFormat[1], 10) - 1;
@@ -193,7 +179,6 @@ const parseDate = (dateString: string): Date | null => {
         }
     }
     
-     // Attempt 4: Format DD.MM.YYYY HH:mm:ss
     const dotFormat = dateString.match(/(\d{2})\.(\d{2})\.(\d{4})\s(\d{2}):(\d{2}):(\d{2})/);
     if (dotFormat) {
         const day = parseInt(dotFormat[1], 10);
@@ -208,8 +193,6 @@ const parseDate = (dateString: string): Date | null => {
         }
     }
 
-
-    // Final attempt with just the date part if time fails
     try {
         const dateOnly = dateString.split(' ')[0];
         date = new Date(dateOnly);
@@ -221,7 +204,7 @@ const parseDate = (dateString: string): Date | null => {
     }
 
     console.warn(`Could not parse date: "${dateString}"`);
-    return null; // Return null if all attempts fail
+    return null;
 }
 
 interface DashboardPageProps {
@@ -229,7 +212,7 @@ interface DashboardPageProps {
 }
 
 export function DashboardPage({ userProfile }: DashboardPageProps) {
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
   const userRole = userProfile?.role;
@@ -279,14 +262,13 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         setUploadTimestamp(data.uploadedAt);
         setShowUploader(false);
       } else {
-        toast({ title: "No Data Found", description: "There is no data stored on the server. Please upload a file." });
         setDefects([]);
         setUploadTimestamp(null);
-        setShowUploader(true); // Explicitly show uploader if no data
+        setShowUploader(true);
       }
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Error Loading Data', description: error.message });
-      setShowUploader(true); // Also show uploader on error
+      setShowUploader(true);
       console.error(error);
     } finally {
       setDefectsLoading(false);
@@ -392,7 +374,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         }
         
         toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded in a new file.` });
-        await handleLoadFromServer(); // Reload data to show the new file
+        await handleLoadFromServer();
         setShowUploader(false);
     } catch (error: any) {
         console.error('Error during defect upload:', error);
@@ -453,6 +435,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     configuration: 'Application Configuration',
     'feedback-management': 'Feedback Management',
     'test-case-summary': 'Test Case Summary',
+    'test-case-details': 'Test Case Details',
     'selenium-dashboard': 'Selenium Dashboard',
   };
   
@@ -469,6 +452,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     configuration: 'Manage global application settings and API keys.',
     'feedback-management': 'View, edit, and delete saved few-shot learning examples.',
     'test-case-summary': 'Upload and visualize test case data by label.',
+    'test-case-details': 'A comprehensive list of all uploaded test cases.',
     'selenium-dashboard': 'Visualize results from Selenium test runs.',
   };
 
@@ -663,7 +647,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   };
 
 
-  if (isUserLoading || defectsLoading) {
+  if (defectsLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -674,7 +658,8 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     );
   }
   
-  const displayUploader = showUploader && (activeView === 'dashboard' || activeView === 'test-case-summary');
+  // Only show the global uploader for dashboard and all-defects views
+  const displayUploader = showUploader && (activeView === 'dashboard' || activeView === 'all-defects');
 
   return (
     <SidebarProvider>
@@ -708,6 +693,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               <SidebarMenuButton tooltip="Test Case Summary" isActive={activeView === 'test-case-summary'} onClick={() => handleViewChange('test-case-summary')}>
                 <FileText />
                 Test Case Summary
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="Test Case Details" isActive={activeView === 'test-case-details'} onClick={() => handleViewChange('test-case-details')}>
+                <List />
+                Test Case Details
               </SidebarMenuButton>
             </SidebarMenuItem>
              <SidebarMenuItem>
@@ -796,46 +787,24 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
           </div>
           <div className="flex items-center gap-4">
               {activeView === 'dashboard' && uploadTimestamp && <ClientTimestamp timestamp={uploadTimestamp} />}
-              {userRole === 'admin' && activeView === 'dashboard' && (
+              {userRole === 'admin' && (activeView === 'dashboard' || activeView === 'all-defects') && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="outline">
                             <Upload className="mr-2 h-4 w-4" />
-                            Upload New Data
+                            Upload Defect Data
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                        <AlertDialogTitle>Ready to upload a new file?</AlertDialogTitle>
+                        <AlertDialogTitle>Upload new defect data?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will take you to the file uploader. Uploading a new file will create a new record on the server.
+                            This will take you to the file uploader. New data will be added to the server.
                         </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleClearData}>Continue</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-              )}
-               {userRole === 'admin' && activeView === 'test-case-summary' && (
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="outline">
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload New Data
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Upload a new test case file?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will clear the current test case data and allow you to upload a new file.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => setShowUploader(true)}>Continue</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -847,9 +816,9 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
           <main className="flex flex-1 flex-col items-center justify-center p-4">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="rounded-lg bg-card p-6 shadow-sm">
-                <h2 className="text-2xl font-bold">Upload Data</h2>
+                <h2 className="text-2xl font-bold">Upload Defect Data</h2>
                 <p className="mt-2 text-muted-foreground">
-                  To get started, please upload a CSV file.
+                  Please upload a CSV file containing software defects.
                 </p>
               </div>
               <div className="flex w-full max-w-lg flex-col items-stretch justify-center gap-4">
@@ -868,7 +837,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   <StatCard title="Total Defects" value={totalDefects} icon={<Bug />} />
                   <StatCard title="Created Yesterday" value={yesterdayDefectsCount} icon={<CalendarClock />} />
-                  <StatCard title="Ready for Testing" value={readyForTestingCount} icon={<TestTube />} />
+                  <StatCard title="Ready for Testing" value={yesterdayDefectsCount} icon={<TestTube />} />
                 </div>
 
                 <Card>
@@ -892,6 +861,9 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
             {activeView === 'test-case-summary' && (
               <TestCaseSummaryPage />
+            )}
+            {activeView === 'test-case-details' && (
+              <TestCaseDetailsPage />
             )}
             {activeView === 'selenium-dashboard' && (
               <SeleniumDashboardPage />
