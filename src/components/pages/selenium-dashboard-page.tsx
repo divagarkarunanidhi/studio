@@ -120,7 +120,7 @@ const getStepDuration = (step: Step): number => {
     }
   
     if (typeof step.result.duration === 'number') {
-      return 0;
+      return step.result.duration;
     }
   
     if (typeof step.result.duration === 'object' && step.result.duration && '$numberLong' in step.result.duration) {
@@ -841,86 +841,80 @@ export function SeleniumDashboardPage() {
     /**
      * Consolidates a list of reports into a single ReportSummary.
      * Logic:
-     * - Group by jobName + scenarioName.
-     * - Priority rule: If it passed in any execution, mark as Passed.
-     * - When multiple results for same status exist, take the most recent execution.
+     * - For each unique scenario (grouped by jobName + scenarioName):
+     * - If it passed in any execution, mark as Passed (and use data from the latest successful execution).
+     * - If it failed in ALL executions, mark as Failed (and use data from the latest run).
      */
     const consolidateReports = useCallback((reportsToConsolidate: ReportSummary[], id: string, title: string, jobDesc: string) => {
         if (reportsToConsolidate.length === 0) return null;
 
-        // Sort by execution date ascending (oldest to newest)
+        // Sort by execution date ascending (oldest to newest) to process history in order
         const sorted = [...reportsToConsolidate].sort((a, b) => {
             const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
             const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
             return dateA - dateB;
         });
 
-        const uniqueScenariosMap = new Map<string, DetailedScenario>();
-        const uniqueRawScenariosMap = new Map<string, { feature: Feature, scenario: Scenario }>();
+        const scenarioRegistry = new Map<string, { summary: DetailedScenario, raw: { feature: Feature, scenario: Scenario } }>();
         let totalExecutionTime = 0;
 
         sorted.forEach(report => {
             totalExecutionTime += report.totalExecutionTime;
             
+            // Map raw report results for easy lookup
+            const rawScenarioMap = new Map<string, { feature: Feature, scenario: Scenario }>();
+            report.rawReport.test_results?.forEach(feature => {
+                feature.elements?.forEach(scenario => {
+                    rawScenarioMap.set(scenario.name, { feature, scenario });
+                });
+            });
+
             report.scenarios.forEach(sc => {
                 const key = `${report.jobName}|${sc.name}`;
-                const existing = uniqueScenariosMap.get(key);
-                
+                const existing = scenarioRegistry.get(key);
+                const rawData = rawScenarioMap.get(sc.name);
+
+                if (!rawData) return;
+
                 if (!existing) {
-                    uniqueScenariosMap.set(key, sc);
+                    scenarioRegistry.set(key, { summary: sc, raw: rawData });
                 } else {
-                    // Logic:
-                    // If current scenario passed, prioritize it.
-                    // If both statuses are same, prioritize latest.
+                    // Logic: 
+                    // 1. If current scenario passed, it becomes the definitive result (even if a later one fails)
+                    // 2. If existing was already passed and current passes too, update to current (latest pass)
+                    // 3. If current failed and existing was failed, update to current (latest fail)
                     if (sc.status === 'passed') {
-                        uniqueScenariosMap.set(key, sc);
-                    } else if (sc.status === 'failed' && existing.status === 'failed') {
-                        uniqueScenariosMap.set(key, sc);
+                        scenarioRegistry.set(key, { summary: sc, raw: rawData });
+                    } else if (sc.status === 'failed' && existing.summary.status === 'failed') {
+                        scenarioRegistry.set(key, { summary: sc, raw: rawData });
                     }
                 }
             });
-
-            report.rawReport.test_results?.forEach(feature => {
-                feature.elements?.forEach(scenario => {
-                    const key = `${report.jobName}|${scenario.name}`;
-                    const currentStatus = getScenarioStatus(scenario);
-                    const existing = uniqueRawScenariosMap.get(key);
-                    
-                    if (!existing) {
-                        uniqueRawScenariosMap.set(key, { feature, scenario });
-                    } else {
-                        if (currentStatus === 'passed') {
-                            uniqueRawScenariosMap.set(key, { feature, scenario });
-                        } else if (currentStatus === 'failed' && getScenarioStatus(existing.scenario) === 'failed') {
-                            uniqueRawScenariosMap.set(key, { feature, scenario });
-                        }
-                    }
-                });
-            });
         });
 
-        const uniqueScenarios = Array.from(uniqueScenariosMap.values());
-        const passedCount = uniqueScenarios.filter(s => s.status === 'passed').length;
-        const failedCount = uniqueScenarios.length - passedCount;
+        const consolidatedScenarios = Array.from(scenarioRegistry.values());
+        const uniqueSummaries = consolidatedScenarios.map(v => v.summary);
+        const passedCount = uniqueSummaries.filter(s => s.status === 'passed').length;
+        const failedCount = uniqueSummaries.length - passedCount;
 
         const consolidatedFeatures: Feature[] = [];
-        uniqueRawScenariosMap.forEach(({ feature, scenario }) => {
-            let existingFeature = consolidatedFeatures.find(f => f.name === feature.name);
+        consolidatedScenarios.forEach(({ raw }) => {
+            let existingFeature = consolidatedFeatures.find(f => f.name === raw.feature.name);
             if (!existingFeature) {
-                existingFeature = { ...feature, elements: [] };
+                existingFeature = { ...raw.feature, elements: [] };
                 consolidatedFeatures.push(existingFeature);
             }
-            existingFeature.elements.push(scenario);
+            existingFeature.elements.push(raw.scenario);
         });
 
         return {
             id,
             solution: title,
             jobName: jobDesc,
-            totalTests: uniqueScenarios.length,
+            totalTests: uniqueSummaries.length,
             passed: passedCount,
             failed: failedCount,
-            scenarios: uniqueScenarios,
+            scenarios: uniqueSummaries,
             totalExecutionTime,
             rawReport: {
                 _id: id,
