@@ -34,6 +34,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
+import {
+  Tooltip as UITooltip,
+  TooltipContent as UITooltipContent,
+  TooltipProvider as UITooltipProvider,
+  TooltipTrigger as UITooltipTrigger,
+} from "@/components/ui/tooltip";
 
 
 type TestCase = {
@@ -894,67 +900,78 @@ export function SeleniumDashboardPage() {
             <Card>
                 <CardContent className="pt-6">
                     <div className="w-full overflow-hidden rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[40px]">
-                                        <Checkbox
-                                            checked={processedReports.length > 0 && selectedReportIds.length === processedReports.length}
-                                            onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                                            aria-label="Select all rows"
-                                        />
-                                    </TableHead>
-                                    <TableHead>Job Name</TableHead>
-                                    <TableHead>Domain</TableHead>
-                                    <TableHead>Total</TableHead>
-                                    <TableHead>Passed</TableHead>
-                                    <TableHead>Failed</TableHead>
-                                    <TableHead>Status Chart</TableHead>
-                                    <TableHead>Execution Date</TableHead>
-                                    <TableHead>Detailed Report</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {isLoading ? (
-                                    Array.from({ length: 5 }).map((_, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell colSpan={9}>
-                                            <Skeleton className="h-8 w-full" />
-                                        </TableCell>
-                                    </TableRow>
-                                    ))
-                                ) : processedReports.map(summary => (
-                                    <TableRow key={summary.id} data-state={selectedReportIds.includes(summary.id) && "selected"}>
-                                        <TableCell>
+                        <UITooltipProvider>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[40px]">
                                             <Checkbox
-                                                checked={selectedReportIds.includes(summary.id)}
-                                                onCheckedChange={(checked) => handleSelectRow(summary.id, !!checked)}
-                                                aria-label={`Select row ${summary.id}`}
+                                                checked={processedReports.length > 0 && selectedReportIds.length === processedReports.length}
+                                                onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                                                aria-label="Select all rows"
                                             />
-                                        </TableCell>
-                                        <TableCell className='max-w-xs truncate'>{summary.jobName}</TableCell>
-                                        <TableCell>{summary.domain}</TableCell>
-                                        <TableCell>{summary.totalTests}</TableCell>
-                                        <TableCell className='text-green-600'>{summary.passed}</TableCell>
-                                        <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
-                                        <TableCell>
-                                            <SmallStatusChart passed={summary.passed} failed={summary.failed} />
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-xs">
-                                            {summary.uploadedAt ? format(parseISO(summary.uploadedAt), 'MMM d, yyyy') : 'N/A'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Dialog>
-                                                <DialogTrigger asChild>
-                                                    <Button variant='link' size="sm">View Details</Button>
-                                                </DialogTrigger>
-                                                <DetailModal report={summary} jiraLink={jiraLink} allProcessedReports={processedReports} />
-                                            </Dialog>
-                                        </TableCell>
+                                        </TableHead>
+                                        <TableHead>Job Name</TableHead>
+                                        <TableHead>Domain</TableHead>
+                                        <TableHead>Total</TableHead>
+                                        <TableHead>Passed</TableHead>
+                                        <TableHead>Failed</TableHead>
+                                        <TableHead>Status Chart</TableHead>
+                                        <TableHead>Execution Date</TableHead>
+                                        <TableHead>Detailed Report</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {isLoading ? (
+                                        Array.from({ length: 5 }).map((_, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell colSpan={9}>
+                                                <Skeleton className="h-8 w-full" />
+                                            </TableCell>
+                                        </TableRow>
+                                        ))
+                                    ) : processedReports.map(summary => (
+                                        <TableRow key={summary.id} data-state={selectedReportIds.includes(summary.id) && "selected"}>
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={selectedReportIds.includes(summary.id)}
+                                                    onCheckedChange={(checked) => handleSelectRow(summary.id, !!checked)}
+                                                    aria-label={`Select row ${summary.id}`}
+                                                />
+                                            </TableCell>
+                                            <TableCell className='max-w-xs truncate'>
+                                                <UITooltip>
+                                                    <UITooltipTrigger asChild>
+                                                        <span className="cursor-default">{summary.jobName}</span>
+                                                    </UITooltipTrigger>
+                                                    <UITooltipContent>
+                                                        <p>{summary.jobName}</p>
+                                                    </UITooltipContent>
+                                                </UITooltip>
+                                            </TableCell>
+                                            <TableCell>{summary.domain}</TableCell>
+                                            <TableCell>{summary.totalTests}</TableCell>
+                                            <TableCell className='text-green-600'>{summary.passed}</TableCell>
+                                            <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
+                                            <TableCell>
+                                                <SmallStatusChart passed={summary.passed} failed={summary.failed} />
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-xs">
+                                                {summary.uploadedAt ? format(parseISO(summary.uploadedAt), 'MMM d, yyyy') : 'N/A'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant='link' size="sm">View Details</Button>
+                                                    </DialogTrigger>
+                                                    <DetailModal report={summary} jiraLink={jiraLink} allProcessedReports={processedReports} />
+                                                </Dialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </UITooltipProvider>
                     </div>
                      {totalReports === 0 && !isLoading && (
                         <Alert className="mt-4">
