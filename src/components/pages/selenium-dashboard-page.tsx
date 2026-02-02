@@ -7,10 +7,10 @@ import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { AppConfiguration, Defect } from '@/lib/types';
 import * as XLSX from 'xlsx';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown } from 'lucide-react';
+import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -311,9 +311,9 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     };
 
     const isMostRecentReport = useMemo(() => {
-        if (report.id === 'consolidated') return false;
+        if (report.id.startsWith('consolidated')) return false;
         
-        const reportsForSameJob = allProcessedReports.filter(p => p.jobName === report.jobName && p.id !== 'consolidated');
+        const reportsForSameJob = allProcessedReports.filter(p => p.jobName === report.jobName && !p.id.startsWith('consolidated'));
         if (reportsForSameJob.length <= 1) return false;
 
         const mostRecentReport = reportsForSameJob.sort((a,b) => {
@@ -326,10 +326,10 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
     }, [report, allProcessedReports]);
 
     const comparisonData = useMemo(() => {
-        if (report.id === 'consolidated' || !isMostRecentReport) return null;
+        if (report.id.startsWith('consolidated') || !isMostRecentReport) return null;
 
         const previousRuns = allProcessedReports
-            .filter(p => p.jobName === report.jobName && p.id !== 'consolidated' && p.uploadedAt && report.uploadedAt && new Date(p.uploadedAt) < new Date(report.uploadedAt))
+            .filter(p => p.jobName === report.jobName && !p.id.startsWith('consolidated') && p.uploadedAt && report.uploadedAt && new Date(p.uploadedAt) < new Date(report.uploadedAt))
             .sort((a, b) => {
                 const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
                 const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
@@ -377,7 +377,7 @@ const DetailModal = ({ report, jiraLink, allProcessedReports }: { report: Report
             <DialogHeader>
                 <DialogTitle>Detailed Report for: {report.solution}</DialogTitle>
                 <DialogDescription>
-                    Job: {report.jobName} | Environment: {report.environment} | Run on: {report.uploadedAt ? format(parseISO(report.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                    {report.jobName} | Run on: {report.uploadedAt ? format(parseISO(report.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[80vh]">
@@ -771,51 +771,63 @@ export function SeleniumDashboardPage() {
             setSelectedReportIds(prev => prev.filter(id => id !== reportId));
         }
     };
-    
-    const consolidatedReport = useMemo((): ReportSummary | null => {
-        if (selectedReportIds.length === 0) return null;
-    
-        const selected = processedReports.filter(r => selectedReportIds.includes(r.id));
-        if (selected.length === 0) return null;
 
-        // Sort by date descending so the first run we encounter for a job is the latest one
-        const sortedSelected = [...selected].sort((a, b) => {
+    /**
+     * Consolidates a list of reports into a single ReportSummary.
+     * Logic:
+     * - Group by jobName + scenarioName.
+     * - Priority rule: If it passed in any execution, mark as Passed.
+     * - When multiple results for same status exist, take the most recent execution.
+     */
+    const consolidateReports = useCallback((reportsToConsolidate: ReportSummary[], id: string, title: string, jobDesc: string) => {
+        if (reportsToConsolidate.length === 0) return null;
+
+        // Sort by execution date ascending (oldest to newest)
+        const sorted = [...reportsToConsolidate].sort((a, b) => {
             const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
             const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
-            return dateB - dateA;
+            return dateA - dateB;
         });
 
-        // Use maps to track the status for each scenario per job
-        // Priority rule: if it ever passed, it's passed. If multiple passed, take the latest.
         const uniqueScenariosMap = new Map<string, DetailedScenario>();
         const uniqueRawScenariosMap = new Map<string, { feature: Feature, scenario: Scenario }>();
         let totalExecutionTime = 0;
 
-        sortedSelected.forEach(report => {
+        sorted.forEach(report => {
             totalExecutionTime += report.totalExecutionTime;
             
-            // Map individual processed scenarios by [jobName|scenarioName]
             report.scenarios.forEach(sc => {
                 const key = `${report.jobName}|${sc.name}`;
                 const existing = uniqueScenariosMap.get(key);
                 
-                // Logic:
-                // 1. If not in map, add it (this is the latest one due to sortedSelected)
-                // 2. If already in map as 'failed', but current sc is 'passed', replace it.
-                if (!existing || (existing.status === 'failed' && sc.status === 'passed')) {
+                if (!existing) {
                     uniqueScenariosMap.set(key, sc);
+                } else {
+                    // Logic:
+                    // If sc is passed, replace (matches latest pass rule)
+                    // If sc is failed, only replace if existing is also failed (matches latest fail rule)
+                    if (sc.status === 'passed') {
+                        uniqueScenariosMap.set(key, sc);
+                    } else if (sc.status === 'failed' && existing.status === 'failed') {
+                        uniqueScenariosMap.set(key, sc);
+                    }
                 }
             });
 
-            // Map raw test results similarly for the detail modal view
             report.rawReport.test_results?.forEach(feature => {
                 feature.elements?.forEach(scenario => {
                     const key = `${report.jobName}|${scenario.name}`;
                     const currentStatus = getScenarioStatus(scenario);
                     const existing = uniqueRawScenariosMap.get(key);
                     
-                    if (!existing || (getScenarioStatus(existing.scenario) === 'failed' && currentStatus === 'passed')) {
+                    if (!existing) {
                         uniqueRawScenariosMap.set(key, { feature, scenario });
+                    } else {
+                        if (currentStatus === 'passed') {
+                            uniqueRawScenariosMap.set(key, { feature, scenario });
+                        } else if (currentStatus === 'failed' && getScenarioStatus(existing.scenario) === 'failed') {
+                            uniqueRawScenariosMap.set(key, { feature, scenario });
+                        }
                     }
                 });
             });
@@ -825,7 +837,6 @@ export function SeleniumDashboardPage() {
         const passedCount = uniqueScenarios.filter(s => s.status === 'passed').length;
         const failedCount = uniqueScenarios.length - passedCount;
 
-        // Reconstruct rawReport.test_results from uniqueRawScenariosMap
         const consolidatedFeatures: Feature[] = [];
         uniqueRawScenariosMap.forEach(({ feature, scenario }) => {
             let existingFeature = consolidatedFeatures.find(f => f.name === feature.name);
@@ -835,20 +846,20 @@ export function SeleniumDashboardPage() {
             }
             existingFeature.elements.push(scenario);
         });
-    
+
         return {
-            id: "consolidated",
-            solution: "Consolidated Report",
-            jobName: `${selected.length} Reports Combined`,
+            id,
+            solution: title,
+            jobName: jobDesc,
             totalTests: uniqueScenarios.length,
             passed: passedCount,
             failed: failedCount,
             scenarios: uniqueScenarios,
             totalExecutionTime,
             rawReport: {
-                _id: "consolidated",
-                fileName: "consolidated",
-                solution: "consolidated",
+                _id: id,
+                fileName: id,
+                solution: title,
                 environment: "consolidated",
                 Config: "consolidated",
                 "Report Path": "N/A",
@@ -856,11 +867,27 @@ export function SeleniumDashboardPage() {
                 uploaderId: "",
                 uploadedAt: new Date().toISOString(),
             },
-            domain: "Consolidated",
+            domain: title,
             environment: "Consolidated",
             uploadedAt: new Date().toISOString(),
-        };
-    }, [selectedReportIds, processedReports]);
+        } as ReportSummary;
+    }, []);
+    
+    const consolidatedReport = useMemo((): ReportSummary | null => {
+        if (selectedReportIds.length === 0) return null;
+        const selected = processedReports.filter(r => selectedReportIds.includes(r.id));
+        return consolidateReports(selected, "consolidated-selection", "Selected Consolidated Report", `${selected.length} Reports Combined`);
+    }, [selectedReportIds, processedReports, consolidateReports]);
+
+    const domainConsolidatedReports = useMemo((): ReportSummary[] => {
+        if (processedReports.length === 0) return [];
+        const domains = Array.from(new Set(processedReports.map(r => r.domain)));
+        
+        return domains.map(domain => {
+            const domainReports = processedReports.filter(r => r.domain === domain);
+            return consolidateReports(domainReports, `consolidated-domain-${domain}`, domain, `Domain Consolidated Report`);
+        }).filter((r): r is ReportSummary => r !== null);
+    }, [processedReports, consolidateReports]);
     
     const handlePageChange = (newPage: number) => {
         setCurrentPage(newPage);
@@ -933,6 +960,58 @@ export function SeleniumDashboardPage() {
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
+
+            {domainConsolidatedReports.length > 0 && (
+                <Card className='bg-muted/30'>
+                    <CardHeader>
+                        <div className='flex items-center gap-2'>
+                            <Layers className='h-5 w-5 text-primary' />
+                            <CardTitle>Domain-wise Consolidated Reports</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Aggregated results per domain. Logic: Latest "Passed" status is prioritized for each scenario.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {domainConsolidatedReports.map(report => (
+                                <Card key={report.id} className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-lg truncate" title={report.domain}>{report.domain}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-muted-foreground flex items-center justify-between gap-4">
+                                                    <span>Total:</span> 
+                                                    <span className='font-semibold text-foreground'>{report.totalTests}</span>
+                                                </p>
+                                                <p className="text-xs text-green-600 flex items-center justify-between gap-4">
+                                                    <span>Passed:</span>
+                                                    <span className='font-bold'>{report.passed}</span>
+                                                </p>
+                                                <p className="text-xs text-red-600 flex items-center justify-between gap-4">
+                                                    <span>Failed:</span>
+                                                    <span className='font-bold'>{report.failed}</span>
+                                                </p>
+                                            </div>
+                                            <SmallStatusChart passed={report.passed} failed={report.failed} />
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="pt-2">
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="sm" className="w-full text-xs h-8">View Details</Button>
+                                            </DialogTrigger>
+                                            <DetailModal report={report} jiraLink={jiraLink} allProcessedReports={processedReports} />
+                                        </Dialog>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardContent className="pt-6">
