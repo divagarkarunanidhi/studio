@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -34,7 +33,6 @@ import {
   Download,
   FileText,
   MonitorPlay,
-  List,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -76,11 +74,10 @@ import { FeedbackManagementPage } from './feedback-management-page';
 import * as XLSX from 'xlsx';
 import { doc, getDoc } from 'firebase/firestore';
 import { TestCaseSummaryPage } from './test-case-summary-page';
-import { TestCaseDetailsPage } from './test-case-details-page';
 import { SeleniumDashboardPage } from './selenium-dashboard-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'test-case-details' | 'selenium-dashboard';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -442,7 +439,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     configuration: 'Application Configuration',
     'feedback-management': 'Feedback Management',
     'test-case-summary': 'Test Case Summary',
-    'test-case-details': 'Test Case Details',
     'selenium-dashboard': 'Selenium Dashboard',
   };
   
@@ -459,7 +455,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     configuration: 'Manage global application settings and API keys.',
     'feedback-management': 'View, edit, and delete saved few-shot learning examples.',
     'test-case-summary': 'Upload and visualize test case data by label.',
-    'test-case-details': 'A comprehensive list of all uploaded test cases.',
     'selenium-dashboard': 'Visualize results from Selenium test runs.',
   };
 
@@ -702,12 +697,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 Test Case Summary
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="Test Case Details" isActive={activeView === 'test-case-details'} onClick={() => handleViewChange('test-case-details')}>
-                <List />
-                Test Case Details
-              </SidebarMenuButton>
-            </SidebarMenuItem>
              <SidebarMenuItem>
               <SidebarMenuButton tooltip="Selenium Dashboard" isActive={activeView === 'selenium-dashboard'} onClick={() => handleViewChange('selenium-dashboard')}>
                 <MonitorPlay />
@@ -892,9 +881,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
             {activeView === 'test-case-summary' && (
               <TestCaseSummaryPage externalUploadTrigger={tcUploadTrigger} />
-            )}
-            {activeView === 'test-case-details' && (
-              <TestCaseDetailsPage />
             )}
             {activeView === 'selenium-dashboard' && (
               <SeleniumDashboardPage />
