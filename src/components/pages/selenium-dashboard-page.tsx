@@ -132,7 +132,6 @@ const formatNanosToTime = (nanos: number) => {
 
 const handleExport = (scenariosToExport: DetailedScenario[], sliceName: string) => {
     if (!scenariosToExport || scenariosToExport.length === 0) {
-        // Maybe show a toast message here
         return;
     }
 
@@ -158,6 +157,38 @@ const handleExport = (scenariosToExport: DetailedScenario[], sliceName: string) 
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Scenarios');
     const fileName = `selenium_scenarios_${sliceName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
     XLSX.writeFile(workbook, fileName);
+};
+
+const SmallStatusChart = ({ passed, failed }: { passed: number; failed: number }) => {
+    const data = [
+        { name: 'Passed', value: passed, fill: 'hsl(var(--chart-1))' },
+        { name: 'Failed', value: failed, fill: 'hsl(var(--chart-2))' },
+    ].filter(d => d.value > 0);
+
+    if (data.length === 0) return <div className="h-8 w-8 bg-muted rounded-full" />;
+
+    return (
+        <div className="h-8 w-8 flex items-center justify-center">
+            <ChartContainer config={{}} className="h-full w-full">
+                <PieChart width={32} height={32}>
+                    <Pie
+                        data={data}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={0}
+                        outerRadius={14}
+                        paddingAngle={0}
+                        dataKey="value"
+                        isAnimationActive={false}
+                    >
+                        {data.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} stroke="none" />
+                        ))}
+                    </Pie>
+                </PieChart>
+            </ChartContainer>
+        </div>
+    );
 };
 
 
@@ -194,7 +225,7 @@ const ClickableStat = ({
                 <ScrollArea className="h-72 w-full rounded-md border">
                     <div className="p-4 flex flex-wrap gap-2">
                         {scenarios.map((scenario, idx) => (
-                            <Badge key={scenario.id + idx} variant="secondary">
+                            <Badge key={`${scenario.id}-${idx}`} variant="secondary">
                                 {scenario.testCaseId ? (
                                     <a
                                         href={`${jiraLink}/browse/${scenario.testCaseId}`}
@@ -623,11 +654,9 @@ export function SeleniumDashboardPage() {
     }, [toast]);
     
     useEffect(() => {
-        // Initial load
         const loadInitialData = async () => {
             setIsLoading(true);
             try {
-                // Fetch test cases and reports in parallel
                 const [tcResponse] = await Promise.all([
                     fetch('/api/test-cases/latest'),
                 ]);
@@ -641,7 +670,6 @@ export function SeleniumDashboardPage() {
                     console.warn("Could not fetch test case details. Defect IDs might be missing.");
                 }
                 
-                // Now fetch the first page of reports
                 await fetchReports(1);
 
             } catch (error: any) {
@@ -764,7 +792,6 @@ export function SeleniumDashboardPage() {
             acc.totalExecutionTime += report.totalExecutionTime;
             acc.scenarios.push(...report.scenarios);
             
-            // Merge raw reports for detailed view
             report.rawReport.test_results.forEach(feature => {
                 const existingFeature = acc.rawReport.test_results.find(f => f.uri === feature.uri);
                 if (existingFeature) {
@@ -870,6 +897,7 @@ export function SeleniumDashboardPage() {
                                     <TableHead>Total</TableHead>
                                     <TableHead>Passed</TableHead>
                                     <TableHead>Failed</TableHead>
+                                    <TableHead>Status Chart</TableHead>
                                     <TableHead>Execution Date</TableHead>
                                     <TableHead>Detailed Report</TableHead>
                                 </TableRow>
@@ -878,7 +906,7 @@ export function SeleniumDashboardPage() {
                                 {isLoading ? (
                                     Array.from({ length: 5 }).map((_, i) => (
                                     <TableRow key={i}>
-                                        <TableCell colSpan={8}>
+                                        <TableCell colSpan={9}>
                                             <Skeleton className="h-8 w-full" />
                                         </TableCell>
                                     </TableRow>
@@ -897,6 +925,9 @@ export function SeleniumDashboardPage() {
                                         <TableCell>{summary.totalTests}</TableCell>
                                         <TableCell className='text-green-600'>{summary.passed}</TableCell>
                                         <TableCell className={cn(summary.failed > 0 ? 'text-destructive' : 'text-muted-foreground')}>{summary.failed}</TableCell>
+                                        <TableCell>
+                                            <SmallStatusChart passed={summary.passed} failed={summary.failed} />
+                                        </TableCell>
                                         <TableCell className="text-muted-foreground text-xs">
                                             {summary.uploadedAt ? format(parseISO(summary.uploadedAt), 'MMM d, yyyy') : 'N/A'}
                                         </TableCell>
@@ -950,7 +981,3 @@ export function SeleniumDashboardPage() {
         </div>
     );
 }
-    
-    
-
-    
