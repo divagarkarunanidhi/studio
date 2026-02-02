@@ -112,6 +112,10 @@
         },
         "jiraLink": {
           "type": "string"
+        },
+        "seleniumDomainDateRanges": {
+          "type": "object",
+          "description": "Stores individual date ranges for Selenium report consolidation per domain."
         }
       }
     }

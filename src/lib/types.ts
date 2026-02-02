@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 
 export const DefectSchema = z.object({
@@ -24,6 +23,7 @@ export const AppConfigurationSchema = z.object({
     geminiModel: z.string().min(1, 'Gemini Model is required.'),
     geminiRetryModel: z.string().min(1, 'Gemini Retry Model is required.'),
     jiraLink: z.string().url('Must be a valid URL.').min(1, 'JIRA Link is required.'),
+    seleniumDomainDateRanges: z.record(z.any()).optional(),
 });
   
 export type AppConfiguration = z.infer<typeof AppConfigurationSchema>;

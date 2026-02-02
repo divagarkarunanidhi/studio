@@ -3,8 +3,9 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { AppConfiguration, Defect } from '@/lib/types';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -719,22 +720,50 @@ export function SeleniumDashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
     const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
-    const [jiraLink, setJiraLink] = useState<string>("");
     const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
-    const [domainDateRanges, setDomainDateRanges] = useState<Record<string, DateRange | undefined>>({});
 
-    useEffect(() => {
-        const fetchConfig = async () => {
-            if (!firestore) return;
-            const configRef = doc(firestore, 'appConfiguration', 'global');
-            const configSnap = await getDoc(configRef);
-            if (configSnap.exists()) {
-                const configData = configSnap.data() as AppConfiguration;
-                setJiraLink(configData.jiraLink);
-            }
-        };
-        fetchConfig();
-    }, [firestore]);
+    const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
+    const { data: configData } = useDoc<AppConfiguration>(configRef);
+
+    const jiraLink = useMemo(() => configData?.jiraLink || "", [configData]);
+
+    const domainDateRanges = useMemo(() => {
+        const ranges: Record<string, DateRange | undefined> = {};
+        if (configData?.seleniumDomainDateRanges) {
+            Object.entries(configData.seleniumDomainDateRanges).forEach(([d, r]: [string, any]) => {
+                if (r) {
+                    ranges[d] = {
+                        from: r.from ? new Date(r.from) : undefined,
+                        to: r.to ? new Date(r.to) : undefined
+                    };
+                }
+            });
+        }
+        return ranges;
+    }, [configData]);
+
+    const setDomainDateRange = (domain: string, range: DateRange | undefined) => {
+        if (!configRef) return;
+        
+        const currentRaw = configData?.seleniumDomainDateRanges || {};
+        const updatedRaw = { ...currentRaw };
+        
+        if (range) {
+            updatedRaw[domain] = {
+                from: range.from?.toISOString(),
+                to: range.to?.toISOString()
+            };
+        } else {
+            delete updatedRaw[domain];
+        }
+        
+        updateDocumentNonBlocking(configRef, { seleniumDomainDateRanges: updatedRaw });
+    };
+
+    const resetAllRanges = () => {
+        if (!configRef) return;
+        updateDocumentNonBlocking(configRef, { seleniumDomainDateRanges: {} });
+    };
 
     const fetchReports = useCallback(async (page: number) => {
         setIsLoading(true);
@@ -1082,14 +1111,14 @@ export function SeleniumDashboardPage() {
                                                 <div className="font-medium text-sm min-w-[120px]">{domain}</div>
                                                 <DateRangePicker 
                                                     date={domainDateRanges[domain]} 
-                                                    onDateChange={(range) => setDomainDateRanges(prev => ({ ...prev, [domain]: range }))} 
+                                                    onDateChange={(range) => setDomainDateRange(domain, range)} 
                                                 />
                                             </div>
                                         ))}
                                     </div>
                                 </ScrollArea>
                                 <DialogFooter>
-                                    <Button variant="outline" onClick={() => setDomainDateRanges({})}>Reset All Ranges</Button>
+                                    <Button variant="outline" onClick={resetAllRanges}>Reset All Ranges</Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
