@@ -234,6 +234,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const { toast } = useToast();
 
   const [showUploader, setShowUploader] = useState(false);
+  const [tcUploadTrigger, setTcUploadTrigger] = useState(0);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -294,8 +295,14 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         if (rows.length < 2) throw new Error('CSV must have a header and at least one data row.');
 
         const originalHeaders = rows[0].map(h => h.trim());
-        
         const lowerCaseHeaders = originalHeaders.map(h => h.toLowerCase());
+
+        // Safeguard: Prevent test case files from being uploaded as defects
+        const looksLikeTestCase = lowerCaseHeaders.includes('issue type') && rows.some(row => row[lowerCaseHeaders.indexOf('issue type')]?.toLowerCase() === 'test');
+        if (looksLikeTestCase) {
+            throw new Error('This appears to be a test case file. Please upload it via the "Test Case Summary" page to ensure it is stored correctly.');
+        }
+        
         const hasIssueKey = lowerCaseHeaders.includes('issue key');
         const hasSummary = lowerCaseHeaders.includes('summary');
         const hasCreated = lowerCaseHeaders.includes('created');
@@ -306,7 +313,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         if (!hasCreated) missingHeaders.push('Created');
 
         if (missingHeaders.length > 0) {
-            throw new Error(`CSV must include headers: ${missingHeaders.join(', ')}.`);
+            throw new Error(`CSV must include defect headers: ${missingHeaders.join(', ')}.`);
         }
         
         const headerMap: { [key:string]: string } = {};
@@ -373,14 +380,14 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             throw new Error(errorData.details || 'Failed to upload data to the server.');
         }
         
-        toast({ title: 'Success!', description: `${parsedDefects.length} records uploaded in a new file.` });
+        toast({ title: 'Success!', description: `${parsedDefects.length} defect records uploaded successfully.` });
         await handleLoadFromServer();
         setShowUploader(false);
     } catch (error: any) {
         console.error('Error during defect upload:', error);
         toast({
             variant: 'destructive',
-            title: 'Error processing file',
+            title: 'Upload Failed',
             description: error.message || 'An unknown error occurred.',
         });
     }
@@ -787,6 +794,30 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
           </div>
           <div className="flex items-center gap-4">
               {activeView === 'dashboard' && uploadTimestamp && <ClientTimestamp timestamp={uploadTimestamp} />}
+              
+              {userRole === 'admin' && activeView === 'test-case-summary' && (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="outline">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload Test Case Data
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Upload new test case data?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will take you to the test case uploader. New data will be added to the persistent store.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => setTcUploadTrigger(prev => prev + 1)}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+              )}
+
               {userRole === 'admin' && (activeView === 'dashboard' || activeView === 'all-defects') && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -860,7 +891,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             )}
 
             {activeView === 'test-case-summary' && (
-              <TestCaseSummaryPage />
+              <TestCaseSummaryPage externalUploadTrigger={tcUploadTrigger} />
             )}
             {activeView === 'test-case-details' && (
               <TestCaseDetailsPage />

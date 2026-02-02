@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -38,7 +39,11 @@ const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
 const DEFAULT_REUSED_IN_LABELS = ['FordKOCPilot'];
 const DEFAULT_OVERVIEW_LABELS = ['FradleyPilot', 'ToshibaPilot', 'FordKOCPilot'];
 
-export function TestCaseSummaryPage() {
+interface TestCaseSummaryPageProps {
+    externalUploadTrigger?: number;
+}
+
+export function TestCaseSummaryPage({ externalUploadTrigger = 0 }: TestCaseSummaryPageProps) {
   const { user } = useUser();
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -115,27 +120,23 @@ export function TestCaseSummaryPage() {
     }
   }, [toast]);
 
-  // Effect for initial data load - refactored to ensure data is present before 'ready'
+  // Effect for initial data load
   useEffect(() => {
     const initializePage = async () => {
         setStatus('loading');
-        // First, fetch the foundational data (unique labels, headers, etc)
         const initialData = await fetchSummaryData({});
         
         if (initialData && initialData.uniqueLabels && initialData.uniqueLabels.length > 0) {
             const uniqueLabels = initialData.uniqueLabels as string[];
             
-            // Determine default filters based on available labels
             const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
             const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
             const availableDefaultIn = DEFAULT_REUSED_IN_LABELS.filter(label => uniqueLabels.includes(label));
 
-            // Setting these states synchronously
             setSelectedFilterLabels(availableDefaultLabels);
             setReusedFromLabels(availableDefaultFrom);
             setReusedInLabels(availableDefaultIn);
 
-            // Fetch the actual initial distribution for these defaults
             const distributionFilters = {
                 selectedFilterLabels: availableDefaultLabels,
                 reusedFromLabels: availableDefaultFrom,
@@ -144,7 +145,6 @@ export function TestCaseSummaryPage() {
             await fetchSummaryData(distributionFilters);
         }
         
-        // Final transition to ready state
         if (status !== 'upload' && status !== 'error') {
             setStatus('ready');
         }
@@ -153,6 +153,13 @@ export function TestCaseSummaryPage() {
     initializePage();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Effect to handle external upload triggers (from parent header)
+  useEffect(() => {
+    if (externalUploadTrigger > 0) {
+        setStatus('upload');
+    }
+  }, [externalUploadTrigger]);
 
   // Effect to refetch data when filters change, but only when ready
   useEffect(() => {
@@ -190,7 +197,7 @@ export function TestCaseSummaryPage() {
             throw new Error(errorData.error || 'Failed to save CSV data to the server.');
         }
         const result = await response.json();
-        toast({ title: 'Success!', description: `${result.count} test case records uploaded from CSV.` });
+        toast({ title: 'Success!', description: `${result.count} test case records uploaded successfully to the test cases store.` });
         
         // After upload, re-run the initial data load to refresh everything
         const freshData = await fetchSummaryData({});
@@ -299,18 +306,23 @@ export function TestCaseSummaryPage() {
                 <Card className="w-full">
                     <CardHeader>
                         <CardTitle>Upload Test Case Data</CardTitle>
-                        <CardDescription>To get started, please upload a CSV or JSON file containing your test case details.</CardDescription>
+                        <CardDescription>Please upload a CSV file containing your test case records. This will update the persistent test cases store.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {status === 'error' && (
                             <Alert variant="destructive" className='mb-4'>
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertTitle>Loading Failed</AlertTitle>
-                                <AlertDescription>Could not load data. Please try uploading a file again.</AlertDescription>
+                                <AlertDescription>Could not load test case data. Please try uploading a file again.</AlertDescription>
                             </Alert>
                         )}
                         <FileUploader onDataUploaded={(data, file) => handleDataUploaded(data, file.name)} templatePath="/test-cases-template.csv" accept=".csv" />
                     </CardContent>
+                    <CardFooter className="justify-center border-t pt-4">
+                        <Button variant="ghost" onClick={() => setStatus('ready')} disabled={totalTestCases === 0}>
+                            Cancel
+                        </Button>
+                    </CardFooter>
                 </Card>
             </div>
         </div>
