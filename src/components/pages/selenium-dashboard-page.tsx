@@ -104,10 +104,11 @@ interface ReportSummary {
     failed: number;
     scenarios: DetailedScenario[];
     totalExecutionTime: number; // in nanoseconds
-    rawReport?: StoredReportData; // rawReport is now optional, fetched on demand
+    rawReport?: StoredReportData; 
     domain: string;
     environment: string;
     uploadedAt: string;
+    constituentIds?: string[]; // IDs of constituent reports for consolidation
 }
 
 interface DetailedScenario {
@@ -155,6 +156,118 @@ const formatNanosToTime = (nanos: number) => {
     
     if (minutes === 0) return `${seconds}s`;
     return `${minutes}m ${seconds}s`;
+};
+
+/**
+ * Standard consolidation logic used by both the dashboard list and the detail modal.
+ * Can handle both ReportSummary (lightweight) and full Report details.
+ */
+const performConsolidation = (reportsToConsolidate: any[], id: string, title: string, jobDesc: string): ReportSummary => {
+    const sorted = [...reportsToConsolidate].sort((a, b) => {
+        const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
+        const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
+        return dateA - dateB;
+    });
+
+    const scenarioRegistry = new Map<string, { summary: DetailedScenario, raw?: { feature: Feature, scenario: Scenario } }>();
+    let totalExecutionTime = 0;
+
+    sorted.forEach(report => {
+        const totalTime = report.totalExecutionTime || 0;
+        totalExecutionTime += totalTime;
+        
+        const rawScenarioMap = new Map<string, { feature: Feature, scenario: Scenario }>();
+        // Check for test_results in rawReport (ReportSummary format) OR top-level (StoredReportData format)
+        const results = report.rawReport?.test_results || report.test_results;
+        
+        if (results) {
+            results.forEach((feature: Feature) => {
+                feature.elements?.forEach(scenario => {
+                    rawScenarioMap.set(scenario.name, { feature, scenario });
+                });
+            });
+        }
+
+        // report.scenarios is present in our ReportSummary type.
+        // If we are consolidating full report objects, we derive summaries.
+        let scenariosToProcess = report.scenarios || [];
+        if (scenariosToProcess.length === 0 && results) {
+             results.forEach((feature: Feature) => {
+                feature.elements?.forEach((scenario: Scenario) => {
+                    const status = getScenarioStatus(scenario);
+                    scenariosToProcess.push({
+                        id: scenario.name,
+                        name: scenario.name,
+                        status: status,
+                        testCaseId: null, 
+                        defectId: null
+                    });
+                });
+            });
+        }
+
+        scenariosToProcess.forEach((sc: DetailedScenario) => {
+            const job = report.jobName || report.solution || "N/A";
+            const key = `${job}|${sc.name}`;
+            const existing = scenarioRegistry.get(key);
+            const rawData = rawScenarioMap.get(sc.name);
+
+            if (!existing) {
+                scenarioRegistry.set(key, { summary: sc, raw: rawData });
+            } else {
+                // Consolidation Logic: Latest "Passed" status wins
+                if (sc.status === 'passed') {
+                    scenarioRegistry.set(key, { summary: sc, raw: rawData });
+                } else if (sc.status === 'failed' && existing.summary.status === 'failed') {
+                    // Update raw pointer to the latest failure if both failed
+                    scenarioRegistry.set(key, { summary: sc, raw: rawData });
+                }
+            }
+        });
+    });
+
+    const consolidatedScenariosList = Array.from(scenarioRegistry.values());
+    const uniqueSummaries = consolidatedScenariosList.map(v => v.summary);
+    const passedCount = uniqueSummaries.filter(s => s.status === 'passed').length;
+    const failedCount = uniqueSummaries.length - passedCount;
+
+    const consolidatedFeatures: Feature[] = [];
+    consolidatedScenariosList.forEach(({ raw }) => {
+        if (raw) {
+            let existingFeature = consolidatedFeatures.find(f => f.name === raw.feature.name);
+            if (!existingFeature) {
+                existingFeature = { ...raw.feature, elements: [] };
+                consolidatedFeatures.push(existingFeature);
+            }
+            existingFeature.elements.push(raw.scenario);
+        }
+    });
+
+    return {
+        id,
+        solution: title,
+        jobName: jobDesc,
+        totalTests: uniqueSummaries.length,
+        passed: passedCount,
+        failed: failedCount,
+        scenarios: uniqueSummaries,
+        totalExecutionTime,
+        domain: title,
+        environment: "Consolidated",
+        uploadedAt: new Date().toISOString(),
+        constituentIds: sorted.filter(r => !r.id?.startsWith('consolidated')).map(r => r.id || r._id?.toString()),
+        rawReport: {
+            _id: id,
+            fileName: id,
+            solution: title,
+            environment: "consolidated",
+            Config: "consolidated",
+            "Report Path": "N/A",
+            test_results: consolidatedFeatures,
+            uploaderId: "",
+            uploadedAt: new Date().toISOString(),
+        },
+    } as ReportSummary;
 };
 
 const handleExport = (scenariosToExport: DetailedScenario[], sliceName: string) => {
@@ -303,8 +416,33 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
     const [openScenarios, setOpenScenarios] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        // Only fetch if details are missing AND it's a real MongoDB ID (not a local consolidation)
-        if (!fullReport?.test_results && !reportSummary.id.startsWith('consolidated')) {
+        // CASE 1: Full details already available (e.g. from state)
+        if (fullReport?.test_results && fullReport.test_results.length > 0) return;
+
+        // CASE 2: Consolidated report - Needs to fetch all individuals and merge locally
+        if (reportSummary.id.startsWith('consolidated')) {
+            const constituentIds = reportSummary.constituentIds || [];
+            if (constituentIds.length === 0) return;
+
+            setIsLoadingDetails(true);
+            Promise.all(constituentIds.map(id => 
+                fetch(`/api/selenium/details?id=${id}`)
+                    .then(res => res.json())
+                    .catch(err => {
+                        console.error(`Failed to fetch constituent report ${id}`, err);
+                        return null;
+                    })
+            )).then(reports => {
+                const validReports = reports.filter(r => r && r.test_results);
+                const deepConsolidation = performConsolidation(validReports, reportSummary.id, reportSummary.solution, reportSummary.jobName);
+                if (deepConsolidation.rawReport) {
+                    setFullReport(deepConsolidation.rawReport);
+                }
+            }).finally(() => setIsLoadingDetails(false));
+        } 
+        
+        // CASE 3: Individual MongoDB report - standard single fetch
+        else {
             setIsLoadingDetails(true);
             fetch(`/api/selenium/details?id=${reportSummary.id}`)
                 .then(res => res.json())
@@ -316,7 +454,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                 .catch(err => console.error("Error fetching report details:", err))
                 .finally(() => setIsLoadingDetails(false));
         }
-    }, [reportSummary.id, fullReport]);
+    }, [reportSummary.id, fullReport, reportSummary.constituentIds, reportSummary.solution, reportSummary.jobName]);
 
     const toggleScenario = (scenarioName: string) => {
         setOpenScenarios(prev => {
@@ -640,7 +778,12 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                                                             </TableHeader>
                                                                             <TableBody>
                                                                                 {scenario.steps.map((step, stIndex) => {
-                                                                                    const screenshots = [...(step.embeddings || []), ...(step.result?.embeddings || [])].filter(e => e.mime_type?.startsWith('image/'));
+                                                                                    // Capture screenshots from all possible locations
+                                                                                    const screenshots = [
+                                                                                        ...(step.embeddings || []), 
+                                                                                        ...(step.result?.embeddings || [])
+                                                                                    ].filter(e => e.mime_type?.startsWith('image/'));
+                                                                                    
                                                                                     const hasScreenshots = screenshots.length > 0;
 
                                                                                     return (
@@ -722,9 +865,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                         </div>
                                     ) : (
                                         <div className="p-8 text-center text-sm text-muted-foreground border rounded-md bg-muted/20">
-                                            {reportSummary.id.startsWith('consolidated') 
-                                                ? "Scenario logs and steps are not available for consolidated domain views. Please view individual reports for details."
-                                                : "No detailed step data found for this report execution."}
+                                            No detailed step data found for this test execution.
                                         </div>
                                     )}
                                 </CardContent>
@@ -828,8 +969,6 @@ export function SeleniumDashboardPage() {
                     if (tcData && tcData.testCases) {
                         setTestCaseDetails(tcData.testCases);
                     }
-                } else {
-                    console.warn("Could not fetch test case details. Defect IDs might be missing.");
                 }
                 
                 await fetchReports(1);
@@ -857,10 +996,7 @@ export function SeleniumDashboardPage() {
         }
 
         try {
-            // CRITICAL FIX: Sanitize illegal control characters before parsing JSON.
-            // This prevents "Bad control character in string literal" errors from messy logs.
             const sanitizedContent = fileContent.replace(/[\x00-\x1F\x7F-\x9F]/g, (match) => {
-                // Keep only printable characters and standard whitespace (newline, carriage return, tab)
                 return (match === '\n' || match === '\r' || match === '\t') ? match : '';
             });
 
@@ -902,7 +1038,7 @@ export function SeleniumDashboardPage() {
             toast({
                 variant: 'destructive',
                 title: 'Error Loading Report',
-                description: error.message || 'Could not parse the JSON file. Please ensure it is a valid Selenium report.',
+                description: error.message || 'Could not parse the JSON file.',
             });
         }
     }, [toast, user, fetchReports]);
@@ -923,99 +1059,11 @@ export function SeleniumDashboardPage() {
         }
     };
 
-    /**
-     * Consolidates a list of reports into a single ReportSummary.
-     * Updated to handle summaries without rawReport.
-     */
-    const consolidateReports = useCallback((reportsToConsolidate: ReportSummary[], id: string, title: string, jobDesc: string) => {
-        if (reportsToConsolidate.length === 0) return null;
-
-        const sorted = [...reportsToConsolidate].sort((a, b) => {
-            const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
-            const dateB = b.uploadedAt ? new Date(b.uploadedAt).getTime() : 0;
-            return dateA - dateB;
-        });
-
-        const scenarioRegistry = new Map<string, { summary: DetailedScenario, raw?: { feature: Feature, scenario: Scenario } }>();
-        let totalExecutionTime = 0;
-
-        sorted.forEach(report => {
-            totalExecutionTime += report.totalExecutionTime;
-            
-            const rawScenarioMap = new Map<string, { feature: Feature, scenario: Scenario }>();
-            if (report.rawReport?.test_results) {
-                report.rawReport.test_results.forEach(feature => {
-                    feature.elements?.forEach(scenario => {
-                        rawScenarioMap.set(scenario.name, { feature, scenario });
-                    });
-                });
-            }
-
-            report.scenarios.forEach(sc => {
-                const key = `${report.jobName}|${sc.name}`;
-                const existing = scenarioRegistry.get(key);
-                const rawData = rawScenarioMap.get(sc.name);
-
-                if (!existing) {
-                    scenarioRegistry.set(key, { summary: sc, raw: rawData });
-                } else {
-                    if (sc.status === 'passed') {
-                        scenarioRegistry.set(key, { summary: sc, raw: rawData });
-                    } else if (sc.status === 'failed' && existing.summary.status === 'failed') {
-                        scenarioRegistry.set(key, { summary: sc, raw: rawData });
-                    }
-                }
-            });
-        });
-
-        const consolidatedScenarios = Array.from(scenarioRegistry.values());
-        const uniqueSummaries = consolidatedScenarios.map(v => v.summary);
-        const passedCount = uniqueSummaries.filter(s => s.status === 'passed').length;
-        const failedCount = uniqueSummaries.length - passedCount;
-
-        const consolidatedFeatures: Feature[] = [];
-        consolidatedScenarios.forEach(({ raw }) => {
-            if (raw) {
-                let existingFeature = consolidatedFeatures.find(f => f.name === raw.feature.name);
-                if (!existingFeature) {
-                    existingFeature = { ...raw.feature, elements: [] };
-                    consolidatedFeatures.push(existingFeature);
-                }
-                existingFeature.elements.push(raw.scenario);
-            }
-        });
-
-        return {
-            id,
-            solution: title,
-            jobName: jobDesc,
-            totalTests: uniqueSummaries.length,
-            passed: passedCount,
-            failed: failedCount,
-            scenarios: uniqueSummaries,
-            totalExecutionTime,
-            rawReport: {
-                _id: id,
-                fileName: id,
-                solution: title,
-                environment: "consolidated",
-                Config: "consolidated",
-                "Report Path": "N/A",
-                test_results: consolidatedFeatures,
-                uploaderId: "",
-                uploadedAt: new Date().toISOString(),
-            },
-            domain: title,
-            environment: "Consolidated",
-            uploadedAt: new Date().toISOString(),
-        } as ReportSummary;
-    }, []);
-    
     const consolidatedReport = useMemo((): ReportSummary | null => {
         if (selectedReportIds.length === 0) return null;
         const selected = processedReports.filter(r => selectedReportIds.includes(r.id));
-        return consolidateReports(selected, "consolidated-selection", "Selected Consolidated Report", `${selected.length} Reports Combined`);
-    }, [selectedReportIds, processedReports, consolidateReports]);
+        return performConsolidation(selected, "consolidated-selection", "Selected Consolidated Report", `${selected.length} Reports Combined`);
+    }, [selectedReportIds, processedReports]);
 
     const domainConsolidatedReports = useMemo((): ReportSummary[] => {
         if (processedReports.length === 0) return [];
@@ -1043,9 +1091,9 @@ export function SeleniumDashboardPage() {
 
             if (domainReports.length === 0) return null;
 
-            return consolidateReports(domainReports, `consolidated-domain-${domain}`, domain, `Domain Consolidated Report`);
+            return performConsolidation(domainReports, `consolidated-domain-${domain}`, domain, `Domain Consolidated Report`);
         }).filter((r): r is ReportSummary => r !== null);
-    }, [processedReports, consolidateReports, domainDateRanges]);
+    }, [processedReports, domainDateRanges]);
     
     const handlePageChange = (newPage: number) => {
         setCurrentPage(newPage);
