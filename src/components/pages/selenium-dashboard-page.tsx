@@ -1004,7 +1004,7 @@ export function SeleniumDashboardPage() {
         <div className="space-y-6">
              <div className='flex justify-between items-center'>
                 <div className='flex items-center gap-4'>
-                    <h2 className="text-2xl font-bold">Selenium Executions</h2>
+                    <h2 className="text-2xl font-bold">Selenium Dashboard</h2>
                     {selectedReportIds.length > 0 && consolidatedReport && (
                         <Dialog>
                             <DialogTrigger asChild>
@@ -1089,7 +1089,11 @@ export function SeleniumDashboardPage() {
             )}
 
             <Card>
-                <CardContent className="pt-6">
+                <CardHeader>
+                    <CardTitle>Individual Reports</CardTitle>
+                    <CardDescription>View detailed results for each individual test execution.</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
                     <div className="w-full overflow-hidden rounded-md border">
                         <UITooltipProvider>
                             <Table>
