@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -94,7 +93,7 @@ export function TrendPage({ defects }: TrendPageProps) {
                 <CardContent>
                     <MultiSelect 
                         options={domainOptions}
-                        defaultValue={selectedFilterDomains}
+                        value={selectedFilterDomains}
                         onValueChange={setSelectedFilterDomains}
                         placeholder="Filter by domains..."
                     />
@@ -141,7 +140,7 @@ export function TrendPage({ defects }: TrendPageProps) {
                 <CardContent>
                     <MultiSelect 
                         options={domainOptions}
-                        defaultValue={selectedCompareDomains}
+                        value={selectedCompareDomains}
                         onValueChange={setSelectedCompareDomains}
                         placeholder="Select domains to compare..."
                     />

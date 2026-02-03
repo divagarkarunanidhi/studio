@@ -1,4 +1,3 @@
-
 "use client"
 
 import { cn } from "@/lib/utils"
@@ -68,7 +67,7 @@ export const MultiSelect = React.forwardRef<
       options,
       onValueChange,
       variant,
-      value,
+      value = [],
       placeholder = "Select options",
       animation = 0,
       maxCount = 3,
