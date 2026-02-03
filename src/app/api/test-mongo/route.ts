@@ -1,26 +1,22 @@
-
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 
 export async function GET() {
-  let client;
   try {
-    const details = await getMongoDetails();
-    client = details.client;
+    const { client, dbName } = await getMongoDetails();
     
-    // The command { ping: 1 } is a lightweight and standard way to test the connection.
-    await client.db().admin().ping();
+    // Test the singleton connection with a lightweight ping
+    await client.db(dbName).admin().ping();
     
-    return NextResponse.json({ success: true, message: "MongoDB connection successful!" });
+    return NextResponse.json({ success: true, message: "MongoDB shared connection is healthy!" });
   } catch (e: any) {
     console.error("MongoDB connection test failed:", e);
     
-    // Provide a more specific error message if possible
     let errorMessage = "Failed to connect to MongoDB.";
     if (e.name === 'MongoNetworkError') {
-      errorMessage = "Network error. Check if the IP address is whitelisted or if the server is reachable.";
+      errorMessage = "Network error. Check if the IP address is whitelisted.";
     } else if (e.name === 'MongoAuthenticationError') {
-      errorMessage = "Authentication failed. Please check your username and password in the URI.";
+      errorMessage = "Authentication failed. Check credentials in Firestore config.";
     } else {
       errorMessage = e.message || "An unknown error occurred.";
     }
@@ -29,9 +25,5 @@ export async function GET() {
       { success: false, message: "MongoDB connection failed.", error: errorMessage },
       { status: 500 }
     );
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 }

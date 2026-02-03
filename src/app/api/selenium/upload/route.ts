@@ -1,13 +1,10 @@
-
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 
 export async function POST(request: Request) {
-  let client;
   try {
-    const details = await getMongoDetails();
-    client = details.client;
-    const db = client.db(details.dbName);
+    const { client, dbName } = await getMongoDetails();
+    const db = client.db(dbName);
 
     const body = await request.json();
     // Destructure all expected top-level fields from the uploaded JSON
@@ -40,9 +37,5 @@ export async function POST(request: Request) {
       { error: "Failed to upload selenium report.", details: e.toString() },
       { status: 500 }
     );
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 }

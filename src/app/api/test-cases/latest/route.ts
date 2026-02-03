@@ -1,13 +1,10 @@
-
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 
 export async function GET() {
-  let client;
   try {
-    const details = await getMongoDetails();
-    client = details.client;
-    const db = client.db(details.dbName);
+    const { client, dbName } = await getMongoDetails();
+    const db = client.db(dbName);
 
     // Sort by _id for performance, as it's indexed and contains a timestamp.
     const latestFile = await db
@@ -31,9 +28,5 @@ export async function GET() {
       { error: "Failed to fetch latest test cases.", details: e.toString() },
       { status: 500 }
     );
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 }

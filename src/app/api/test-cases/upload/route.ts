@@ -1,13 +1,10 @@
-
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 
 export async function POST(request: Request) {
-  let client;
   try {
-    const details = await getMongoDetails();
-    client = details.client;
-    const db = client.db(details.dbName);
+    const { client, dbName } = await getMongoDetails();
+    const db = client.db(dbName);
 
     const body = await request.json();
     const { testCases, uploaderId, fileName } = body;
@@ -32,9 +29,5 @@ export async function POST(request: Request) {
       { error: "Failed to upload test cases.", details: e.toString() },
       { status: 500 }
     );
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 }

@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 import { NextRequest } from "next/server";
@@ -88,11 +87,9 @@ const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseD
 };
 
 export async function GET(request: NextRequest) {
-  let client;
   try {
-    const details = await getMongoDetails();
-    client = details.client;
-    const db = client.db(details.dbName);
+    const { client, dbName } = await getMongoDetails();
+    const db = client.db(dbName);
     const reportsCollection = db.collection("seleniumReports");
     const testCasesCollection = db.collection("testCases");
 
@@ -138,9 +135,5 @@ export async function GET(request: NextRequest) {
       { error: "Failed to fetch reports.", details: e.toString() },
       { status: 500 }
     );
-  } finally {
-    if (client) {
-      await client.close();
-    }
   }
 }
