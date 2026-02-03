@@ -62,15 +62,16 @@ export async function getMongoDetails(): Promise<MongoConnection> {
              * - maxPoolSize: Allows up to 50 concurrent connections for high traffic.
              * - minPoolSize: Keeps 2 connections "warm" to eliminate handshake latency for most requests.
              * - maxIdleTimeMS: Closes connections that have been idle for 1 minute.
-             * - connectTimeoutMS: Prevents the app from hanging if the database is unreachable.
+             * - connectTimeoutMS: Increased to 100,000ms to allow for slower network handshakes.
+             * - socketTimeoutMS: Increased to 120,000ms to prevent operation timeouts on slow connections.
              */
             const client = new MongoClient(uri, {
                 tls: true,
                 maxPoolSize: 50,
                 minPoolSize: 2,
                 maxIdleTimeMS: 60000,
-                connectTimeoutMS: 10000,
-                socketTimeoutMS: 45000,
+                connectTimeoutMS: 100000,
+                socketTimeoutMS: 120000,
             });
 
             // Establish the connection once
