@@ -8,6 +8,7 @@ import { ObjectId } from "mongodb";
  * Fetches the full Selenium report document, including heavy test_results.
  */
 export async function GET(request: Request) {
+  let client;
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -16,9 +17,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Missing report ID." }, { status: 400 });
     }
 
-    const { clientPromise, dbName } = await getMongoDetails();
-    const client = await clientPromise;
-    const db = client.db(dbName);
+    const details = await getMongoDetails();
+    client = details.client;
+    const db = client.db(details.dbName);
 
     const report = await db.collection("seleniumReports").findOne({ _id: new ObjectId(id) });
 
@@ -33,5 +34,9 @@ export async function GET(request: Request) {
       { error: "Failed to fetch report details.", details: e.toString() },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 }

@@ -1,20 +1,15 @@
 
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
-import { MongoClient } from "mongodb";
 
 export async function GET() {
+  let client;
   try {
-    const { clientPromise } = await getMongoDetails();
-    const client: MongoClient = await clientPromise;
+    const details = await getMongoDetails();
+    client = details.client;
     
     // The command { ping: 1 } is a lightweight and standard way to test the connection.
     await client.db().admin().ping();
-    
-    // If ping is successful, close the connection to be clean.
-    // Note: Depending on how clientPromise is managed globally, you might not want to close it.
-    // In this setup, a new connection is established, so closing is fine.
-    // await client.close();
     
     return NextResponse.json({ success: true, message: "MongoDB connection successful!" });
   } catch (e: any) {
@@ -34,5 +29,9 @@ export async function GET() {
       { success: false, message: "MongoDB connection failed.", error: errorMessage },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 }

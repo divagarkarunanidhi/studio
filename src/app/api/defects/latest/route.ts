@@ -3,10 +3,11 @@ import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 
 export async function GET() {
+  let client;
   try {
-    const { clientPromise, dbName } = await getMongoDetails();
-    const client = await clientPromise;
-    const db = client.db(dbName);
+    const details = await getMongoDetails();
+    client = details.client;
+    const db = client.db(details.dbName);
 
     // Sort by _id for performance, as it's indexed and contains a timestamp.
     const latestFile = await db
@@ -30,5 +31,9 @@ export async function GET() {
       { error: "Failed to fetch latest defects.", details: e.toString() },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 }

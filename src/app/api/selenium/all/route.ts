@@ -88,10 +88,11 @@ const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseD
 };
 
 export async function GET(request: NextRequest) {
+  let client;
   try {
-    const { clientPromise, dbName } = await getMongoDetails();
-    const client = await clientPromise;
-    const db = client.db(dbName);
+    const details = await getMongoDetails();
+    client = details.client;
+    const db = client.db(details.dbName);
     const reportsCollection = db.collection("seleniumReports");
     const testCasesCollection = db.collection("testCases");
 
@@ -137,5 +138,9 @@ export async function GET(request: NextRequest) {
       { error: "Failed to fetch reports.", details: e.toString() },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 }

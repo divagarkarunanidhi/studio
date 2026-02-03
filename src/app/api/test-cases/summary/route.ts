@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 import { Collection, ObjectId } from "mongodb";
@@ -117,10 +118,11 @@ const getReusability = async (collection: Collection, fileId: ObjectId, reusedIn
 
 
 export async function POST(request: Request) {
+    let client;
     try {
-        const { clientPromise, dbName } = await getMongoDetails();
-        const client = await clientPromise;
-        const db = client.db(dbName);
+        const details = await getMongoDetails();
+        client = details.client;
+        const db = client.db(details.dbName);
         const collection = db.collection("testCases");
 
         const body = await request.json();
@@ -196,5 +198,9 @@ export async function POST(request: Request) {
             { error: "Failed to fetch test case summary.", details: e.toString() },
             { status: 500 }
         );
+    } finally {
+        if (client) {
+            await client.close();
+        }
     }
 }

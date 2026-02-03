@@ -2,26 +2,19 @@
 import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '20mb', // Increase the body size limit
-    },
-  },
-};
-
 export async function POST(request: Request) {
+  let client;
   try {
-    const { clientPromise, dbName } = await getMongoDetails();
+    const details = await getMongoDetails();
+    client = details.client;
+    const db = client.db(details.dbName);
+
     const body = await request.json();
     const { testCases, uploaderId, fileName } = body;
 
     if (!Array.isArray(testCases) || !uploaderId || !fileName) {
         return NextResponse.json({ error: "Invalid data format." }, { status: 400 });
     }
-
-    const client = await clientPromise;
-    const db = client.db(dbName);
     
     const fileDoc = {
         fileName,
@@ -39,7 +32,9 @@ export async function POST(request: Request) {
       { error: "Failed to upload test cases.", details: e.toString() },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 }
-
-    

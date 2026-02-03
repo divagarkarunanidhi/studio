@@ -3,17 +3,18 @@ import { NextResponse } from "next/server";
 import { getMongoDetails } from "@/lib/mongodb";
 
 export async function POST(request: Request) {
+  let client;
   try {
-    const { clientPromise, dbName } = await getMongoDetails();
+    const details = await getMongoDetails();
+    client = details.client;
+    const db = client.db(details.dbName);
+
     const body = await request.json();
     const { defects, uploaderId } = body;
 
     if (!Array.isArray(defects) || !uploaderId) {
         return NextResponse.json({ error: "Invalid data format." }, { status: 400 });
     }
-
-    const client = await clientPromise;
-    const db = client.db(dbName);
     
     const fileDoc = {
         defects,
@@ -30,5 +31,9 @@ export async function POST(request: Request) {
       { error: "Failed to upload defects.", details: e.toString() },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      await client.close();
+    }
   }
 }
