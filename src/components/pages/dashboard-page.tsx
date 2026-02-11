@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -33,10 +34,11 @@ import {
   Download,
   FileText,
   MonitorPlay,
+  FilterX,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
-import { DefectsTable } from '../dashboard/defects-table';
+import { DefectsTable, type DefectFilters } from '../dashboard/defects-table';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../ui/card';
 import { isSameDay, subDays, parseISO } from 'date-fns';
 import { AnalysisPage } from './analysis-page';
@@ -225,6 +227,17 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterAttention, setFilterAttention] = useState<string>('all');
+
+  // Attention Column Filters State
+  const [attentionFilters, setAttentionFilters] = useState<DefectFilters>({
+    id: '',
+    summary: '',
+    description: '',
+    domain: '',
+    reported_by: '',
+    status: '',
+    reason: '',
+  });
   
   const [currentPage, setCurrentPage] = useState(1);
   const [attentionCurrentPage, setAttentionCurrentPage] = useState(1);
@@ -586,11 +599,49 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   }, [attentionDefects]);
 
   const filteredAttentionDefects = useMemo(() => {
-    if (filterAttention === 'all') {
-        return attentionDefects;
-    }
-    return attentionDefects.filter(d => d.reasonForAttention.includes(filterAttention));
-  }, [attentionDefects, filterAttention]);
+    return attentionDefects.filter(d => {
+        // ID filter
+        if (attentionFilters.id && !d.id.toLowerCase().includes(attentionFilters.id.toLowerCase())) return false;
+        
+        // Summary filter
+        if (attentionFilters.summary && !d.summary.toLowerCase().includes(attentionFilters.summary.toLowerCase())) return false;
+        
+        // Description filter
+        if (attentionFilters.description && d.description && !d.description.toLowerCase().includes(attentionFilters.description.toLowerCase())) {
+            if (attentionFilters.description !== '') return false;
+        }
+        
+        // Domain filter (Header and stand-alone sync)
+        const headerDomainFilter = attentionFilters.domain;
+        if (headerDomainFilter !== '' && headerDomainFilter !== 'all') {
+            if (headerDomainFilter === 'N/A' && d.domain && d.domain.trim() !== '') return false;
+            if (headerDomainFilter !== 'N/A' && d.domain !== headerDomainFilter) return false;
+        } else if (filterDomain !== 'all') {
+             if (filterDomain === 'N/A' && d.domain && d.domain.trim() !== '') return false;
+             if (filterDomain !== 'N/A' && d.domain !== filterDomain) return false;
+        }
+
+        // Status filter
+        const headerStatusFilter = attentionFilters.status;
+        if (headerStatusFilter !== '' && headerStatusFilter !== 'all') {
+            if (headerStatusFilter === 'N/A' && d.status && d.status.trim() !== '') return false;
+            if (headerStatusFilter !== 'N/A' && d.status !== headerStatusFilter) return false;
+        }
+
+        // Reported By filter
+        if (attentionFilters.reported_by && d.reported_by && !d.reported_by.toLowerCase().includes(attentionFilters.reported_by.toLowerCase())) return false;
+
+        // Reason filter (Header and stand-alone sync)
+        const headerReasonFilter = attentionFilters.reason;
+        if (headerReasonFilter !== '' && headerReasonFilter !== 'all') {
+            if (!d.reasonForAttention.includes(headerReasonFilter)) return false;
+        } else if (filterAttention !== 'all') {
+            if (!d.reasonForAttention.includes(filterAttention)) return false;
+        }
+
+        return true;
+    });
+  }, [attentionDefects, attentionFilters, filterDomain, filterAttention]);
 
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
 
@@ -607,6 +658,20 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     const endIndex = startIndex + RECORDS_PER_PAGE;
     return filteredAttentionDefects.slice(startIndex, endIndex);
   }, [filteredAttentionDefects, attentionCurrentPage]);
+
+  const clearAllAttentionFilters = () => {
+    setAttentionFilters({
+        id: '',
+        summary: '',
+        description: '',
+        domain: '',
+        reported_by: '',
+        status: '',
+        reason: '',
+    });
+    setFilterDomain('all');
+    setFilterAttention('all');
+  };
 
   const handleExport = () => {
     const dataToExport = filteredAttentionDefects;
@@ -994,7 +1059,10 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                                     These defects are missing key information that could improve analysis.
                                 </CardDescription>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button variant="ghost" size="sm" onClick={clearAllAttentionFilters} className="text-xs">
+                                    <FilterX className="h-3.5 w-3.5 mr-1" /> Clear All Filters
+                                </Button>
                                 <Select value={filterAttention} onValueChange={setFilterAttention}>
                                     <SelectTrigger className="w-[240px]">
                                         <SelectValue placeholder="Filter by Reason" />
@@ -1014,7 +1082,20 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <DefectsTable defects={paginatedAttentionDefects} showAll showDescription={true} isAttentionView={true} />
+                        <DefectsTable 
+                            defects={paginatedAttentionDefects} 
+                            showAll 
+                            showDescription={true} 
+                            isAttentionView={true} 
+                            filters={attentionFilters}
+                            onFilterChange={setAttentionFilters}
+                            uniqueValues={{
+                                domains: uniqueDomains.filter(d => d !== 'N/A'),
+                                statuses: uniqueStatuses.filter(s => s !== 'N/A'),
+                                reporters: uniqueReporters,
+                                reasons: uniqueAttentionReasons
+                            }}
+                        />
                         <div className="mt-4 flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">
                                 Showing {paginatedAttentionDefects.length > 0 ? (attentionCurrentPage - 1) * RECORDS_PER_PAGE + 1 : 0}-
