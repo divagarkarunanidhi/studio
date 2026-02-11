@@ -453,7 +453,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
             <DialogHeader>
                 <DialogTitle>Detailed Report for: {reportSummary.solution}</DialogTitle>
                 <DialogDescription>
-                    {reportSummary.jobName} | {reportSummary.uploadedAt ? format(parseISO(reportSummary.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                    {reportSummary.jobName}
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[80vh]">
