@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -920,7 +921,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             )}
 
             {activeView === 'test-case-summary' && (
-              <TestCaseSummaryPage externalUploadTrigger={tcUploadTrigger} />
+              <TestCaseSummaryPage externalUploadTrigger={tcUploadTrigger} userRole={userRole} />
             )}
             {activeView === 'selenium-dashboard' && (
               <SeleniumDashboardPage />

@@ -113,6 +113,10 @@
         "jiraLink": {
           "type": "string"
         },
+        "reusabilityLabels": {
+          "type": "string",
+          "description": "Comma-separated list of labels for test case reusability analysis."
+        },
         "seleniumDomainDateRanges": {
           "type": "object",
           "description": "Stores individual date ranges for Selenium report consolidation per domain."

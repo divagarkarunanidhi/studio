@@ -3,15 +3,15 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { AppConfiguration, TestCaseAnalysisInput, TestCaseAnalysisOutput } from '@/lib/types';
 import { analyzeTestCases } from '@/ai/flows/test-case-analysis-flow';
 import * as XLSX from 'xlsx';
 import { FileUploader } from '../dashboard/file-uploader';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
-import { FileText, Loader2, Download, Wand2, AlertTriangle, PieChart, BarChart, LineChart, AreaChart, Radar } from 'lucide-react';
+import { FileText, Loader2, Download, Wand2, AlertTriangle, PieChart, BarChart, LineChart, AreaChart, Radar, Settings, Save } from 'lucide-react';
 import { Button } from '../ui/button';
 import { MultiSelect, type MultiSelectOption } from '../ui/multi-select';
 import { Input } from '@/components/ui/input';
@@ -29,21 +29,21 @@ import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Skeleton } from '../ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
+import { Label } from '../ui/label';
 
 
 type TestCaseData = { [key: string]: string };
 type ChartType = 'pie' | 'bar' | 'line' | 'area' | 'radar';
 type PageStatus = 'loading' | 'upload' | 'ready' | 'error';
 
-const DEFAULT_REUSED_FROM_LABELS = ['FradleyPilot', 'ToshibaPilot'];
-const DEFAULT_REUSED_IN_LABELS = ['FordKOCPilot'];
 const DEFAULT_OVERVIEW_LABELS = ['FradleyPilot', 'ToshibaPilot', 'FordKOCPilot'];
 
 interface TestCaseSummaryPageProps {
     externalUploadTrigger?: number;
+    userRole?: string;
 }
 
-export function TestCaseSummaryPage({ externalUploadTrigger = 0 }: TestCaseSummaryPageProps) {
+export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: TestCaseSummaryPageProps) {
   const { user } = useUser();
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -72,19 +72,19 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0 }: TestCaseSumma
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
+  // Configuration state
+  const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
+  const { data: configData } = useDoc<AppConfiguration>(configRef);
+  const [newReusabilityLabels, setNewReusabilityLabels] = useState<string>('');
+  const isAdmin = userRole === 'admin';
+
   useEffect(() => {
     setIsClient(true);
-    const fetchConfig = async () => {
-        if (!firestore) return;
-        const configRef = doc(firestore, 'appConfiguration', 'global');
-        const configSnap = await getDoc(configRef);
-        if (configSnap.exists()) {
-            const configData = configSnap.data() as AppConfiguration;
-            setJiraLink(configData.jiraLink);
-        }
-    };
-    fetchConfig();
-  }, [firestore]);
+    if (configData) {
+        setJiraLink(configData.jiraLink);
+        setNewReusabilityLabels(configData.reusabilityLabels || '');
+    }
+  }, [configData]);
   
 
   const fetchSummaryData = useCallback(async (filters: any) => {
@@ -128,21 +128,8 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0 }: TestCaseSumma
         
         if (initialData && initialData.uniqueLabels && initialData.uniqueLabels.length > 0) {
             const uniqueLabels = initialData.uniqueLabels as string[];
-            
             const availableDefaultLabels = DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label));
-            const availableDefaultFrom = DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label));
-            const availableDefaultIn = DEFAULT_REUSED_IN_LABELS.filter(label => uniqueLabels.includes(label));
-
             setSelectedFilterLabels(availableDefaultLabels);
-            setReusedFromLabels(availableDefaultFrom);
-            setReusedInLabels(availableDefaultIn);
-
-            const distributionFilters = {
-                selectedFilterLabels: availableDefaultLabels,
-                reusedFromLabels: availableDefaultFrom,
-                reusedInLabels: availableDefaultIn,
-            };
-            await fetchSummaryData(distributionFilters);
         }
         
         if (status !== 'upload' && status !== 'error') {
@@ -153,6 +140,23 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0 }: TestCaseSumma
     initializePage();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Effect to handle automatic selection logic for reusability
+  useEffect(() => {
+    if (!configData?.reusabilityLabels) return;
+    
+    const configuredList = configData.reusabilityLabels.split(',').map(l => l.trim()).filter(Boolean);
+    
+    // If "reused from" is blank, auto-populate it with everything EXCEPT what's in "reused in"
+    if (reusedFromLabels.length === 0 && reusedInLabels.length > 0) {
+        const others = configuredList.filter(l => !reusedInLabels.includes(l));
+        if (others.length > 0) {
+            // We set it but we need to be careful not to trigger infinite loops.
+            // Only set if it actually differs.
+            setReusedFromLabels(others);
+        }
+    }
+  }, [reusedInLabels, configData?.reusabilityLabels, reusedFromLabels.length]);
 
   // Effect to handle external upload triggers (from parent header)
   useEffect(() => {
@@ -178,6 +182,12 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0 }: TestCaseSumma
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
     return allUniqueLabels.map(label => ({ value: label, label: label }));
   }, [allUniqueLabels]);
+
+  const reusabilityOptions: MultiSelectOption[] = useMemo(() => {
+    if (!configData?.reusabilityLabels) return uniqueLabelOptions;
+    const labels = configData.reusabilityLabels.split(',').map(l => l.trim()).filter(Boolean);
+    return labels.map(l => ({ value: l, label: l }));
+  }, [configData?.reusabilityLabels, uniqueLabelOptions]);
   
 
   const handleDataUploaded = useCallback(async (csvText: string, fileName: string) => {
@@ -199,14 +209,7 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0 }: TestCaseSumma
         const result = await response.json();
         toast({ title: 'Success!', description: `${result.count} test case records uploaded successfully to the test cases store.` });
         
-        // After upload, re-run the initial data load to refresh everything
-        const freshData = await fetchSummaryData({});
-        if (freshData && freshData.uniqueLabels) {
-            const uniqueLabels = freshData.uniqueLabels as string[];
-            setSelectedFilterLabels(DEFAULT_OVERVIEW_LABELS.filter(label => uniqueLabels.includes(label)));
-            setReusedFromLabels(DEFAULT_REUSED_FROM_LABELS.filter(label => uniqueLabels.includes(label)));
-            setReusedInLabels(DEFAULT_REUSED_IN_LABELS.filter(label => uniqueLabels.includes(label)));
-        }
+        await fetchSummaryData({});
         setStatus('ready');
 
     } catch (csvError: any) {
@@ -286,6 +289,16 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0 }: TestCaseSumma
         setIsAnalysisLoading(false);
     }
   }, [distributionData, reusedFromLabels, reusedInLabels, reusabilityData.count, totalSavingHours, totalSavingDays]);
+
+  const handleSaveConfig = async () => {
+    if (!configRef) return;
+    try {
+        await setDoc(configRef, { reusabilityLabels: newReusabilityLabels }, { merge: true });
+        toast({ title: 'Config Saved', description: 'Reusability labels updated successfully.' });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to save configuration.' });
+    }
+  };
 
 
   if (status === 'loading') {
@@ -373,29 +386,64 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0 }: TestCaseSumma
         </Card>
 
         <Card>
-            <CardHeader>
-                <CardTitle>Test Case Reusability</CardTitle>
-                <CardDescription>Analyze how test cases are reused across different labels and calculate effort savings.</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle>Test Case Reusability</CardTitle>
+                    <CardDescription>Analyze how test cases are reused across different labels and calculate effort savings.</CardDescription>
+                </div>
+                {isAdmin && (
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" title="Configure Reusability Labels">
+                                <Settings className="h-5 w-5" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Configure Reusability Labels</DialogTitle>
+                                <DialogDescription>
+                                    Define the labels available for reusability analysis.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label>Allowed Labels (Comma Separated)</Label>
+                                    <Input
+                                        placeholder="FordKOCPilot,ToshibaPilot..."
+                                        value={newReusabilityLabels}
+                                        onChange={(e) => setNewReusabilityLabels(e.target.value)}
+                                    />
+                                    <p className='text-[10px] text-muted-foreground'>Only these labels will be visible in the reusability dropdowns below.</p>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button onClick={handleSaveConfig}>
+                                    <Save className='mr-2 h-4 w-4' /> Save Config
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                )}
             </CardHeader>
             <CardContent className='space-y-6'>
                 <div className='flex flex-col sm:flex-row gap-4'>
                     <div className="w-full sm:w-1/2 space-y-2">
-                        <label className="text-sm font-medium">Reused from</label>
+                        <label className="text-sm font-medium">Reused in</label>
                         <MultiSelect 
-                            options={uniqueLabelOptions}
-                            value={reusedFromLabels}
-                            onValueChange={setReusedFromLabels}
-                            placeholder="Select source labels..."
+                            options={reusabilityOptions}
+                            value={reusedInLabels}
+                            onValueChange={setReusedInLabels}
+                            placeholder="Select target labels..."
                             className="w-full"
                         />
                     </div>
                     <div className="w-full sm:w-1/2 space-y-2">
-                        <label className="text-sm font-medium">Reused in</label>
+                        <label className="text-sm font-medium">Reused from</label>
                         <MultiSelect 
-                            options={uniqueLabelOptions}
-                            value={reusedInLabels}
-                            onValueChange={setReusedInLabels}
-                            placeholder="Select target labels..."
+                            options={reusabilityOptions}
+                            value={reusedFromLabels}
+                            onValueChange={setReusedFromLabels}
+                            placeholder="Select source labels..."
                             className="w-full"
                         />
                     </div>

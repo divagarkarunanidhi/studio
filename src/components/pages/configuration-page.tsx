@@ -9,7 +9,7 @@ import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
@@ -34,7 +34,8 @@ export function ConfigurationPage() {
       mongodbDbName: '',
       geminiModel: '',
       geminiRetryModel: '',
-      jiraLink: ''
+      jiraLink: '',
+      reusabilityLabels: ''
     },
   });
 
@@ -211,6 +212,20 @@ export function ConfigurationPage() {
                   <FormControl>
                     <Input placeholder="e.g., https://your-company.atlassian.net" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="reusabilityLabels"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reusability Labels</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., FordKOCPilot,ToshibaPilot,FradleyPilot,Bacardi" {...field} value={field.value || ''} />
+                  </FormControl>
+                  <FormDescription>Comma-separated list of labels to use for reusability analysis filtering.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
