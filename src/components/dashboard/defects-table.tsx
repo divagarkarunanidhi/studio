@@ -22,9 +22,6 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export interface DefectFilters {
-  id: string;
-  summary: string;
-  description: string;
   domain: string;
   reported_by: string;
   status: string;
@@ -63,6 +60,7 @@ export function DefectsTable({
 
   useEffect(() => {
     const fetchConfig = async () => {
+        if (!firestore) return;
         const configRef = doc(firestore, 'appConfiguration', 'global');
         const configSnap = await getDoc(configRef);
         if (configSnap.exists()) {
@@ -155,16 +153,10 @@ export function DefectsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>
-                <FilterHeader label="Defect ID" filterKey="id" />
-              </TableHead>
-              <TableHead>
-                <FilterHeader label="Summary" filterKey="summary" />
-              </TableHead>
+              <TableHead>Defect ID</TableHead>
+              <TableHead>Summary</TableHead>
               {showDescription && (
-                <TableHead>
-                  <FilterHeader label="Description" filterKey="description" />
-                </TableHead>
+                <TableHead>Description</TableHead>
               )}
               {showReasonColumn && (
                 <TableHead>

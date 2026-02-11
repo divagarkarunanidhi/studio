@@ -230,9 +230,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   // Attention Column Filters State
   const [attentionFilters, setAttentionFilters] = useState<DefectFilters>({
-    id: '',
-    summary: '',
-    description: '',
     domain: '',
     reported_by: '',
     status: '',
@@ -600,17 +597,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const filteredAttentionDefects = useMemo(() => {
     return attentionDefects.filter(d => {
-        // ID filter
-        if (attentionFilters.id && !d.id.toLowerCase().includes(attentionFilters.id.toLowerCase())) return false;
-        
-        // Summary filter
-        if (attentionFilters.summary && !d.summary.toLowerCase().includes(attentionFilters.summary.toLowerCase())) return false;
-        
-        // Description filter
-        if (attentionFilters.description && d.description && !d.description.toLowerCase().includes(attentionFilters.description.toLowerCase())) {
-            if (attentionFilters.description !== '') return false;
-        }
-        
         // Domain filter (Header and stand-alone sync)
         const headerDomainFilter = attentionFilters.domain;
         if (headerDomainFilter !== '' && headerDomainFilter !== 'all') {
@@ -661,9 +647,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
   const clearAllAttentionFilters = () => {
     setAttentionFilters({
-        id: '',
-        summary: '',
-        description: '',
         domain: '',
         reported_by: '',
         status: '',
