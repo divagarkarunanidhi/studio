@@ -453,7 +453,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
             <DialogHeader>
                 <DialogTitle>Detailed Report for: {reportSummary.solution}</DialogTitle>
                 <DialogDescription>
-                    {reportSummary.jobName} | run on: {reportSummary.uploadedAt ? format(parseISO(reportSummary.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                    {reportSummary.jobName} | execution date: {reportSummary.uploadedAt ? format(parseISO(reportSummary.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[80vh]">
@@ -509,7 +509,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                 <CollapsibleContent>
                                     <CardContent className="text-sm space-y-4">
                                          <p className="text-xs text-muted-foreground">
-                                            Compared against run on {comparisonData.previousReportDate ? format(parseISO(comparisonData.previousReportDate), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                                            Compared against execution date {comparisonData.previousReportDate ? format(parseISO(comparisonData.previousReportDate), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                                         </p>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div>
