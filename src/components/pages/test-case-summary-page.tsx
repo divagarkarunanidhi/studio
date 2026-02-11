@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -64,6 +63,7 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
 
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
   const [reusedInLabels, setReusedInLabels] = useState<string[]>([]);
+  const [isManualReusedFrom, setIsManualReusedFrom] = useState(false);
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
   
@@ -141,22 +141,39 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Effect to handle automatic selection logic for reusability
+  // Intelligent Fallback Logic:
+  // If reusedInLabels is set and reusedFromLabels is blank (or in auto-mode), 
+  // auto-fill reusedFromLabels with all other labels from config.
   useEffect(() => {
-    if (!configData?.reusabilityLabels) return;
+    if (!configData?.reusabilityLabels || isManualReusedFrom) return;
     
     const configuredList = configData.reusabilityLabels.split(',').map(l => l.trim()).filter(Boolean);
     
-    // If "reused from" is blank, auto-populate it with everything EXCEPT what's in "reused in"
-    if (reusedFromLabels.length === 0 && reusedInLabels.length > 0) {
+    if (reusedInLabels.length > 0) {
         const others = configuredList.filter(l => !reusedInLabels.includes(l));
-        if (others.length > 0) {
-            // We set it but we need to be careful not to trigger infinite loops.
-            // Only set if it actually differs.
-            setReusedFromLabels(others);
-        }
+        // We update the From labels to match "all others" if we are in auto mode
+        setReusedFromLabels(others);
+    } else {
+        // If In is cleared, clear From as well in auto mode
+        setReusedFromLabels([]);
     }
-  }, [reusedInLabels, configData?.reusabilityLabels, reusedFromLabels.length]);
+  }, [reusedInLabels, configData?.reusabilityLabels, isManualReusedFrom]);
+
+  // Wrappers for state changes to handle mode switching
+  const handleReusedInChange = (val: string[]) => {
+    setReusedInLabels(val);
+  };
+
+  const handleReusedFromChange = (val: string[]) => {
+    setReusedFromLabels(val);
+    // Entering "Manual Mode" if user makes a specific selection.
+    // If they clear it entirely, we return to "Auto Mode".
+    if (val.length > 0) {
+        setIsManualReusedFrom(true);
+    } else {
+        setIsManualReusedFrom(false);
+    }
+  };
 
   // Effect to handle external upload triggers (from parent header)
   useEffect(() => {
@@ -432,17 +449,19 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
                         <MultiSelect 
                             options={reusabilityOptions}
                             value={reusedInLabels}
-                            onValueChange={setReusedInLabels}
+                            onValueChange={handleReusedInChange}
                             placeholder="Select target labels..."
                             className="w-full"
                         />
                     </div>
                     <div className="w-full sm:w-1/2 space-y-2">
-                        <label className="text-sm font-medium">Reused from</label>
+                        <label className="text-sm font-medium">
+                            Reused from {(!isManualReusedFrom && reusedInLabels.length > 0) && <span className='text-[10px] text-primary italic font-normal ml-1'>(Intelligent Fallback Active)</span>}
+                        </label>
                         <MultiSelect 
                             options={reusabilityOptions}
                             value={reusedFromLabels}
-                            onValueChange={setReusedFromLabels}
+                            onValueChange={handleReusedFromChange}
                             placeholder="Select source labels..."
                             className="w-full"
                         />
