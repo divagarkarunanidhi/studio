@@ -56,6 +56,7 @@ const processReport = (report: any, testCaseNameMap: Map<string, any>, testCaseD
                         testCaseId: testCaseId,
                         defectId: defectId,
                         sourceReportId: reportId, // Crucial for smart deep fetching
+                        executedAt: scenario.start_timestamp || executionTimestamp,
                     });
 
                     scenario.steps.forEach((step: any) => {

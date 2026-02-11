@@ -117,6 +117,7 @@ interface DetailedScenario {
     testCaseId: string | null;
     defectId: string | null;
     sourceReportId: string | null;
+    executedAt: string | null;
 }
 
 const getScenarioStatus = (scenario: Scenario): 'passed' | 'failed' => {
@@ -182,7 +183,8 @@ const performConsolidation = (reportsToConsolidate: any[], id: string, title: st
                         status: status,
                         testCaseId: null, 
                         defectId: null,
-                        sourceReportId: report.id || report._id?.toString()
+                        sourceReportId: report.id || report._id?.toString(),
+                        executedAt: scenario.start_timestamp || report.uploadedAt,
                     });
                 });
             });
@@ -560,8 +562,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                             </TableHeader>
                                             <TableBody>
                                                 {failedScenarios.map(scenario => {
-                                                    const sourceReport = allProcessedReports.find(r => r.id === scenario.sourceReportId);
-                                                    const executionDate = sourceReport?.uploadedAt;
+                                                    const executionDate = scenario.executedAt;
                                                     return (
                                                         <TableRow key={scenario.id}>
                                                             <TableCell>{scenario.testCaseId ? <a href={`${jiraLink}/browse/${scenario.testCaseId}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{scenario.testCaseId}</a> : 'N/A'}</TableCell>
