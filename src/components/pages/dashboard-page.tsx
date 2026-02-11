@@ -225,7 +225,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterAttention, setFilterAttention] = useState<string>('all');
 
   // Attention Column Filters State
   const [attentionFilters, setAttentionFilters] = useState<DefectFilters>({
@@ -613,17 +612,15 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             if (headerStatusFilter !== 'N/A' && d.status !== headerStatusFilter) return false;
         }
 
-        // Reason filter (Header and stand-alone sync)
+        // Reason filter (Header sync)
         const headerReasonFilter = attentionFilters.reason;
         if (headerReasonFilter !== '' && headerReasonFilter !== 'all') {
             if (!d.reasonForAttention.includes(headerReasonFilter)) return false;
-        } else if (filterAttention !== 'all') {
-            if (!d.reasonForAttention.includes(filterAttention)) return false;
         }
 
         return true;
     });
-  }, [attentionDefects, attentionFilters, filterDomain, filterAttention]);
+  }, [attentionDefects, attentionFilters, filterDomain]);
 
   const totalPages = Math.ceil(filteredDefects.length / RECORDS_PER_PAGE);
 
@@ -649,7 +646,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
         reason: '',
     });
     setFilterDomain('all');
-    setFilterAttention('all');
   };
 
   const handleExport = () => {
@@ -1042,17 +1038,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                                 <Button variant="ghost" size="sm" onClick={clearAllAttentionFilters} className="text-xs">
                                     <FilterX className="h-3.5 w-3.5 mr-1" /> Clear All Filters
                                 </Button>
-                                <Select value={filterAttention} onValueChange={setFilterAttention}>
-                                    <SelectTrigger className="w-[240px]">
-                                        <SelectValue placeholder="Filter by Reason" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Reasons</SelectItem>
-                                        {uniqueAttentionReasons.map(reason => (
-                                        <SelectItem key={reason} value={reason}>{reason}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
                                 <Button variant="outline" onClick={handleExport}>
                                     <Download className="mr-2 h-4 w-4" />
                                     Export
