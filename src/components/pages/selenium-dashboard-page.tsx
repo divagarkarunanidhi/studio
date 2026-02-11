@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -981,7 +980,7 @@ export function SeleniumDashboardPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-[40px]"><Checkbox checked={processedReports.length > 0 && selectedReportIds.length === processedReports.length} onCheckedChange={(checked) => handleSelectAll(!!checked)} /></TableHead>
-                                        <TableHead>Job Name</TableHead><TableHead>Domain</TableHead><TableHead>Total</TableHead><TableHead>Passed</TableHead><TableHead>Failed</TableHead><TableHead>Status Chart</TableHead><TableHead>run on</TableHead><TableHead>Detailed Report</TableHead>
+                                        <TableHead>Job Name</TableHead><TableHead>Domain</TableHead><TableHead>Total</TableHead><TableHead>Passed</TableHead><TableHead>Failed</TableHead><TableHead>Status Chart</TableHead><TableHead>execution date</TableHead><TableHead>Detailed Report</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
