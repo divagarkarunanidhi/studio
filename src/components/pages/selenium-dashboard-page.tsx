@@ -555,16 +555,24 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                                     <TableHead>Test Case ID</TableHead>
                                                     <TableHead>Test Case Name</TableHead>
                                                     <TableHead>Defect ID</TableHead>
+                                                    <TableHead>Executed on</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {failedScenarios.map(scenario => (
-                                                    <TableRow key={scenario.id}>
-                                                        <TableCell>{scenario.testCaseId ? <a href={`${jiraLink}/browse/${scenario.testCaseId}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{scenario.testCaseId}</a> : 'N/A'}</TableCell>
-                                                        <TableCell>{scenario.name}</TableCell>
-                                                        <TableCell>{scenario.defectId ? <a href={`${jiraLink}/browse/${scenario.defectId}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{scenario.defectId}</a> : 'N/A'}</TableCell>
-                                                    </TableRow>
-                                                ))}
+                                                {failedScenarios.map(scenario => {
+                                                    const sourceReport = allProcessedReports.find(r => r.id === scenario.sourceReportId);
+                                                    const executionDate = sourceReport?.uploadedAt;
+                                                    return (
+                                                        <TableRow key={scenario.id}>
+                                                            <TableCell>{scenario.testCaseId ? <a href={`${jiraLink}/browse/${scenario.testCaseId}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{scenario.testCaseId}</a> : 'N/A'}</TableCell>
+                                                            <TableCell>{scenario.name}</TableCell>
+                                                            <TableCell>{scenario.defectId ? <a href={`${jiraLink}/browse/${scenario.defectId}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{scenario.defectId}</a> : 'N/A'}</TableCell>
+                                                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                                                {executionDate ? format(parseISO(executionDate), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
                                             </TableBody>
                                         </Table>
                                     </CardContent>
