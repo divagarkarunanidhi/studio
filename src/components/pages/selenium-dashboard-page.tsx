@@ -454,7 +454,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
             <DialogHeader>
                 <DialogTitle>Detailed Report for: {reportSummary.solution}</DialogTitle>
                 <DialogDescription>
-                    {reportSummary.jobName} | Run on: {reportSummary.uploadedAt ? format(parseISO(reportSummary.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                    {reportSummary.jobName} | run on: {reportSummary.uploadedAt ? format(parseISO(reportSummary.uploadedAt), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[80vh]">
@@ -510,7 +510,7 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                                 <CollapsibleContent>
                                     <CardContent className="text-sm space-y-4">
                                          <p className="text-xs text-muted-foreground">
-                                            Compared against run from {comparisonData.previousReportDate ? format(parseISO(comparisonData.previousReportDate), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
+                                            Compared against run on {comparisonData.previousReportDate ? format(parseISO(comparisonData.previousReportDate), "MMM d, yyyy 'at' h:mm a") : 'N/A'}
                                         </p>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div>
@@ -981,7 +981,7 @@ export function SeleniumDashboardPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-[40px]"><Checkbox checked={processedReports.length > 0 && selectedReportIds.length === processedReports.length} onCheckedChange={(checked) => handleSelectAll(!!checked)} /></TableHead>
-                                        <TableHead>Job Name</TableHead><TableHead>Domain</TableHead><TableHead>Total</TableHead><TableHead>Passed</TableHead><TableHead>Failed</TableHead><TableHead>Status Chart</TableHead><TableHead>Execution Date</TableHead><TableHead>Detailed Report</TableHead>
+                                        <TableHead>Job Name</TableHead><TableHead>Domain</TableHead><TableHead>Total</TableHead><TableHead>Passed</TableHead><TableHead>Failed</TableHead><TableHead>Status Chart</TableHead><TableHead>run on</TableHead><TableHead>Detailed Report</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
