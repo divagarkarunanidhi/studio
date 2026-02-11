@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -613,9 +612,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             if (headerStatusFilter === 'N/A' && d.status && d.status.trim() !== '') return false;
             if (headerStatusFilter !== 'N/A' && d.status !== headerStatusFilter) return false;
         }
-
-        // Reported By filter
-        if (attentionFilters.reported_by && d.reported_by && !d.reported_by.toLowerCase().includes(attentionFilters.reported_by.toLowerCase())) return false;
 
         // Reason filter (Header and stand-alone sync)
         const headerReasonFilter = attentionFilters.reason;

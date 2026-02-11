@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -176,9 +175,7 @@ export function DefectsTable({
                   options={uniqueValues?.domains || []} 
                 />
               </TableHead>
-              <TableHead>
-                <FilterHeader label="Reported By" filterKey="reported_by" />
-              </TableHead>
+              <TableHead>Reported By</TableHead>
               <TableHead>
                 <FilterHeader 
                   label="Status" 
