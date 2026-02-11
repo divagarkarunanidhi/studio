@@ -1,41 +1,78 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    /**
+     * Firestore Security Rules
+     *
+     * CORE PHILOSOPHY:
+     * This ruleset implements an owner-controlled access model for defect management. While defects 
+     * are visible to all authenticated users to facilitate team collaboration and dashboard analytics, 
+     * modification and deletion are strictly restricted to the user who originally reported the defect.
+     *
+     * DATA STRUCTURE:
+     * - /defects/{defectId}: Root collection containing defect records, AI suggestions, and user feedback.
+     *
+     * KEY SECURITY DECISIONS:
+     * - AUTHENTICATED ACCESS: Reads (get/list) are permitted for any signed-in user. This supports
+     *   the application's requirement for a shared dashboard and analytical features.
+     * - OWNER-ONLY WRITES: The 'reportedBy' field is treated as the source of truth for ownership.
+     *   Only the user matching this ID can update or delete a defect.
+     * - DATA INTEGRITY: Relational integrity is enforced during creation by ensuring the 
+     *   'reportedBy' field matches the authenticated user and the 'id' field matches the document path.
+     * - IMMUTABILITY: The 'reportedBy' field is immutable after creation to prevent ownership hijacking.
+     *
+     * DENORMALIZATION FOR AUTHORIZATION:
+     * The 'reportedBy' field is explicitly required within the Defect document. This allows 
+     * high-performance authorization checks without the need for additional 'get()' lookups 
+     * or complex subcollection nesting.
+     */
+
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the request is made by an authenticated user.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     */
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    /**
+     * @description Checks if the document exists and the authenticated user is the owner.
+     * Used for update and delete operations to ensure state safety.
+     */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
     }
 
-    match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isOwner(userId);
-      allow update, delete: if isAdmin();
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the 'defects' collection, managing defect records and feedback.
+     * @path /defects/{defectId}
+     * @allow (create) if user is signed in and sets 'reportedBy' to their own UID.
+     * @deny (update) if the user attempting the update is not the original 'reportedBy' user.
+     * @principle Enforces document ownership for writes while allowing authenticated shared reads.
+     */
+    match /defects/{defectId} {
+      allow get, list: if isSignedIn();
+
+      allow create: if isSignedIn() 
+        && request.resource.data.reportedBy == request.auth.uid 
+        && request.resource.data.id == defectId;
+
+      allow update: if isExistingOwner(resource.data.reportedBy) 
+        && request.resource.data.reportedBy == resource.data.reportedBy;
+
+      allow delete: if isExistingOwner(resource.data.reportedBy);
     }
 
-    match /sharedFeedback/{feedbackId} {
-      // Allow server-side reads (unauthenticated) OR signed-in client reads/writes.
-      allow read, write: if request.auth == null || isSignedIn();
-    }
-
-    match /TAASBugSenseAI/{fileId} {
-      allow read, create, update, delete: if isSignedIn();
-    }
-
-    match /appConfiguration/{configId} {
-        // Allow server-side processes (unauthenticated) AND signed-in clients to read.
-        allow read: if request.auth == null || isSignedIn(); 
-        // Only allow authenticated users (clients) to write the config.
-        allow write: if isSignedIn();
-    }
   }
 }

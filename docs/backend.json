@@ -1,190 +1,79 @@
-
 {
   "entities": {
-    "User": {
-      "title": "User",
+    "Defect": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Defect",
       "type": "object",
-      "description": "Represents a user of the application.",
+      "description": "Represents a defect record from the uploaded CSV file.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the user (Firebase Auth UID)."
+          "description": "Unique identifier for the Defect entity."
         },
-        "username": {
+        "domain": {
           "type": "string",
-          "description": "The user's display name."
+          "description": "The domain to which the defect belongs."
         },
-        "email": {
+        "reportedBy": {
           "type": "string",
-          "format": "email",
-          "description": "The user's email address."
+          "description": "The user who reported the defect."
         },
-        "role": {
+        "createdAt": {
           "type": "string",
-          "description": "The user's role in the application.",
-          "enum": ["admin", "taas", "view", "newuser"]
-        }
-      },
-      "required": ["id", "email", "role"]
-    },
-    "Defect": {
-      "title": "Defect",
-      "type": "object",
-      "description": "Represents a defect uploaded by a user.",
-      "properties": {
-        "id": { "type": "string" },
-        "summary": { "type": "string" },
-        "description": { "type": "string" },
-        "domain": { "type": "string" },
-        "status": { "type": "string" },
-        "reported_by": { "type": "string" },
-        "created_at": { "type": "string", "format": "date-time" },
-        "updated": { "type": "string", "format": "date-time" },
-        "severity": { "type": "string" },
-        "priority": { "type": "string" }
-      },
-      "required": ["id", "summary", "created_at"]
-    },
-    "DefectFile": {
-      "title": "Defect File",
-      "type": "object",
-      "description": "Represents an uploaded CSV file containing multiple defects.",
-      "properties": {
-        "uploadedAt": {
-          "type": "string",
+          "description": "The date and time when the defect was created.",
           "format": "date-time"
         },
-        "defects": {
-          "type": "array",
-          "items": {
-            "$ref": "#/backend/entities/Defect"
-          }
-        },
-        "uploaderId": {
-          "type": "string"
-        }
-      },
-      "required": ["uploadedAt", "defects", "uploaderId"]
-    },
-    "SavedPrediction": {
-        "title": "Saved Prediction",
-        "type": "object",
-        "description": "Represents a user-approved defect prediction example for few-shot learning.",
-        "properties": {
-            "defect": { "$ref": "#/backend/entities/Defect" },
-            "prediction": { "$ref": "#/backend/entities/DefectPrediction" },
-            "savedAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["defect", "prediction", "savedAt"]
-    },
-    "DefectPrediction": {
-      "title": "Defect Prediction",
-      "type": "object",
-      "description": "Represents the AI's prediction for a defect.",
-      "properties": {
-        "predictedSeverity": { "type": "string" },
-        "predictedPriority": { "type": "string" },
-        "predictedRootCause": { "type": "string" },
-        "predictedFunctionalArea": { "type": "string" },
-        "predictedDefectSuggestions": { "type": "string" }
-      },
-      "required": ["predictedSeverity", "predictedPriority", "predictedRootCause", "predictedFunctionalArea", "predictedDefectSuggestions"]
-    },
-    "AppConfiguration": {
-      "title": "App Configuration",
-      "type": "object",
-      "description": "Stores global application configuration settings.",
-      "properties": {
-        "geminiApiKey": {
-          "type": "string"
-        },
-        "mongodbUri": {
-          "type": "string"
-        },
-        "mongodbDbName": {
-          "type": "string"
-        },
-        "geminiModel": {
-          "type": "string"
-        },
-        "geminiRetryModel": {
-          "type": "string"
-        },
-        "jiraLink": {
-          "type": "string"
-        },
-        "reusabilityLabels": {
+        "status": {
           "type": "string",
-          "description": "Comma-separated list of labels for test case reusability analysis."
+          "description": "The current status of the defect (e.g., 'To-Do', 'Ready for Testing')."
         },
-        "seleniumDomainDateRanges": {
-          "type": "object",
-          "description": "Stores individual date ranges for Selenium report consolidation per domain."
+        "aiSuggestion": {
+          "type": "string",
+          "description": "The AI's suggestion for defect reduction."
+        },
+        "userSuggestion": {
+          "type": "string",
+          "description": "The user's suggestion for defect reduction."
+        },
+        "refinedFeedback": {
+          "type": "string",
+          "description": "AI-refined feedback based on user suggestion, used for future predictions."
         }
-      }
+      },
+      "required": [
+        "id",
+        "domain",
+        "reportedBy",
+        "createdAt",
+        "status"
+      ]
     }
   },
   "auth": {
-    "providers": ["emailpassword"],
-    "customClaims": {
-      "role": {
-        "type": "string",
-        "enum": ["admin", "taas", "view", "newuser"]
-      }
-    }
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
     "structure": [
       {
-        "path": "/users/{userId}",
+        "path": "/defects/{defectId}",
         "definition": {
-          "entityName": "User",
+          "entityName": "Defect",
           "schema": {
-            "$ref": "#/backend/entities/User"
+            "$ref": "#/backend/entities/Defect"
           },
-          "description": "Stores user-specific data, like roles and preferences.",
-          "params": [{ "name": "userId", "description": "The unique identifier for the user, matching their Firebase Auth UID." }]
-        }
-      },
-      {
-        "path": "/sharedFeedback/{feedbackId}",
-        "definition": {
-            "entityName": "SavedPrediction",
-            "schema": {
-                "$ref": "#/backend/entities/SavedPrediction"
-            },
-            "description": "Stores user-approved predictions to be used as few-shot examples for all users.",
-            "params": [
-                { "name": "feedbackId", "description": "The unique ID for the saved feedback." }
-            ]
-        }
-      },
-      {
-        "path": "/TAASBugSenseAI/{fileId}",
-        "definition": {
-          "entityName": "DefectFile",
-          "schema": {
-            "$ref": "#/backend/entities/DefectFile"
-          },
-          "description": "Stores uploaded defect files.",
+          "description": "Stores individual defect records, including AI suggestions, user suggestions, and refined feedback. Includes denormalized 'reportedBy' for authorization independence.",
           "params": [
-            { "name": "fileId", "description": "The unique ID for the uploaded file." }
+            {
+              "name": "defectId",
+              "description": "Unique identifier for each defect."
+            }
           ]
         }
-      },
-      {
-        "path": "/appConfiguration/{configId}",
-        "definition": {
-            "entityName": "AppConfiguration",
-            "schema": {
-                "$ref": "#/backend/entities/AppConfiguration"
-            },
-            "description": "Stores a single document for global app configuration.",
-            "params": [
-                { "name": "configId", "description": "The static ID for the configuration document, typically 'global'." }
-            ]
-        }
       }
-    ]
+    ],
+    "reasoning": "The Firestore data structure is designed to efficiently store and manage defect data uploaded via CSV, incorporating user suggestions and AI-refined feedback. Authorization independence is achieved as the defects are independent of each other, and the structure supports required QAPs by allowing efficient listing and filtering of defects based on various criteria like domain, reportedBy, and status. The structure ensures easy retrieval for the dashboard's analytical features.\n\nTo enhance authorization independence (avoiding `get()` calls in rules), consider adding `reportedBy` as a top-level field in each Defect document, even though it's already within the document. This duplication allows for simple rules based on `request.auth.uid == resource.data.reportedBy` if needed.  This allows restricting defect editing or deletion to the user who reported it.\n\nTo further enable QAPs and potential role-based access, you can also introduce a membership map if there are any collaborative features or team-based access control implemented later. For example, if a feature is added to allow teams to manage Defects, a membership map in the Defect document could be included (e.g., `members: {uid1: \"admin\", uid2: \"viewer\"}`)."
   }
 }
