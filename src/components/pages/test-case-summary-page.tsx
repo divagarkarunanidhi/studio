@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -142,8 +143,7 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
   }, []);
 
   // Intelligent Fallback Logic:
-  // If reusedInLabels is set and reusedFromLabels is blank (or in auto-mode), 
-  // auto-fill reusedFromLabels with all other labels from config.
+  // Updates 'reusedFromLabels' automatically if not in manual mode.
   useEffect(() => {
     if (!configData?.reusabilityLabels || isManualReusedFrom) return;
     
@@ -151,23 +151,18 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
     
     if (reusedInLabels.length > 0) {
         const others = configuredList.filter(l => !reusedInLabels.includes(l));
-        // We update the From labels to match "all others" if we are in auto mode
         setReusedFromLabels(others);
     } else {
-        // If In is cleared, clear From as well in auto mode
         setReusedFromLabels([]);
     }
   }, [reusedInLabels, configData?.reusabilityLabels, isManualReusedFrom]);
 
-  // Wrappers for state changes to handle mode switching
   const handleReusedInChange = (val: string[]) => {
     setReusedInLabels(val);
   };
 
   const handleReusedFromChange = (val: string[]) => {
     setReusedFromLabels(val);
-    // Entering "Manual Mode" if user makes a specific selection.
-    // If they clear it entirely, we return to "Auto Mode".
     if (val.length > 0) {
         setIsManualReusedFrom(true);
     } else {
@@ -175,25 +170,29 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
     }
   };
 
-  // Effect to handle external upload triggers (from parent header)
+  // Effect to handle external upload triggers
   useEffect(() => {
     if (externalUploadTrigger > 0) {
         setStatus('upload');
     }
   }, [externalUploadTrigger]);
 
-  // Effect to refetch data when filters change, but only when ready
+  // Unified Effect to fetch data when filters are STABLE.
+  // We use a small timeout to avoid double-fetching during auto-fallback.
   useEffect(() => {
     if (status !== 'ready') return;
 
-    const filters = {
-        selectedFilterLabels,
-        reusedFromLabels,
-        reusedInLabels,
-    };
-    fetchSummaryData(filters).then(() => setStatus('ready'));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFilterLabels, reusedFromLabels, reusedInLabels]);
+    const timer = setTimeout(() => {
+        const filters = {
+            selectedFilterLabels,
+            reusedFromLabels,
+            reusedInLabels,
+        };
+        fetchSummaryData(filters);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [selectedFilterLabels, reusedFromLabels, reusedInLabels, status, fetchSummaryData]);
 
 
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {

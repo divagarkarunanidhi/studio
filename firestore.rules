@@ -10,29 +10,42 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+    
+    function getUserData() {
+      // Helper to fetch current user's profile data
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserData().role == 'admin';
+    }
 
     match /users/{userId} {
+      // Allow any signed-in user to see profiles (needed for mentions/management)
       allow get: if isSignedIn();
-      allow create, update: if isOwner(userId);
+      // Allow admins to list all users
+      allow list: if isAdmin();
+      // Allow owners or admins to manage profiles
+      allow create, update: if isOwner(userId) || isAdmin();
     }
 
     match /appConfiguration/{configId} {
-      allow get: if isSignedIn();
-      allow write: if isSignedIn(); // In production, restrict to admin role
+      // Allow all signed-in users (and authenticated server) to read config
+      allow read: if isSignedIn();
+      // Restrict writes to admins
+      allow write: if isAdmin();
     }
 
     match /sharedFeedback/{feedbackId} {
-      allow get, list: if isSignedIn();
+      // Shared feedback is readable by all authenticated users for few-shot prompting
+      allow read: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
     match /defects/{defectId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() 
-        && request.resource.data.reportedBy == request.auth.uid 
-        && request.resource.data.id == defectId;
-      allow update: if isSignedIn() && (resource.data.reportedBy == request.auth.uid || request.auth.token.email.endsWith('@dhl.com'));
-      allow delete: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
+      // Basic CRUD for defects for signed-in users
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
   }
 }
