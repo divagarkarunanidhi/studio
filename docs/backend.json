@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Defect": {
@@ -47,6 +48,24 @@
         "createdAt",
         "status"
       ]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "taas", "view", "newuser"] }
+      }
+    },
+    "SharedFeedback": {
+      "title": "SharedFeedback",
+      "type": "object",
+      "properties": {
+        "defect": { "$ref": "#/backend/entities/Defect" },
+        "prediction": { "type": "object" },
+        "savedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -64,16 +83,33 @@
           "schema": {
             "$ref": "#/backend/entities/Defect"
           },
-          "description": "Stores individual defect records, including AI suggestions, user suggestions, and refined feedback. Includes denormalized 'reportedBy' for authorization independence.",
-          "params": [
-            {
-              "name": "defectId",
-              "description": "Unique identifier for each defect."
-            }
-          ]
+          "description": "Stores individual defect records."
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": { "$ref": "#/backend/entities/UserProfile" },
+          "description": "User profile and role information."
+        }
+      },
+      {
+        "path": "/sharedFeedback/{feedbackId}",
+        "definition": {
+          "entityName": "SharedFeedback",
+          "schema": { "$ref": "#/backend/entities/SharedFeedback" },
+          "description": "Feedback used for few-shot learning."
+        }
+      },
+      {
+        "path": "/appConfiguration/global",
+        "definition": {
+          "entityName": "AppConfig",
+          "schema": { "type": "object" },
+          "description": "Global app settings."
         }
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to efficiently store and manage defect data uploaded via CSV, incorporating user suggestions and AI-refined feedback. Authorization independence is achieved as the defects are independent of each other, and the structure supports required QAPs by allowing efficient listing and filtering of defects based on various criteria like domain, reportedBy, and status. The structure ensures easy retrieval for the dashboard's analytical features.\n\nTo enhance authorization independence (avoiding `get()` calls in rules), consider adding `reportedBy` as a top-level field in each Defect document, even though it's already within the document. This duplication allows for simple rules based on `request.auth.uid == resource.data.reportedBy` if needed.  This allows restricting defect editing or deletion to the user who reported it.\n\nTo further enable QAPs and potential role-based access, you can also introduce a membership map if there are any collaborative features or team-based access control implemented later. For example, if a feature is added to allow teams to manage Defects, a membership map in the Defect document could be included (e.g., `members: {uid1: \"admin\", uid2: \"viewer\"}`)."
+    ]
   }
 }

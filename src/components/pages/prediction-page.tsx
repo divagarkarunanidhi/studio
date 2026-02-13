@@ -4,6 +4,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Defect, DefectPrediction, AppConfiguration, SavedPrediction } from '@/lib/types';
 import { predictDefects } from '@/ai/flows/defect-prediction-flow';
+import { refineSuggestion } from '@/ai/flows/refine-suggestion-flow';
 import {
   Table,
   TableBody,
@@ -18,9 +19,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Lightbulb, AlertTriangle, Wand2, Bookmark, BookmarkCheck, HelpCircle } from 'lucide-react';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useAuth, useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { Lightbulb, AlertTriangle, Wand2, Bookmark, BookmarkCheck, HelpCircle, Check, Loader2 } from 'lucide-react';
+import { doc, getDoc, collection } from 'firebase/firestore';
+import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import {
     Select,
     SelectContent,
@@ -44,6 +45,8 @@ const PRIORITY_OPTIONS = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
 export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) {
   const [predictions, setPredictions] = useState<DefectPrediction[]>([]);
   const [editablePredictions, setEditablePredictions] = useState<Record<string, DefectPrediction>>({});
+  const [userSuggestions, setUserSuggestions] = useState<Record<string, string>>({});
+  const [refiningIds, setRefiningIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
@@ -104,7 +107,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
             path: 'sharedFeedback',
         });
         errorEmitter.emit('permission-error', contextualError);
-        setError('A permission error occurred while fetching prediction examples. The detailed error has been logged.');
+        setError('A permission error occurred while fetching prediction examples.');
       } else {
         console.error(err);
         setError('An error occurred while generating predictions.');
@@ -122,6 +125,60 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
             [field]: value
         }
     }));
+  };
+
+  const handleUserSuggestionChange = (defectId: string, value: string) => {
+    setUserSuggestions(prev => ({ ...prev, [defectId]: value }));
+  };
+
+  const handleRefineAndSave = async (defect: Defect) => {
+    const rawSuggestion = userSuggestions[defect.id];
+    if (!rawSuggestion || rawSuggestion.trim().length < 5) {
+        toast({ variant: 'destructive', title: 'Suggestion too short', description: 'Please provide a more descriptive suggestion before submitting.' });
+        return;
+    }
+
+    if (!user || !firestore) return;
+
+    setRefiningIds(prev => new Set(prev).add(defect.id));
+    try {
+        const refined = await refineSuggestion({
+            defectSummary: defect.summary,
+            userSuggestion: rawSuggestion
+        });
+
+        const currentPrediction = editablePredictions[defect.id] || predictions.find(p => p.id === defect.id);
+        
+        const finalPrediction: Omit<DefectPrediction, 'id'> = {
+            predictedSeverity: currentPrediction?.predictedSeverity || 'Medium',
+            predictedPriority: currentPrediction?.predictedPriority || 'Medium',
+            predictedRootCause: currentPrediction?.predictedRootCause || 'Unknown',
+            predictedFunctionalArea: currentPrediction?.predictedFunctionalArea || 'General',
+            predictedDefectSuggestions: refined, // Use refined feedback as the suggestion
+        };
+
+        const savedData: Omit<SavedPrediction, 'savedAt'> = {
+            defect: defect,
+            prediction: finalPrediction
+        };
+
+        const collectionRef = collection(firestore, 'sharedFeedback');
+        addDocumentNonBlocking(collectionRef, {
+            ...savedData,
+            savedAt: new Date().toISOString(),
+        });
+
+        setSavedPredictionIds(prev => new Set(prev).add(defect.id));
+        toast({ title: 'Success!', description: 'Refined feedback has been saved and will be used for future predictions.' });
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Refinement failed', description: 'The AI could not refine your suggestion at this time.' });
+    } finally {
+        setRefiningIds(prev => {
+            const next = new Set(prev);
+            next.delete(defect.id);
+            return next;
+        });
+    }
   };
 
   const defectsWithPredictions = useMemo(() => {
@@ -183,7 +240,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
             <CardHeader>
                 <CardTitle>Defect Predictions</CardTitle>
                 <CardDescription>
-                    AI-powered predictions for severity and priority. Correct any inaccurate predictions and save them as feedback to improve the model over time.
+                    AI-powered predictions for severity and priority. Correct any inaccurate predictions or provide your own suggestions. User suggestions are automatically refined by AI and used to improve future models.
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex items-center gap-4">
@@ -231,7 +288,7 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
              <Card>
                 <CardHeader>
                     <CardTitle>Predictions for '{selectedDomain}'</CardTitle>
-                    <CardDescription>The table below shows the actual vs. predicted values. Edit the predictions to be more accurate and click the bookmark icon to save your feedback.</CardDescription>
+                    <CardDescription>Review AI predictions or provide your own expert suggestions below.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <TooltipProvider>
@@ -240,72 +297,24 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                         <TableHeader>
                             <TableRow>
                             <TableHead className='w-[50px]'></TableHead>
-                            <TableHead>
-                                <div className="flex items-center gap-1">
-                                    <span>Defect ID / Summary</span>
-                                    <Tooltip>
-                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
-                                        <TooltipContent><p>The unique identifier and summary of the defect.</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableHead>
-                             <TableHead>
-                                <div className="flex items-center gap-1">
-                                    <span>Severity (Actual/Predicted)</span>
-                                    <Tooltip>
-                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
-                                        <TooltipContent><p>Actual vs. AI-predicted severity. You can edit the prediction.</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableHead>
-                            <TableHead>
-                                <div className="flex items-center gap-1">
-                                    <span>Priority (Actual/Predicted)</span>
-                                    <Tooltip>
-                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
-                                        <TooltipContent><p>Actual vs. AI-predicted priority. You can edit the prediction.</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableHead>
-                            <TableHead>
-                                <div className="flex items-center gap-1">
-                                    <span>Root Cause</span>
-                                    <Tooltip>
-                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
-                                        <TooltipContent><p>The AI's predicted root cause for the defect. This is editable.</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableHead>
-                            <TableHead>
-                                <div className="flex items-center gap-1">
-                                    <span>Functional Area</span>
-                                    <Tooltip>
-                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
-                                        <TooltipContent><p>The AI's predicted functional area. This is editable.</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableHead>
-                            <TableHead>
-                                <div className="flex items-center gap-1">
-                                    <span>Suggestion for Reduction</span>
-                                    <Tooltip>
-                                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
-                                        <TooltipContent><p>The AI's suggestion to prevent similar defects. This is editable.</p></TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TableHead>
+                            <TableHead>Defect ID / Summary</TableHead>
+                             <TableHead>Severity</TableHead>
+                            <TableHead>Priority</TableHead>
+                            <TableHead>AI Root Cause</TableHead>
+                            <TableHead>AI Suggestion</TableHead>
+                            <TableHead className="w-[300px]">Your Suggestion (Refine & Save)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading
-                            ? Array.from({ length: Math.min(filteredDefects.length, 3) || 1 }).map((_, i) => (
+                            ? Array.from({ length: 3 }).map((_, i) => (
                                 <TableRow key={i}>
                                     <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                                    <TableCell><Skeleton className="h-5 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-3/4 mb-2" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-28" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-28" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-32" /></TableCell>
-                                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                                     <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                                 </TableRow>
                                 ))
@@ -313,6 +322,8 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                 const currentPrediction = editablePredictions[defect.id];
                                 const hasPrediction = !!currentPrediction;
                                 const isSaved = savedPredictionIds.has(defect.id);
+                                const isRefining = refiningIds.has(defect.id);
+
                                 return (
                                     <TableRow key={defect.id} className="align-top">
                                          <TableCell className='pt-3.5'>
@@ -324,7 +335,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                                             size="icon"
                                                             onClick={() => handleSavePrediction(defect, currentPrediction)}
                                                             disabled={isSaved}
-                                                            aria-label="Save prediction as feedback"
                                                             className='h-8 w-8'
                                                         >
                                                             {isSaved ? (
@@ -341,106 +351,94 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                             )}
                                         </TableCell>
                                         <TableCell className="font-medium max-w-xs">
-                                            <a
-                                                href={`${jiraLink}/browse/${defect.id}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-primary hover:underline"
-                                            >
+                                            <a href={`${jiraLink}/browse/${defect.id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                                                 {defect.id}
                                             </a>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <p className='text-muted-foreground text-xs mt-1 truncate'>{defect.summary}</p>
-                                                </TooltipTrigger>
-                                                <TooltipContent className="max-w-md">
-                                                    <p>{defect.summary}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
+                                            <p className='text-muted-foreground text-[10px] mt-1 truncate'>{defect.summary}</p>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col gap-1">
-                                                <Badge variant="outline" className="w-fit mb-1">{defect.severity || 'N/A'}</Badge>
-                                                {hasPrediction ? (
+                                                <Badge variant="outline" className="text-[10px] px-1 py-0">{defect.severity || 'N/A'}</Badge>
+                                                {hasPrediction && (
                                                     <Select
                                                         value={currentPrediction.predictedSeverity}
                                                         onValueChange={(value) => handlePredictionChange(defect.id, 'predictedSeverity', value)}
                                                     >
-                                                        <SelectTrigger className="h-8 w-[120px] text-xs">
-                                                            <SelectValue placeholder="Severity" />
+                                                        <SelectTrigger className="h-7 w-[100px] text-[10px]">
+                                                            <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {SEVERITY_OPTIONS.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                                            {SEVERITY_OPTIONS.map(opt => <SelectItem key={opt} value={opt} className="text-[10px]">{opt}</SelectItem>)}
                                                         </SelectContent>
                                                     </Select>
-                                                ) : <Badge variant="secondary" className="w-fit">...</Badge>}
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex flex-col gap-1">
-                                                <Badge variant="outline" className="w-fit mb-1">{defect.priority || 'N/A'}</Badge>
-                                                {hasPrediction ? (
+                                                <Badge variant="outline" className="text-[10px] px-1 py-0">{defect.priority || 'N/A'}</Badge>
+                                                {hasPrediction && (
                                                     <Select
                                                         value={currentPrediction.predictedPriority}
                                                         onValueChange={(value) => handlePredictionChange(defect.id, 'predictedPriority', value)}
                                                     >
-                                                        <SelectTrigger className="h-8 w-[120px] text-xs">
-                                                            <SelectValue placeholder="Priority" />
+                                                        <SelectTrigger className="h-7 w-[100px] text-[10px]">
+                                                            <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {PRIORITY_OPTIONS.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                                            {PRIORITY_OPTIONS.map(opt => <SelectItem key={opt} value={opt} className="text-[10px]">{opt}</SelectItem>)}
                                                         </SelectContent>
                                                     </Select>
-                                                ) : <Badge variant="secondary" className="w-fit">...</Badge>}
+                                                )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="w-[200px]">
+                                        <TableCell className="w-[120px]">
                                             {hasPrediction ? (
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Input
-                                                            value={currentPrediction.predictedRootCause}
-                                                            onChange={(e) => handlePredictionChange(defect.id, 'predictedRootCause', e.target.value)}
-                                                            className="h-8 text-xs"
-                                                        />
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>{currentPrediction.predictedRootCause}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
+                                                <Input
+                                                    value={currentPrediction.predictedRootCause}
+                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedRootCause', e.target.value)}
+                                                    className="h-7 text-[10px]"
+                                                />
                                             ) : '...'}
                                         </TableCell>
-                                        <TableCell className="w-[200px]">
+                                        <TableCell className="text-[10px] text-muted-foreground max-w-[200px]">
                                             {hasPrediction ? (
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <Input
-                                                            value={currentPrediction.predictedFunctionalArea}
-                                                            onChange={(e) => handlePredictionChange(defect.id, 'predictedFunctionalArea', e.target.value)}
-                                                            className="h-8 text-xs"
-                                                        />
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>{currentPrediction.predictedFunctionalArea}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            ) : '...'}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground text-xs max-w-md w-[300px]">
-                                            {hasPrediction ? (
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Textarea
-                                                            value={currentPrediction.predictedDefectSuggestions}
-                                                            onChange={(e) => handlePredictionChange(defect.id, 'predictedDefectSuggestions', e.target.value)}
-                                                            className="h-20 text-xs"
-                                                        />
+                                                        <p className="truncate line-clamp-2">{currentPrediction.predictedDefectSuggestions}</p>
                                                     </TooltipTrigger>
                                                     <TooltipContent className="max-w-md">
-                                                        <p className="whitespace-pre-wrap">{currentPrediction.predictedDefectSuggestions}</p>
+                                                        <p>{currentPrediction.predictedDefectSuggestions}</p>
                                                     </TooltipContent>
                                                 </Tooltip>
                                             ) : '...'}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-start gap-2">
+                                                <Textarea 
+                                                    placeholder="Enter your suggestion..."
+                                                    className="min-h-[60px] text-[10px] resize-none"
+                                                    value={userSuggestions[defect.id] || ''}
+                                                    onChange={(e) => handleUserSuggestionChange(defect.id, e.target.value)}
+                                                    disabled={isSaved || isRefining}
+                                                />
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button 
+                                                            size="icon" 
+                                                            variant="secondary" 
+                                                            className="h-8 w-8 shrink-0"
+                                                            onClick={() => handleRefineAndSave(defect)}
+                                                            disabled={isSaved || isRefining || !userSuggestions[defect.id]}
+                                                        >
+                                                            {isRefining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Refine with AI and Save as Feedback</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 )
@@ -449,15 +447,6 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                         </Table>
                     </div>
                     </TooltipProvider>
-                    {!isLoading && defectsWithPredictions.length === 0 && !error && (
-                        <Alert className="mt-4">
-                            <Lightbulb className="h-4 w-4" />
-                            <AlertTitle>No Predictions to Display</AlertTitle>
-                            <AlertDescription>
-                                Click the "Run Predictions" button to see AI-powered defect predictions for the '{selectedDomain}' domain.
-                            </AlertDescription>
-                        </Alert>
-                    )}
                 </CardContent>
             </Card>
         )}
