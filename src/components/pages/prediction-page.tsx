@@ -147,6 +147,9 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
             userSuggestion: rawSuggestion
         });
 
+        // Display the refined suggestion back in the textarea for the user
+        setUserSuggestions(prev => ({ ...prev, [defect.id]: refined }));
+
         const currentPrediction = editablePredictions[defect.id] || predictions.find(p => p.id === defect.id);
         
         const finalPrediction: Omit<DefectPrediction, 'id'> = {
