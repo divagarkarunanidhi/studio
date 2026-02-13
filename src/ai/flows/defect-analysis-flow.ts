@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to analyze a list of defects and provide insights.
@@ -50,13 +49,15 @@ const analysisPrompt = ai.definePrompt({
   prompt: `You are an expert software quality assurance analyst. You have been given a list of defects in JSON format.
 Your task is to analyze these defects and provide a summary of your findings.
 
+IMPORTANT: You have been provided with examples of high-quality analyses for individual defects. You MUST use these examples as your primary source of truth for the tone, terminology, and root cause classifications. If recurring defects in the current set match any provided examples, ensure your summary is consistent with the insights found in those examples.
+
 Based on the provided defect data:
 1.  **Defect Cause**: Analyze the root causes of the recurring defects. Look for patterns in descriptions, domains, and severity.
 2.  **Defect Suggestions**: Provide actionable suggestions to engineering teams to reduce the number of defects in the future. IMPORTANT: Since all these defects are found by an automated regression suite, do not suggest "improve automation" or "add a regression suite". Focus on code quality, logic, or process improvements.
 
 {{#if examples}}
 ---
-Here are some examples of high-quality analysis for individual defects. Use these as a guide for the tone and type of insights to provide in your overall summary.
+Expert-Validated Feedback Examples:
 {{#each examples}}
 Defect: {{{input.summary}}}
 - Predicted Root Cause: {{{output.predictedRootCause}}}
@@ -81,7 +82,7 @@ const defectAnalysisFlow = ai.defineFlow(
     }),
     outputSchema: DefectAnalysisOutputSchema,
     config: {
-      temperature: 0.2, // Lower temperature for more deterministic and factual analysis
+      temperature: 0.1, // Set extremely low for strict consistency with examples
     }
   },
   async ({ defects, userId }) => {
@@ -100,7 +101,8 @@ const defectAnalysisFlow = ai.defineFlow(
     const retryModel = config.geminiRetryModel;
     
     const examplesRef = collection(firestore, 'sharedFeedback');
-    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(5));
+    // Fetch more examples to ensure relevance
+    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(15));
 
     const examplesSnap = await getDocs(examplesQuery);
     

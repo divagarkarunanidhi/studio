@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to predict severity and priority for a list of defects.
@@ -43,6 +42,9 @@ const predictionPrompt = ai.definePrompt({
    }) },
   output: { schema: DefectPredictionSchema },
   prompt: `As a QA expert, analyze the following defect and predict its properties.
+
+IMPORTANT: You have been provided with expert-validated examples. If the current defect is similar or identical to any provided example, you MUST prioritize consistency. Ensure the predicted root cause and defect suggestions match the terminology and logic established in the examples.
+
 - Severity should be one of: Critical, High, Medium, Low.
 - Priority should be one of: Highest, High, Medium, Low, Lowest.
 - The predicted root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX').
@@ -51,7 +53,7 @@ const predictionPrompt = ai.definePrompt({
 
 {{#if examples}}
 ---
-Here are some examples of excellent predictions to learn from:
+Expert-Validated Examples (Primary Knowledge Source):
 {{#each examples}}
 
 Example Input Defect:
@@ -76,7 +78,7 @@ Defect:
 - Domain: {{{defect.domain}}}
 - Status: {{{defect.status}}}
 
-Based on this information, provide your prediction in the required JSON format.
+Based on this information, provide your prediction in the required JSON format. Ensure strict alignment with the patterns shown in the examples above.
 `,
 });
 
@@ -85,6 +87,9 @@ const defectPredictionFlow = ai.defineFlow(
     name: 'defectPredictionFlow',
     inputSchema: DefectPredictionInputSchema,
     outputSchema: DefectPredictionOutputSchema,
+    config: {
+      temperature: 0.1, // Set very low for deterministic classification and consistency
+    }
   },
   async ({ defects, userId }) => {
     // Use the server-side firestore instance for all Firestore operations in the flow.
@@ -100,7 +105,8 @@ const defectPredictionFlow = ai.defineFlow(
     const retryModel = config.geminiRetryModel;
     
     const examplesRef = collection(firestore, 'sharedFeedback');
-    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(5));
+    // Increase limit to 15 to give the model more historical context
+    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(15));
     
     const examplesSnap = await getDocs(examplesQuery);
     

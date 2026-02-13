@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to summarize defects into categories for visualization.
@@ -44,12 +43,15 @@ const summaryPrompt = ai.definePrompt({
    }) },
   output: { schema: SingleDefectSummarySchema },
   prompt: `As a QA expert, analyze the following defect and classify it into a root cause category and a functional area category.
+
+  IMPORTANT: You have been provided with expert examples. If the current defect is similar to any provided example, you MUST use the exact same root cause and functional area classifications found in that example. Consistency is critical.
+
   - The root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX', 'Performance', 'Security').
   - The functional area should be a short, one or two-word category (e.g., 'User Auth', 'Billing', 'Search', 'Reporting', 'Checkout').
 
   {{#if examples}}
   ---
-  Here are some examples of high-quality classifications to learn from:
+  Expert Examples (Follow these patterns strictly):
   {{#each examples}}
   Defect: {{{input.summary}}}
   - Predicted Root Cause: {{{output.predictedRootCause}}}
@@ -65,7 +67,7 @@ const summaryPrompt = ai.definePrompt({
   - Description: {{{defect.description}}}
   - Domain: {{{defect.domain}}}
 
-  Based on this information, provide your classification in the required JSON format.
+  Based on this information, provide your classification in the required JSON format. Ensure strict alignment with the expert examples above.
 `,
 });
 
@@ -77,6 +79,9 @@ const defectSummaryFlow = ai.defineFlow(
         userId: z.string(),
     }),
     outputSchema: DefectSummaryOutputSchema,
+    config: {
+      temperature: 0.1, // Set low for deterministic classification
+    }
   },
   async ({ defects, userId }) => {
     // Use the server-side firestore instance for all Firestore operations in the flow.
@@ -92,7 +97,8 @@ const defectSummaryFlow = ai.defineFlow(
     const retryModel = config.geminiRetryModel;
     
     const examplesRef = collection(firestore, 'sharedFeedback');
-    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(5));
+    // Fetch more examples for better matching
+    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(15));
     
     const examplesSnap = await getDocs(examplesQuery);
 
