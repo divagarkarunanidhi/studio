@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to analyze a list of defects and provide insights.
@@ -54,6 +55,8 @@ IMPORTANT: You have been provided with examples of high-quality analyses for ind
 Based on the provided defect data:
 1.  **Defect Cause**: Analyze the root causes of the recurring defects. Look for patterns in descriptions, domains, and severity.
 2.  **Defect Suggestions**: Provide actionable suggestions to engineering teams to reduce the number of defects in the future. IMPORTANT: Since all these defects are found by an automated regression suite, do not suggest "improve automation" or "add a regression suite". Focus on code quality, logic, or process improvements.
+3.  **Major Root Causes**: Identify the TOP 3 most recurring major root causes across the entire dataset provided.
+4.  **Major Reduction Suggestions**: Identify the TOP 3 most impactful actionable suggestions to reduce future defects based on the trends observed.
 
 {{#if examples}}
 ---
@@ -69,7 +72,7 @@ Defect: {{{input.summary}}}
 Here is the defect data to analyze:
 {{{defects}}}
 
-Provide a concise, insightful analysis for each of the two areas.
+Provide a concise, insightful analysis for each of the areas.
 `,
 });
 
@@ -101,7 +104,7 @@ const defectAnalysisFlow = ai.defineFlow(
     const retryModel = config.geminiRetryModel;
     
     const examplesRef = collection(firestore, 'sharedFeedback');
-    // Fetch more examples to ensure relevance
+    // Fetch more examples to ensure relevance (using 15 for better trend matching)
     const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(15));
 
     const examplesSnap = await getDocs(examplesQuery);

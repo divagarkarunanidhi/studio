@@ -39,6 +39,8 @@ export type DefectAnalysisInput = z.infer<typeof DefectAnalysisInputSchema>;
 export const DefectAnalysisOutputSchema = z.object({
     defectCause: z.string().describe("An analysis of the root causes of the recurring defects."),
     defectSuggestions: z.string().describe("Actionable suggestions for engineering teams to reduce future defects."),
+    majorRootCauses: z.array(z.string()).describe("Top 3 major recurring root causes identified in the dataset."),
+    majorReductionSuggestions: z.array(z.string()).describe("Top 3 most impactful actionable suggestions for defect reduction."),
 });
 
 export type DefectAnalysisOutput = z.infer<typeof DefectAnalysisOutputSchema>;

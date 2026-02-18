@@ -5,7 +5,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb, AlertTriangle } from 'lucide-react';
+import { Lightbulb, AlertTriangle, ListChecks, Target } from 'lucide-react';
 import type { Defect, DefectAnalysisOutput } from '@/lib/types';
 import { analyzeDefects } from '@/ai/flows/defect-analysis-flow';
 import { Button } from '../ui/button';
@@ -92,6 +92,47 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
     );
   }
 
+  const renderMajorList = (title: string, items: string[] | undefined, icon: React.ReactNode) => {
+    if (isLoading) {
+        return (
+            <Card>
+                <CardHeader className='flex flex-row items-center gap-2 space-y-0'>
+                    {icon}
+                    <CardTitle>{title}</CardTitle>
+                </CardHeader>
+                <CardContent className='space-y-2'>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                </CardContent>
+            </Card>
+        )
+    }
+    if (!analysis || !items) return null;
+
+    return (
+        <Card>
+            <CardHeader className='flex flex-row items-center gap-2 space-y-0'>
+                {icon}
+                <CardTitle>{title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {items.length > 0 ? (
+                    <ul className="list-decimal list-inside space-y-2">
+                        {items.map((item, idx) => (
+                            <li key={idx} className="text-sm text-muted-foreground">
+                                <span className="font-medium text-foreground">{item}</span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-muted-foreground italic">No major items identified.</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Card>
@@ -148,20 +189,26 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
 
       {(isLoading || analysis) && (
         <div className="grid grid-cols-1 gap-6">
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                {renderMajorList("Major Root Causes", analysis?.majorRootCauses, <Target className='h-5 w-5 text-primary' />)}
+                {renderMajorList("Major Reduction Suggestions", analysis?.majorReductionSuggestions, <ListChecks className='h-5 w-5 text-primary' />)}
+            </div>
+
             <Card>
             <CardHeader>
-                <CardTitle>Defect Root Cause</CardTitle>
+                <CardTitle>Defect Root Cause Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-                {renderContent("Root Causes", analysis?.defectCause)}
+                {renderContent("Recurring Patterns", analysis?.defectCause)}
             </CardContent>
             </Card>
+            
             <Card>
             <CardHeader>
-                <CardTitle>Suggestions for Reduction</CardTitle>
+                <CardTitle>Actionable Suggestions</CardTitle>
             </CardHeader>
             <CardContent>
-                {renderContent("Suggestions", analysis?.defectSuggestions)}
+                {renderContent("Suggestions for Engineering", analysis?.defectSuggestions)}
             </CardContent>
             </Card>
         </div>
