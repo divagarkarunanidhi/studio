@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to analyze a list of defects and provide insights.
@@ -19,7 +18,7 @@ import {
   type SavedPrediction,
 } from '@/lib/types';
 import { z } from 'zod';
-import { getFirestore, doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/firebase/server-config';
 
 const DefectAnalysisInputSchema = z.object({
@@ -80,7 +79,7 @@ const defectAnalysisFlow = ai.defineFlow(
   {
     name: 'defectAnalysisFlow',
     inputSchema: z.object({ 
-        defects: d.array(DefectSchema),
+        defects: z.array(DefectSchema),
         userId: z.string(),
     }),
     outputSchema: DefectAnalysisOutputSchema,
@@ -94,7 +93,7 @@ const defectAnalysisFlow = ai.defineFlow(
     // Use the server-side firestore instance for all Firestore operations in the flow.
     const { firestore } = await getFirestoreInstance(); 
     
-    const configRef = d.doc(firestore, 'appConfiguration', 'global');
+    const configRef = doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configRef);
     
     if (!configSnap.exists()) {
