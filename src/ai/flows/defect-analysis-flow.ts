@@ -55,8 +55,8 @@ IMPORTANT: You have been provided with examples of high-quality analyses for ind
 Based on the provided defect data:
 1.  **Defect Cause**: Analyze the root causes of the recurring defects. Look for patterns in descriptions, domains, and severity.
 2.  **Defect Suggestions**: Provide actionable suggestions to engineering teams to reduce the number of defects in the future. IMPORTANT: Since all these defects are found by an automated regression suite, do not suggest "improve automation" or "add a regression suite". Focus on code quality, logic, or process improvements.
-3.  **Major Root Causes**: Identify the TOP 3 most recurring major root causes across the entire dataset provided.
-4.  **Major Reduction Suggestions**: Identify the TOP 3 most impactful actionable suggestions to reduce future defects based on the trends observed.
+3.  **Major Root Causes**: Identify the TOP 3 most recurring major root causes across the entire dataset provided. For each of these three, provide a descriptive title followed by a colon and a DETAILED explanation of the pattern observed, why it is recurring, and its impact on the system.
+4.  **Major Reduction Suggestions**: Identify the TOP 3 most impactful actionable suggestions to reduce future defects based on the trends observed. For each of these three, provide a descriptive title followed by a colon and a COMPREHENSIVE recommendation for engineering teams, including specific technical or process steps they should take.
 
 {{#if examples}}
 ---
@@ -72,7 +72,7 @@ Defect: {{{input.summary}}}
 Here is the defect data to analyze:
 {{{defects}}}
 
-Provide a concise, insightful analysis for each of the areas.
+Provide a concise, insightful analysis for each of the areas. Ensure the "Major" items (root causes and suggestions) are sufficiently detailed to provide real value to the team.
 `,
 });
 
@@ -80,7 +80,7 @@ const defectAnalysisFlow = ai.defineFlow(
   {
     name: 'defectAnalysisFlow',
     inputSchema: z.object({ 
-        defects: z.array(DefectSchema),
+        defects: d.array(DefectSchema),
         userId: z.string(),
     }),
     outputSchema: DefectAnalysisOutputSchema,
@@ -94,7 +94,7 @@ const defectAnalysisFlow = ai.defineFlow(
     // Use the server-side firestore instance for all Firestore operations in the flow.
     const { firestore } = await getFirestoreInstance(); 
     
-    const configRef = doc(firestore, 'appConfiguration', 'global');
+    const configRef = d.doc(firestore, 'appConfiguration', 'global');
     const configSnap = await getDoc(configRef);
     
     if (!configSnap.exists()) {
