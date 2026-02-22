@@ -14,13 +14,13 @@ async function getGlobalConfig() {
         console.warn("App configuration not found in Firestore. AI features may not work.");
         return {
             apiKey: process.env.GEMINI_API_KEY,
-            model: 'googleai/gemini-pro',
+            model: 'googleai/gemini-1.5-flash',
         };
     }
     const configData = configSnap.data();
     return {
         apiKey: configData.geminiApiKey,
-        model: configData.geminiModel,
+        model: configData.geminiModel || 'googleai/gemini-1.5-flash',
     };
 }
 

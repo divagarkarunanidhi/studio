@@ -32,8 +32,8 @@ export function ConfigurationPage() {
       geminiApiKey: '',
       mongodbUri: '',
       mongodbDbName: '',
-      geminiModel: '',
-      geminiRetryModel: '',
+      geminiModel: 'googleai/gemini-1.5-flash',
+      geminiRetryModel: 'googleai/gemini-1.5-pro',
       jiraLink: '',
       reusabilityLabels: ''
     },
@@ -184,8 +184,9 @@ export function ConfigurationPage() {
                 <FormItem>
                   <FormLabel>Primary Gemini Model</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., googleai/gemini-2.5-pro" {...field} />
+                    <Input placeholder="e.g., googleai/gemini-1.5-flash" {...field} />
                   </FormControl>
+                  <FormDescription>Use standard strings like 'googleai/gemini-1.5-flash' or 'googleai/gemini-1.5-pro'.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -197,7 +198,7 @@ export function ConfigurationPage() {
                 <FormItem>
                   <FormLabel>Fallback/Retry Gemini Model</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., googleai/gemini-2.0-flash-lite" {...field} />
+                    <Input placeholder="e.g., googleai/gemini-1.5-pro" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
