@@ -28,15 +28,16 @@ interface AnalysisPageProps {
   uniqueDomains: string[];
 }
 
-function MajorListItem({ item }: { item: string }) {
+function MajorListItem({ item, index }: { item: string; index: number }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const colonIndex = item.indexOf(':');
   
   if (colonIndex === -1) {
     return (
-      <li className="text-sm text-muted-foreground leading-relaxed">
-        <span className="font-medium text-foreground">{item}</span>
-      </li>
+      <div className="flex items-start gap-3 py-1">
+        <span className="font-bold text-sm text-foreground shrink-0 mt-0.5">{index}.</span>
+        <span className="text-sm text-muted-foreground leading-relaxed font-medium text-foreground">{item}</span>
+      </div>
     );
   }
 
@@ -44,24 +45,29 @@ function MajorListItem({ item }: { item: string }) {
   const rest = item.substring(colonIndex + 1).trim();
 
   return (
-    <li className="text-sm leading-relaxed space-y-1 py-1">
+    <div className="text-sm leading-relaxed space-y-1 py-1">
       <div 
-        className="flex items-center justify-between gap-2 group cursor-pointer hover:bg-muted/30 p-1 rounded-md transition-colors" 
+        className="flex items-start gap-3 group cursor-pointer hover:bg-muted/30 p-1 rounded-md transition-colors" 
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <span className="font-bold text-foreground group-hover:text-primary transition-colors">
-          {topic}
+        <span className="font-bold text-foreground shrink-0 mt-0.5">
+          {index}.
         </span>
-        <Button variant="ghost" size="icon" className="h-5 w-5 p-0 opacity-50 group-hover:opacity-100 shrink-0">
-          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} />
-        </Button>
+        <div className="flex-1 flex items-center justify-between gap-2">
+            <span className="font-bold text-foreground group-hover:text-primary transition-colors">
+            {topic}
+            </span>
+            <Button variant="ghost" size="icon" className="h-5 w-5 p-0 opacity-50 group-hover:opacity-100 shrink-0">
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} />
+            </Button>
+        </div>
       </div>
       {isExpanded && (
-        <p className="text-muted-foreground text-xs pl-3 mt-1 border-l-2 border-primary/20 animate-in fade-in slide-in-from-top-1 duration-200 leading-relaxed whitespace-pre-wrap">
+        <p className="text-muted-foreground text-xs pl-8 mt-1 border-l-2 border-primary/20 animate-in fade-in slide-in-from-top-1 duration-200 leading-relaxed whitespace-pre-wrap">
           {rest}
         </p>
       )}
-    </li>
+    </div>
   );
 }
 
@@ -127,7 +133,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
 
     if (isLoading) {
       return (
-        <Card>
+        <Card className='w-full'>
             <CardHeader>
                 <Skeleton className="h-6 w-1/4 mb-2" />
             </CardHeader>
@@ -145,7 +151,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
     if (!content) return null;
 
     return (
-      <Collapsible open={isOpen} onOpenChange={() => toggleSection(id)}>
+      <Collapsible open={isOpen} onOpenChange={() => toggleSection(id)} className='w-full'>
         <Card>
             <CollapsibleTrigger asChild>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 cursor-pointer hover:bg-muted/50 transition-colors">
@@ -168,7 +174,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
 
     if (isLoading) {
         return (
-            <Card>
+            <Card className='w-full'>
                 <CardHeader className='flex flex-row items-center gap-2 space-y-0'>
                     {icon}
                     <CardTitle>{title}</CardTitle>
@@ -184,7 +190,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
     if (!analysis || !items) return null;
 
     return (
-        <Collapsible open={isOpen} onOpenChange={() => toggleSection(id)}>
+        <Collapsible open={isOpen} onOpenChange={() => toggleSection(id)} className='w-full'>
             <Card>
                 <CollapsibleTrigger asChild>
                     <CardHeader className='flex flex-row items-center justify-between space-y-0 cursor-pointer hover:bg-muted/50 transition-colors'>
@@ -198,11 +204,11 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
                 <CollapsibleContent>
                     <CardContent className="pt-0">
                         {items.length > 0 ? (
-                            <ul className="list-decimal list-inside space-y-2">
+                            <div className="space-y-2">
                                 {items.map((item, idx) => (
-                                    <MajorListItem key={idx} item={item} />
+                                    <MajorListItem key={idx} item={item} index={idx + 1} />
                                 ))}
-                            </ul>
+                            </div>
                         ) : (
                             <p className="text-sm text-muted-foreground italic">No major items identified.</p>
                         )}
@@ -215,7 +221,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
 
   return (
     <div className="w-full space-y-6">
-      <Card>
+      <Card className='w-full'>
         <CardHeader>
           <CardTitle>Static Defect Analysis</CardTitle>
           <CardDescription>
@@ -240,7 +246,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
       </Card>
       
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className='w-full'>
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Analysis Failed</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
@@ -248,7 +254,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
       )}
 
       {(!analysis && !isLoading && !error && !selectedDomain) && (
-        <Alert>
+        <Alert className='w-full'>
           <Lightbulb className="h-4 w-4" />
           <AlertTitle>Ready for Analysis</AlertTitle>
           <AlertDescription>
@@ -258,7 +264,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
       )}
 
       {(selectedDomain && !isLoading && !analysis && !error) && (
-        <Alert>
+        <Alert className='w-full'>
           <Lightbulb className="h-4 w-4" />
           <AlertTitle>Domain Selected</AlertTitle>
           <AlertDescription>
@@ -268,8 +274,8 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
       )}
 
       {(isLoading || analysis) && (
-        <div className="grid grid-cols-1 gap-6">
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+        <div className="grid grid-cols-1 gap-6 w-full">
+            <div className='grid grid-cols-1 gap-6 w-full'>
                 {renderMajorList("majorRootCauses", "Major Root Causes", analysis?.majorRootCauses, <Target className='h-5 w-5 text-primary' />)}
                 {renderMajorList("majorReductionSuggestions", "Major Reduction Suggestions", analysis?.majorReductionSuggestions, <ListChecks className='h-5 w-5 text-primary' />)}
             </div>
