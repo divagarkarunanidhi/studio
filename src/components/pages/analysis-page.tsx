@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useMemo } from 'react';
@@ -215,7 +214,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Static Defect Analysis</CardTitle>
