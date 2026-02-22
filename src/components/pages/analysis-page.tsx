@@ -119,11 +119,24 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
             <CardContent>
                 {items.length > 0 ? (
                     <ul className="list-decimal list-inside space-y-2">
-                        {items.map((item, idx) => (
-                            <li key={idx} className="text-sm text-muted-foreground">
-                                <span className="font-medium text-foreground">{item}</span>
-                            </li>
-                        ))}
+                        {items.map((item, idx) => {
+                            const colonIndex = item.indexOf(':');
+                            if (colonIndex !== -1) {
+                                const topic = item.substring(0, colonIndex);
+                                const rest = item.substring(colonIndex);
+                                return (
+                                    <li key={idx} className="text-sm text-muted-foreground">
+                                        <span className="font-bold text-foreground">{topic}</span>
+                                        {rest}
+                                    </li>
+                                );
+                            }
+                            return (
+                                <li key={idx} className="text-sm text-muted-foreground">
+                                    <span className="font-medium text-foreground">{item}</span>
+                                </li>
+                            );
+                        })}
                     </ul>
                 ) : (
                     <p className="text-sm text-muted-foreground italic">No major items identified.</p>
