@@ -29,6 +29,43 @@ interface AnalysisPageProps {
   uniqueDomains: string[];
 }
 
+function MajorListItem({ item }: { item: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const colonIndex = item.indexOf(':');
+  
+  if (colonIndex === -1) {
+    return (
+      <li className="text-sm text-muted-foreground leading-relaxed">
+        <span className="font-medium text-foreground">{item}</span>
+      </li>
+    );
+  }
+
+  const topic = item.substring(0, colonIndex);
+  const rest = item.substring(colonIndex + 1).trim();
+
+  return (
+    <li className="text-sm leading-relaxed space-y-1 py-1">
+      <div 
+        className="flex items-center justify-between gap-2 group cursor-pointer hover:bg-muted/30 p-1 rounded-md transition-colors" 
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <span className="font-bold text-foreground group-hover:text-primary transition-colors">
+          {topic}
+        </span>
+        <Button variant="ghost" size="icon" className="h-5 w-5 p-0 opacity-50 group-hover:opacity-100 shrink-0">
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isExpanded ? "rotate-0" : "-rotate-90")} />
+        </Button>
+      </div>
+      {isExpanded && (
+        <p className="text-muted-foreground text-xs pl-3 mt-1 border-l-2 border-primary/20 animate-in fade-in slide-in-from-top-1 duration-200 leading-relaxed whitespace-pre-wrap">
+          {rest}
+        </p>
+      )}
+    </li>
+  );
+}
+
 export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
   const [analysis, setAnalysis] = useState<DefectAnalysisOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,7 +73,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const { user } = useUser();
 
-  // State for collapsible sections
+  // State for top-level collapsible sections
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     majorRootCauses: true,
     majorReductionSuggestions: true,
@@ -162,25 +199,10 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
                 <CollapsibleContent>
                     <CardContent className="pt-0">
                         {items.length > 0 ? (
-                            <ul className="list-decimal list-inside space-y-3">
-                                {items.map((item, idx) => {
-                                    const colonIndex = item.indexOf(':');
-                                    if (colonIndex !== -1) {
-                                        const topic = item.substring(0, colonIndex);
-                                        const rest = item.substring(colonIndex);
-                                        return (
-                                            <li key={idx} className="text-sm text-muted-foreground leading-relaxed">
-                                                <span className="font-bold text-foreground">{topic}</span>
-                                                {rest}
-                                            </li>
-                                        );
-                                    }
-                                    return (
-                                        <li key={idx} className="text-sm text-muted-foreground leading-relaxed">
-                                            <span className="font-medium text-foreground">{item}</span>
-                                        </li>
-                                    );
-                                })}
+                            <ul className="list-decimal list-inside space-y-2">
+                                {items.map((item, idx) => (
+                                    <MajorListItem key={idx} item={item} />
+                                ))}
                             </ul>
                         ) : (
                             <p className="text-sm text-muted-foreground italic">No major items identified.</p>
