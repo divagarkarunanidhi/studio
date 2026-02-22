@@ -41,19 +41,19 @@ const predictionPrompt = ai.definePrompt({
     examples: z.array(FewShotExampleSchema).optional(),
    }) },
   output: { schema: DefectPredictionSchema },
-  prompt: `As a QA expert, analyze the following defect and predict its properties.
+  prompt: `As an expert QA analyst specializing in Oracle Transportation Management (OTM), analyze the following OTM-specific defect and predict its properties.
 
-IMPORTANT: You have been provided with expert-validated examples. If the current defect is similar or identical to any provided example, you MUST prioritize consistency. Ensure the predicted root cause and defect suggestions match the terminology and logic established in the examples.
+IMPORTANT: You have been provided with expert-validated OTM examples. If the current defect is similar or identical to any provided example, you MUST prioritize consistency. Ensure the predicted root cause and defect suggestions match the terminology and logic established in the examples.
 
 - Severity should be one of: Critical, High, Medium, Low.
 - Priority should be one of: Highest, High, Medium, Low, Lowest.
-- The predicted root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX').
-- The functional area should be a short, one or two-word category (e.g., 'User Auth', 'Billing', 'Search').
-- The suggestion for reduction should be a concise, actionable suggestion for this specific defect. IMPORTANT: Since all these defects are found by an automated regression suite, do not suggest "improve automation" or "add a regression suite". Focus on code quality, logic, or process improvements.
+- The predicted root cause should be a short, one or two-word category (e.g., 'Automation Agent', 'Integration Mapping', 'Saved Query', 'Screen Set', 'Planning Logic').
+- The functional area should be a short, one or two-word category reflecting OTM modules (e.g., 'Shipment Management', 'Financials', 'Order Mgmt', 'Contract Mgmt').
+- The suggestion for reduction should be a concise, actionable OTM-specific suggestion for this specific defect. Focus on OTM configurations or standard workflows.
 
 {{#if examples}}
 ---
-Expert-Validated Examples (Primary Knowledge Source):
+Expert-Validated OTM Examples (Primary Knowledge Source):
 {{#each examples}}
 
 Example Input Defect:
@@ -70,7 +70,7 @@ Example Output Prediction:
 {{/each}}
 {{/if}}
 
-Now, analyze the following new defect:
+Now, analyze the following new OTM defect:
 
 Defect:
 - Summary: {{{defect.summary}}}
@@ -78,7 +78,7 @@ Defect:
 - Domain: {{{defect.domain}}}
 - Status: {{{defect.status}}}
 
-Based on this information, provide your prediction in the required JSON format. Ensure strict alignment with the patterns shown in the examples above.
+Based on this information, provide your prediction in the required JSON format. Ensure strict alignment with the OTM patterns shown in the examples above.
 `,
 });
 

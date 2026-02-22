@@ -46,20 +46,20 @@ const analysisPrompt = ai.definePrompt({
       examples: z.array(FewShotExampleSchema).optional(),
     }) },
   output: { schema: DefectAnalysisOutputSchema },
-  prompt: `You are an expert software quality assurance analyst. You have been given a list of defects in JSON format.
+  prompt: `You are an expert software quality assurance analyst specializing in the Oracle Transportation Management (OTM) application. You have been given a list of OTM-related defects in JSON format.
 Your task is to analyze these defects and provide a summary of your findings.
 
-IMPORTANT: You have been provided with examples of high-quality analyses for individual defects. You MUST use these examples as your primary source of truth for the tone, terminology, and root cause classifications. If recurring defects in the current set match any provided examples, ensure your summary is consistent with the insights found in those examples.
+IMPORTANT: You have been provided with examples of high-quality analyses for individual OTM defects. You MUST use these examples as your primary source of truth for the tone, OTM terminology, and root cause classifications. If recurring defects in the current set match any provided examples, ensure your summary is consistent with the insights found in those examples.
 
-Based on the provided defect data:
-1.  **Defect Cause**: Analyze the root causes of the recurring defects. Look for patterns in descriptions, domains, and severity.
-2.  **Defect Suggestions**: Provide actionable suggestions to engineering teams to reduce the number of defects in the future. IMPORTANT: Since all these defects are found by an automated regression suite, do not suggest "improve automation" or "add a regression suite". Focus on code quality, logic, or process improvements.
-3.  **Major Root Causes**: Identify the TOP 3 most recurring major root causes across the entire dataset provided. For each of these three, provide a descriptive title followed by a colon and a DETAILED explanation of the pattern observed, why it is recurring, and its impact on the system.
-4.  **Major Reduction Suggestions**: Identify the TOP 3 most impactful actionable suggestions to reduce future defects based on the trends observed. For each of these three, provide a descriptive title followed by a colon and a COMPREHENSIVE recommendation for engineering teams, including specific technical or process steps they should take.
+Based on the provided OTM defect data:
+1.  **Defect Cause**: Analyze the root causes of the recurring defects. Look for patterns in descriptions, OTM modules (Planning, Execution, Financials, etc.), and severity.
+2.  **Defect Suggestions**: Provide actionable OTM-specific suggestions to engineering and configuration teams to reduce defects. Focus on OTM configuration (Automation Agents, Saved Queries, Screen Sets), logic, or integration process improvements. 
+3.  **Major Root Causes**: Identify the TOP 3 most recurring major root causes across the entire dataset provided. For each of these three, provide a descriptive title followed by a colon and a DETAILED explanation of the pattern observed (e.g., Agent Logic failure, Integration mapping error), why it is recurring in OTM, and its impact on the system.
+4.  **Major Reduction Suggestions**: Identify the TOP 3 most impactful actionable suggestions to reduce future OTM defects. For each of these three, provide a descriptive title followed by a colon and a COMPREHENSIVE recommendation for OTM teams, including specific technical or configuration steps they should take.
 
 {{#if examples}}
 ---
-Expert-Validated Feedback Examples:
+Expert-Validated OTM Feedback Examples:
 {{#each examples}}
 Defect: {{{input.summary}}}
 - Predicted Root Cause: {{{output.predictedRootCause}}}
@@ -68,10 +68,10 @@ Defect: {{{input.summary}}}
 {{/each}}
 {{/if}}
 
-Here is the defect data to analyze:
+Here is the OTM defect data to analyze:
 {{{defects}}}
 
-Provide a concise, insightful analysis for each of the areas. Ensure the "Major" items (root causes and suggestions) are sufficiently detailed to provide real value to the team.
+Provide a concise, insightful analysis for each of the areas. Ensure the "Major" items (root causes and suggestions) are sufficiently detailed to provide real value to an OTM implementation team.
 `,
 });
 

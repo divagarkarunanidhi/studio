@@ -20,8 +20,8 @@ import { getFirestore, doc, getDoc, collection, getDocs, query, orderBy, limit }
 import { getFirestoreInstance } from '@/firebase/server-config';
 
 const SingleDefectSummarySchema = z.object({
-    rootCause: z.string().describe("A short, one or two-word category for the defect's root cause (e.g., 'Data Integrity', 'Configuration', 'UI/UX', 'Performance', 'Security')."),
-    functionalArea: z.string().describe("A short, one or two-word category for the functional area affected (e.g., 'User Auth', 'Billing', 'Search', 'Reporting', 'Checkout').")
+    rootCause: z.string().describe("A short, one or two-word category for the defect's root cause within an OTM context (e.g., 'Agent Logic', 'Integration', 'Saved Query', 'UI Config')."),
+    functionalArea: z.string().describe("A short, one or two-word category for the OTM module affected (e.g., 'Shipment Mgmt', 'Financials', 'Planning', 'Order Mgmt').")
 });
 
 export async function summarizeDefects(
@@ -42,16 +42,16 @@ const summaryPrompt = ai.definePrompt({
     examples: z.array(FewShotExampleSchema).optional(),
    }) },
   output: { schema: SingleDefectSummarySchema },
-  prompt: `As a QA expert, analyze the following defect and classify it into a root cause category and a functional area category.
+  prompt: `As an expert QA analyst specializing in Oracle Transportation Management (OTM), analyze the following OTM defect and classify it into an OTM-relevant root cause category and an OTM functional area category.
 
-  IMPORTANT: You have been provided with expert examples. If the current defect is similar to any provided example, you MUST use the exact same root cause and functional area classifications found in that example. Consistency is critical.
+  IMPORTANT: You have been provided with expert OTM examples. If the current defect is similar to any provided example, you MUST use the exact same root cause and functional area classifications found in that example. Consistency within the OTM context is critical.
 
-  - The root cause should be a short, one or two-word category (e.g., 'Data Integrity', 'Configuration', 'UI/UX', 'Performance', 'Security').
-  - The functional area should be a short, one or two-word category (e.g., 'User Auth', 'Billing', 'Search', 'Reporting', 'Checkout').
+  - The root cause should be a short, one or two-word OTM-specific category (e.g., 'Automation Agent', 'Saved Query', 'Direct SQL', 'Integration').
+  - The functional area should be a short, one or two-word OTM module category (e.g., 'Shipment Mgmt', 'Order Mgmt', 'Financials', 'Trade Mgmt').
 
   {{#if examples}}
   ---
-  Expert Examples (Follow these patterns strictly):
+  Expert OTM Examples (Follow these patterns strictly):
   {{#each examples}}
   Defect: {{{input.summary}}}
   - Predicted Root Cause: {{{output.predictedRootCause}}}
@@ -60,14 +60,14 @@ const summaryPrompt = ai.definePrompt({
   {{/each}}
   {{/if}}
 
-  Now, classify the following new defect:
+  Now, classify the following new OTM defect:
 
   Defect:
   - Summary: {{{defect.summary}}}
   - Description: {{{defect.description}}}
   - Domain: {{{defect.domain}}}
 
-  Based on this information, provide your classification in the required JSON format. Ensure strict alignment with the expert examples above.
+  Based on this information, provide your OTM classification in the required JSON format. Ensure strict alignment with the expert OTM examples above.
 `,
 });
 
@@ -129,7 +129,7 @@ const defectSummaryFlow = ai.defineFlow(
                 return { id: defect.id, ...output };
              }
              // For other errors, still return a default.
-             console.error('An error occurred during summary generation:', e);
+             console.error('An error occurred during OTM summary generation:', e);
              return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
         }
       })
@@ -147,10 +147,13 @@ const defectSummaryFlow = ai.defineFlow(
     const normalizeFunctionalArea = (area: string): string => {
         const lowerArea = area.toLowerCase().trim();
         if (lowerArea.includes('ship')) {
-            return 'Shipment';
+            return 'Shipment Management';
         }
         if (lowerArea.includes('order')) {
             return 'Order Management';
+        }
+        if (lowerArea.includes('financial')) {
+            return 'Financials';
         }
         // Capitalize the first letter of each word for consistency
         return area
