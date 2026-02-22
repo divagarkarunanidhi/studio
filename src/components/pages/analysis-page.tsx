@@ -5,7 +5,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb, AlertTriangle, ListChecks, Target } from 'lucide-react';
+import { Lightbulb, AlertTriangle, ListChecks, Target, ChevronDown } from 'lucide-react';
 import type { Defect, DefectAnalysisOutput } from '@/lib/types';
 import { analyzeDefects } from '@/ai/flows/defect-analysis-flow';
 import { Button } from '../ui/button';
@@ -17,6 +17,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from '@/lib/utils';
 
 interface AnalysisPageProps {
   defects: Defect[];
@@ -29,6 +35,18 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const { user } = useUser();
+
+  // State for collapsible sections
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    majorRootCauses: true,
+    majorReductionSuggestions: true,
+    recurringPatterns: true,
+    engineeringSuggestions: true,
+  });
+
+  const toggleSection = (section: string) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const filteredDefects = useMemo(() => {
     if (!selectedDomain) return [];
@@ -68,31 +86,50 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
   }, [filteredDefects, user]);
 
 
-  const renderContent = (title: string, content: string | undefined) => {
+  const renderContent = (id: string, title: string, content: string | undefined) => {
+    const isOpen = openSections[id];
+
     if (isLoading) {
       return (
-        <>
-          <Skeleton className="h-6 w-1/4 mb-2" />
-          <Skeleton className="h-4 w-full mb-1" />
-          <Skeleton className="h-4 w-full mb-1" />
-          <Skeleton className="h-4 w-3/4" />
-        </>
+        <Card>
+            <CardHeader>
+                <Skeleton className="h-6 w-1/4 mb-2" />
+            </CardHeader>
+            <CardContent>
+                <Skeleton className="h-4 w-full mb-1" />
+                <Skeleton className="h-4 w-full mb-1" />
+                <Skeleton className="h-4 w-3/4" />
+            </CardContent>
+        </Card>
       )
     }
     if (!content && analysis) {
-        return <p className="text-muted-foreground">No insights generated for this section.</p>;
+        return null;
     }
     if (!content) return null;
 
     return (
-      <>
-        <h3 className="font-semibold text-lg mb-2">{title}</h3>
-        <p className="text-muted-foreground whitespace-pre-wrap">{content}</p>
-      </>
+      <Collapsible open={isOpen} onOpenChange={() => toggleSection(id)}>
+        <Card>
+            <CollapsibleTrigger asChild>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <CardTitle>{title}</CardTitle>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", !isOpen && "-rotate-90")} />
+                </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+                <CardContent className="pt-0">
+                    <p className="text-muted-foreground whitespace-pre-wrap text-sm leading-relaxed">{content}</p>
+                </CardContent>
+            </CollapsibleContent>
+        </Card>
+      </Collapsible>
     );
   }
 
-  const renderMajorList = (title: string, items: string[] | undefined, icon: React.ReactNode) => {
+  const renderMajorList = (id: string, title: string, items: string[] | undefined, icon: React.ReactNode) => {
+    const isOpen = openSections[id];
+
     if (isLoading) {
         return (
             <Card>
@@ -111,38 +148,47 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
     if (!analysis || !items) return null;
 
     return (
-        <Card>
-            <CardHeader className='flex flex-row items-center gap-2 space-y-0'>
-                {icon}
-                <CardTitle>{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {items.length > 0 ? (
-                    <ul className="list-decimal list-inside space-y-2">
-                        {items.map((item, idx) => {
-                            const colonIndex = item.indexOf(':');
-                            if (colonIndex !== -1) {
-                                const topic = item.substring(0, colonIndex);
-                                const rest = item.substring(colonIndex);
-                                return (
-                                    <li key={idx} className="text-sm text-muted-foreground">
-                                        <span className="font-bold text-foreground">{topic}</span>
-                                        {rest}
-                                    </li>
-                                );
-                            }
-                            return (
-                                <li key={idx} className="text-sm text-muted-foreground">
-                                    <span className="font-medium text-foreground">{item}</span>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                ) : (
-                    <p className="text-sm text-muted-foreground italic">No major items identified.</p>
-                )}
-            </CardContent>
-        </Card>
+        <Collapsible open={isOpen} onOpenChange={() => toggleSection(id)}>
+            <Card>
+                <CollapsibleTrigger asChild>
+                    <CardHeader className='flex flex-row items-center justify-between space-y-0 cursor-pointer hover:bg-muted/50 transition-colors'>
+                        <div className="flex items-center gap-2">
+                            {icon}
+                            <CardTitle>{title}</CardTitle>
+                        </div>
+                        <ChevronDown className={cn("h-4 w-4 transition-transform", !isOpen && "-rotate-90")} />
+                    </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <CardContent className="pt-0">
+                        {items.length > 0 ? (
+                            <ul className="list-decimal list-inside space-y-3">
+                                {items.map((item, idx) => {
+                                    const colonIndex = item.indexOf(':');
+                                    if (colonIndex !== -1) {
+                                        const topic = item.substring(0, colonIndex);
+                                        const rest = item.substring(colonIndex);
+                                        return (
+                                            <li key={idx} className="text-sm text-muted-foreground leading-relaxed">
+                                                <span className="font-bold text-foreground">{topic}</span>
+                                                {rest}
+                                            </li>
+                                        );
+                                    }
+                                    return (
+                                        <li key={idx} className="text-sm text-muted-foreground leading-relaxed">
+                                            <span className="font-medium text-foreground">{item}</span>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-muted-foreground italic">No major items identified.</p>
+                        )}
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
+        </Collapsible>
     );
   }
 
@@ -203,27 +249,13 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
       {(isLoading || analysis) && (
         <div className="grid grid-cols-1 gap-6">
             <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                {renderMajorList("Major Root Causes", analysis?.majorRootCauses, <Target className='h-5 w-5 text-primary' />)}
-                {renderMajorList("Major Reduction Suggestions", analysis?.majorReductionSuggestions, <ListChecks className='h-5 w-5 text-primary' />)}
+                {renderMajorList("majorRootCauses", "Major Root Causes", analysis?.majorRootCauses, <Target className='h-5 w-5 text-primary' />)}
+                {renderMajorList("majorReductionSuggestions", "Major Reduction Suggestions", analysis?.majorReductionSuggestions, <ListChecks className='h-5 w-5 text-primary' />)}
             </div>
 
-            <Card>
-            <CardHeader>
-                <CardTitle>Defect Root Cause Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {renderContent("Recurring Patterns", analysis?.defectCause)}
-            </CardContent>
-            </Card>
+            {renderContent("recurringPatterns", "Defect Root Cause Analysis", analysis?.defectCause)}
             
-            <Card>
-            <CardHeader>
-                <CardTitle>Actionable Suggestions</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {renderContent("Suggestions for Engineering", analysis?.defectSuggestions)}
-            </CardContent>
-            </Card>
+            {renderContent("engineeringSuggestions", "Actionable Suggestions", analysis?.defectSuggestions)}
         </div>
       )}
     </div>
