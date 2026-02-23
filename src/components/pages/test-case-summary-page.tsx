@@ -51,6 +51,7 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
   
   // Data state
   const [status, setStatus] = useState<PageStatus>('loading');
+  const [isDataFetching, setIsDataFetching] = useState(false);
   const [totalTestCases, setTotalTestCases] = useState(0);
   const [headers, setHeaders] = useState<string[]>([]);
   const [distributionData, setDistributionData] = useState<any[]>([]);
@@ -89,6 +90,7 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
   
 
   const fetchSummaryData = useCallback(async (filters: any) => {
+    setIsDataFetching(true);
     try {
         const response = await fetch('/api/test-cases/summary', {
             method: 'POST',
@@ -118,6 +120,8 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
             description: error.message,
         });
         setStatus('error');
+    } finally {
+        setIsDataFetching(false);
     }
   }, [toast]);
 
@@ -388,7 +392,7 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
                     <TestCaseDistributionChart
                         chartType={chartType}
                         data={[...distributionData, { name: 'Total Test Cases in File', count: totalTestCases, testCases: [] }]}
-                        isLoading={status === 'loading'}
+                        isLoading={isDataFetching}
                         title="Test Case Distribution"
                         description="Based on selected labels"
                         allHeaders={headers}
@@ -491,60 +495,78 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
                 <div className='text-center pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center'>
                     <div>
                         <h3 className="text-lg font-medium text-muted-foreground">Reusability Count</h3>
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <button className="text-4xl font-bold text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50" disabled={reusabilityData.count === 0}>
-                                    {reusabilityData.count}
-                                </button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle>Reusable Test Cases ({reusabilityData.count})</DialogTitle>
-                                    <DialogDescription>
-                                        Test cases in '{reusedInLabels.join(', ')}' that are also in '{reusedFromLabels.join(', ')}'.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <ScrollArea className="h-72 w-full rounded-md border">
-                                    <div className="p-4 flex flex-wrap gap-2">
-                                        {(reusabilityData.testCases as TestCaseData[]).map((tc, idx) => {
-                                            const id = tc['Issue key'] || `item-${idx}`;
-                                            return (
-                                                <Badge key={`${id}-${idx}`} variant="secondary">
-                                                    {jiraLink && id !== 'N/A' && !id.startsWith('item-') ? (
-                                                        <a
-                                                            href={`${jiraLink}/browse/${id}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="hover:underline"
-                                                        >
-                                                            {id}
-                                                        </a>
-                                                    ) : (
-                                                        id
-                                                    )}
-                                                </Badge>
-                                            );
-                                        })}
-                                    </div>
-                                </ScrollArea>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => handleExport(reusabilityData.testCases as TestCaseData[], 'reusable_test_cases')} disabled={reusabilityData.testCases.length === 0}>
-                                        <Download className="mr-2 h-4 w-4" />
-                                        Export to Excel
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                        {isDataFetching ? (
+                            <div className="flex justify-center items-center h-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                        ) : (
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <button className="text-4xl font-bold text-primary hover:underline cursor-pointer disabled:cursor-not-allowed disabled:opacity-50" disabled={reusabilityData.count === 0}>
+                                        {reusabilityData.count}
+                                    </button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle>Reusable Test Cases ({reusabilityData.count})</DialogTitle>
+                                        <DialogDescription>
+                                            Test cases in '{reusedInLabels.join(', ')}' that are also in '{reusedFromLabels.join(', ')}'.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <ScrollArea className="h-72 w-full rounded-md border">
+                                        <div className="p-4 flex flex-wrap gap-2">
+                                            {(reusabilityData.testCases as TestCaseData[]).map((tc, idx) => {
+                                                const id = tc['Issue key'] || `item-${idx}`;
+                                                return (
+                                                    <Badge key={`${id}-${idx}`} variant="secondary">
+                                                        {jiraLink && id !== 'N/A' && !id.startsWith('item-') ? (
+                                                            <a
+                                                                href={`${jiraLink}/browse/${id}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="hover:underline"
+                                                            >
+                                                                {id}
+                                                            </a>
+                                                        ) : (
+                                                            id
+                                                        )}
+                                                    </Badge>
+                                                );
+                                            })}
+                                        </div>
+                                    </ScrollArea>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => handleExport(reusabilityData.testCases as TestCaseData[], 'reusable_test_cases')} disabled={reusabilityData.testCases.length === 0}>
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Export to Excel
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        )}
                     </div>
 
                     <div>
                         <h3 className="text-lg font-medium text-muted-foreground">Saving (Hours)</h3>
-                        <p className="text-4xl font-bold text-primary">{totalSavingHours.toFixed(2)}</p>
+                        {isDataFetching ? (
+                            <div className="flex justify-center items-center h-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
+                            </div>
+                        ) : (
+                            <p className="text-4xl font-bold text-primary">{totalSavingHours.toFixed(2)}</p>
+                        )}
                     </div>
                     
                     <div>
                         <h3 className="text-lg font-medium text-muted-foreground">Saving (Days)</h3>
-                        <p className="text-4xl font-bold text-primary">{totalSavingDays.toFixed(2)}</p>
+                        {isDataFetching ? (
+                            <div className="flex justify-center items-center h-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" />
+                            </div>
+                        ) : (
+                            <p className="text-4xl font-bold text-primary">{totalSavingDays.toFixed(2)}</p>
+                        )}
                     </div>
                 </div>
             </CardContent>
