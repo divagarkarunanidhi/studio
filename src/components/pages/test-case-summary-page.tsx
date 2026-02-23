@@ -65,7 +65,6 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
 
   const [reusedFromLabels, setReusedFromLabels] = useState<string[]>([]);
   const [reusedInLabels, setReusedInLabels] = useState<string[]>([]);
-  const [isManualReusedFrom, setIsManualReusedFrom] = useState(false);
   const [effortNew, setEffortNew] = useState<number>(6);
   const [effortReused, setEffortReused] = useState<number>(3);
   
@@ -146,34 +145,6 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Intelligent Fallback Logic:
-  // Updates 'reusedFromLabels' automatically if not in manual mode.
-  useEffect(() => {
-    if (!configData?.reusabilityLabels || isManualReusedFrom) return;
-    
-    const configuredList = configData.reusabilityLabels.split(',').map(l => l.trim()).filter(Boolean);
-    
-    if (reusedInLabels.length > 0) {
-        const others = configuredList.filter(l => !reusedInLabels.includes(l));
-        setReusedFromLabels(others);
-    } else {
-        setReusedFromLabels([]);
-    }
-  }, [reusedInLabels, configData?.reusabilityLabels, isManualReusedFrom]);
-
-  const handleReusedInChange = (val: string[]) => {
-    setReusedInLabels(val);
-  };
-
-  const handleReusedFromChange = (val: string[]) => {
-    setReusedFromLabels(val);
-    if (val.length > 0) {
-        setIsManualReusedFrom(true);
-    } else {
-        setIsManualReusedFrom(false);
-    }
-  };
-
   // Effect to handle external upload triggers
   useEffect(() => {
     if (externalUploadTrigger > 0) {
@@ -182,21 +153,34 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
   }, [externalUploadTrigger]);
 
   // Unified Effect to fetch data when filters are STABLE.
-  // We use a small timeout to avoid double-fetching during auto-fallback.
+  // Includes Intelligent Fallback Logic:
+  // If 'reusedFromLabels' is empty but 'reusedInLabels' is not, 
+  // we consider all labels except the ones in 'reusedInLabels'.
   useEffect(() => {
     if (status !== 'ready') return;
 
     const timer = setTimeout(() => {
+        let effectiveReusedFrom = reusedFromLabels;
+        
+        // When 'reused from' is blank, consider all labels except those in 'reused in'
+        if (reusedFromLabels.length === 0 && reusedInLabels.length > 0) {
+            const labelPool = configData?.reusabilityLabels 
+                ? configData.reusabilityLabels.split(',').map(l => l.trim()).filter(Boolean)
+                : allUniqueLabels;
+            
+            effectiveReusedFrom = labelPool.filter(l => !reusedInLabels.includes(l));
+        }
+
         const filters = {
             selectedFilterLabels,
-            reusedFromLabels,
+            reusedFromLabels: effectiveReusedFrom,
             reusedInLabels,
         };
         fetchSummaryData(filters);
-    }, 100);
+    }, 150); // Small debounce to allow UI state to settle
 
     return () => clearTimeout(timer);
-  }, [selectedFilterLabels, reusedFromLabels, reusedInLabels, status, fetchSummaryData]);
+  }, [selectedFilterLabels, reusedFromLabels, reusedInLabels, status, fetchSummaryData, configData?.reusabilityLabels, allUniqueLabels]);
 
 
   const uniqueLabelOptions: MultiSelectOption[] = useMemo(() => {
@@ -289,7 +273,7 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
 
     const distributionDataString = JSON.stringify(distributionData.filter(d => d.name !== 'Total Test Cases in File').map(d => ({ name: d.name, count: d.count })), null, 2);
     const reusabilityPayloadString = JSON.stringify({
-        reused_from_labels: reusedFromLabels,
+        reused_from_labels: reusedFromLabels.length > 0 ? reusedFromLabels : ['All Other Labels (Fallback)'],
         reused_in_labels: reusedInLabels,
         reusability_count: reusabilityData.count,
         effort_saving_hours: totalSavingHours,
@@ -452,20 +436,20 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
                         <MultiSelect 
                             options={reusabilityOptions}
                             value={reusedInLabels}
-                            onValueChange={handleReusedInChange}
+                            onValueChange={setReusedInLabels}
                             placeholder="Select target labels..."
                             className="w-full"
                         />
                     </div>
                     <div className="w-full sm:w-1/2 space-y-2">
                         <label className="text-sm font-medium">
-                            Reused from {(!isManualReusedFrom && reusedInLabels.length > 0) && <span className='text-[10px] text-primary italic font-normal ml-1'>(Intelligent Fallback Active)</span>}
+                            Reused from {(reusedFromLabels.length === 0 && reusedInLabels.length > 0) && <span className='text-[10px] text-primary italic font-normal ml-1'>(Intelligent Fallback Active)</span>}
                         </label>
                         <MultiSelect 
                             options={reusabilityOptions}
                             value={reusedFromLabels}
-                            onValueChange={handleReusedFromChange}
-                            placeholder="Select source labels..."
+                            onValueChange={setReusedFromLabels}
+                            placeholder="Select source labels (or leave blank for all others)..."
                             className="w-full"
                         />
                     </div>
@@ -510,7 +494,7 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
                                     <DialogHeader>
                                         <DialogTitle>Reusable Test Cases ({reusabilityData.count})</DialogTitle>
                                         <DialogDescription>
-                                            Test cases in '{reusedInLabels.join(', ')}' that are also in '{reusedFromLabels.join(', ')}'.
+                                            Test cases in '{reusedInLabels.join(', ')}' that are also in '{reusedFromLabels.length > 0 ? reusedFromLabels.join(', ') : 'all other available labels (Intelligent Fallback)'}'.
                                         </DialogDescription>
                                     </DialogHeader>
                                     <ScrollArea className="h-72 w-full rounded-md border">
