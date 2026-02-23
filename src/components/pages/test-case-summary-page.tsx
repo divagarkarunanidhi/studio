@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -79,6 +79,9 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
   const [newReusabilityLabels, setNewReusabilityLabels] = useState<string>('');
   const isAdmin = userRole === 'admin';
 
+  // Prevent infinite loops by tracking if we are currently loading metadata
+  const isInitialLoadDone = useRef(false);
+
   useEffect(() => {
     setIsClient(true);
     if (configData) {
@@ -88,7 +91,7 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
   }, [configData]);
   
 
-  const fetchSummaryData = useCallback(async (filters: any) => {
+  const fetchSummaryData = useCallback(async (filters: any, updateMetadata = false) => {
     setIsDataFetching(true);
     try {
         const response = await fetch('/api/test-cases/summary', {
@@ -108,8 +111,11 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
         setDistributionData(data.distribution);
         setReusabilityData(data.reusability);
         setTotalTestCases(data.totalTestCases);
-        setHeaders(data.headers);
-        setAllUniqueLabels(data.uniqueLabels);
+        
+        if (updateMetadata) {
+            setHeaders(data.headers);
+            setAllUniqueLabels(data.uniqueLabels);
+        }
         
         return data; 
     } catch (error: any) {
@@ -127,8 +133,10 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
   // Effect for initial data load
   useEffect(() => {
     const initializePage = async () => {
+        if (isInitialLoadDone.current) return;
         setStatus('loading');
-        const initialData = await fetchSummaryData({});
+        
+        const initialData = await fetchSummaryData({}, true);
         
         if (initialData && initialData.uniqueLabels && initialData.uniqueLabels.length > 0) {
             const uniqueLabels = initialData.uniqueLabels as string[];
@@ -136,33 +144,29 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
             setSelectedFilterLabels(availableDefaultLabels);
         }
         
-        if (status !== 'upload' && status !== 'error') {
-            setStatus('ready');
-        }
+        isInitialLoadDone.current = true;
+        setStatus('ready');
     };
 
     initializePage();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchSummaryData]);
 
   // Effect to handle external upload triggers
   useEffect(() => {
     if (externalUploadTrigger > 0) {
         setStatus('upload');
+        isInitialLoadDone.current = false;
     }
   }, [externalUploadTrigger]);
 
   // Unified Effect to fetch data when filters are STABLE.
-  // Includes Intelligent Fallback Logic:
-  // If 'reusedFromLabels' is empty but 'reusedInLabels' is not, 
-  // we consider all labels except the ones in 'reusedInLabels'.
   useEffect(() => {
     if (status !== 'ready') return;
 
     const timer = setTimeout(() => {
         let effectiveReusedFrom = reusedFromLabels;
         
-        // When 'reused from' is blank, consider all labels except those in 'reused in'
+        // Intelligent Fallback Logic
         if (reusedFromLabels.length === 0 && reusedInLabels.length > 0) {
             const labelPool = configData?.reusabilityLabels 
                 ? configData.reusabilityLabels.split(',').map(l => l.trim()).filter(Boolean)
@@ -176,8 +180,10 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
             reusedFromLabels: effectiveReusedFrom,
             reusedInLabels,
         };
-        fetchSummaryData(filters);
-    }, 150); // Small debounce to allow UI state to settle
+        
+        // We set updateMetadata to false here to prevent the infinite loop
+        fetchSummaryData(filters, false);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [selectedFilterLabels, reusedFromLabels, reusedInLabels, status, fetchSummaryData, configData?.reusabilityLabels, allUniqueLabels]);
@@ -211,9 +217,11 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
             throw new Error(errorData.error || 'Failed to save CSV data to the server.');
         }
         const result = await response.json();
-        toast({ title: 'Success!', description: `${result.count} test case records uploaded successfully to the test cases store.` });
+        toast({ title: 'Success!', description: `${result.count} test case records uploaded successfully.` });
         
-        await fetchSummaryData({});
+        // Reset everything
+        isInitialLoadDone.current = false;
+        await fetchSummaryData({}, true);
         setStatus('ready');
 
     } catch (csvError: any) {
