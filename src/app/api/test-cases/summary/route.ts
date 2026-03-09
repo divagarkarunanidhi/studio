@@ -77,6 +77,23 @@ const getReusability = async (collection: Collection, fileId: ObjectId, reusedIn
         return { count: 0, testCases: [] };
     }
 
+    // A test case is "reused" if it has at least one label from the 'reusedInLabels' set
+    // AND at least one label from the 'reusedFromLabels' set, and these two labels must be DIFFERENT.
+    // This ensures that "reusing from itself" results in a count of zero.
+    const pairs: { inLabel: string, fromLabel: string }[] = [];
+    for (const inL of reusedInLabels) {
+        for (const fromL of reusedFromLabels) {
+            if (inL.trim().toLowerCase() !== fromL.trim().toLowerCase()) {
+                pairs.push({ inLabel: inL, fromLabel: fromL });
+            }
+        }
+    }
+
+    // If no distinct label pairs exist (e.g., user selected the same label in both dropdowns), count is 0.
+    if (pairs.length === 0) {
+        return { count: 0, testCases: [] };
+    }
+
     const pipeline: any[] = [
         { $match: { _id: fileId } },
         { $unwind: "$testCases" },
@@ -90,21 +107,18 @@ const getReusability = async (collection: Collection, fileId: ObjectId, reusedIn
         }
     ];
 
+    // Find test cases that match at least one valid cross-label reuse pair.
     const matchConditions = {
-        $and: [
-            { 
-                $or: reusedInLabels.map(inLabel => {
-                    const escapedIn = inLabel.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    return { "searchableLabels": { $regex: `\\b${escapedIn}\\b`, $options: "i" } };
-                })
-            },
-            { 
-                $or: reusedFromLabels.map(fromLabel => {
-                    const escapedFrom = fromLabel.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    return { "searchableLabels": { $regex: `\\b${escapedFrom}\\b`, $options: "i" } };
-                })
-            }
-        ]
+        $or: pairs.map(pair => {
+            const escapedIn = pair.inLabel.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const escapedFrom = pair.fromLabel.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return {
+                $and: [
+                    { "searchableLabels": { $regex: `\\b${escapedIn}\\b`, $options: "i" } },
+                    { "searchableLabels": { $regex: `\\b${escapedFrom}\\b`, $options: "i" } }
+                ]
+            };
+        })
     };
 
     pipeline.push({ $match: matchConditions });
