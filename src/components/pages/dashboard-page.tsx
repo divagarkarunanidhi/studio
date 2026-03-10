@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -898,7 +897,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   <StatCard title="Total Defects" value={totalDefects} icon={<Bug />} />
                   <StatCard title="Created Yesterday" value={yesterdayDefectsCount} icon={<CalendarClock />} />
-                  <StatCard title="Ready for Testing" value={yesterdayDefectsCount} icon={<TestTube />} />
+                  <StatCard title="Ready for Testing" value={readyForTestingCount} icon={<TestTube />} />
                 </div>
 
                 <Card>
