@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -397,11 +396,18 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
                                         </TableCell>
                                         <TableCell className="w-[120px]">
                                             {hasPrediction ? (
-                                                <Input
-                                                    value={currentPrediction.predictedRootCause}
-                                                    onChange={(e) => handlePredictionChange(defect.id, 'predictedRootCause', e.target.value)}
-                                                    className="h-7 text-[10px]"
-                                                />
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Input
+                                                            value={currentPrediction.predictedRootCause}
+                                                            onChange={(e) => handlePredictionChange(defect.id, 'predictedRootCause', e.target.value)}
+                                                            className="h-7 text-[10px]"
+                                                        />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>{currentPrediction.predictedRootCause}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
                                             ) : '...'}
                                         </TableCell>
                                         <TableCell className="text-[10px] text-muted-foreground max-w-[200px]">
