@@ -1,32 +1,3 @@
-/**
- * FIREBASE SECURITY RULES: PROTOTYPING MODE
- * 
- * CORE PHILOSOPHY:
- * This ruleset enforces a strict User-Ownership model. Access to data is determined 
- * primarily by the hierarchical path structure, ensuring that users can only interact 
- * with data explicitly nested under their unique Firebase Authentication UID.
- * 
- * DATA STRUCTURE:
- * The database is organized hierarchically:
- * - /users/{userId}: Root profile documents for each authenticated user.
- * - /users/{userId}/defects/{defectId}: Defect reports owned by and private to a specific user.
- * 
- * KEY SECURITY DECISIONS:
- * 1. Path-Based Authorization: By nesting defect data under the user's path, we avoid 
- *    costly `get()` lookups. The `userId` in the path is the source of truth for ownership.
- * 2. No Public Access: This application contains sensitive defect tracking data. 
- *    There are no public collections; all reads and writes require authentication.
- * 3. Prototyping Flexibility: While authorization (who can access what) is strictly 
- *    enforced, the schema of the defect data (the fields within the document) is 
- *    kept flexible to allow for rapid iteration on the defect reporting features.
- * 4. Relational Integrity: On creation, we enforce that internal IDs match the 
- *    Firestore document ID to maintain data consistency.
- * 
- * DENORMALIZATION FOR AUTHORIZATION:
- * The structure utilizes "Authorization Independence" by embedding the `userId` 
- * directly in the document path. This allows for simple, performant rules like 
- * `isOwner(userId)` without needing to query other collections.
- */
 
 rules_version = '2';
 service cloud.firestore {
@@ -34,74 +5,52 @@ service cloud.firestore {
 
     // --- Global Helper Functions ---
 
-    /**
-     * @description Checks if the request is made by an authenticated user.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user's UID matches the provided userId.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Combines ownership check with a verify that the document exists.
-     * Used for update and delete operations to prevent actions on non-existent data.
-     */
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && getUserData().role == role;
+    }
+
+    function isStaff() {
+      return isSignedIn() && getUserData().role in ['admin', 'taas', 'view'];
     }
 
     // --- Collection Rules ---
 
-    /**
-     * @description Rules for the root user profile documents.
-     * @path /users/{userId}
-     * @allow (get) If the user is viewing their own profile.
-     * @deny (list) If a user attempts to list all users in the system.
-     * @principle Restricts access to a user's own identity root.
-     */
     match /users/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false; // Users cannot be listed for privacy.
       allow create: if isOwner(userId);
-      allow update, delete: if isExistingOwner(userId);
+      allow update: if isOwner(userId);
+      allow list: if hasRole('admin');
     }
 
-    /**
-     * @description Rules for defect reports stored within a user's private subcollection.
-     * @path /users/{userId}/defects/{defectId}
-     * @allow (create) If the authenticated user is the owner of the path.
-     * @deny (update) If the user attempts to modify a defect belonging to another user.
-     * @principle Enforces strict data segregation and path-based ownership.
-     */
     match /users/{userId}/defects/{defectId} {
-      
-      // Read Operations
-      allow get, list: if isOwner(userId);
+      allow read, write: if isOwner(userId);
+    }
 
-      // Write Operations
-      
-      /**
-       * On creation, we ensure the user is the owner and enforce that the 
-       * internal 'id' field matches the Firestore document 'defectId'.
-       */
-      allow create: if isOwner(userId) && request.resource.data.id == defectId;
+    match /appConfiguration/{configId} {
+      allow get: if isSignedIn();
+      allow write: if hasRole('admin');
+    }
 
-      /**
-       * On update, we ensure ownership and enforce that the internal 'id' 
-       * remains immutable to preserve relational integrity.
-       */
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+    match /sharedFeedback/{feedbackId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
 
-      /**
-       * Deletion is permitted only by the owner of the document.
-       */
-      allow delete: if isExistingOwner(userId);
+    match /usageEvents/{eventId} {
+      allow create: if isSignedIn();
+      allow read, list: if hasRole('admin');
     }
   }
 }
