@@ -18,11 +18,12 @@ export function useUsageTracking(username?: string) {
     const logEvent = useCallback((eventType: UsageEvent['eventType'], menuId?: string) => {
         if (!user || !firestore) return;
 
-        const event: UsageEvent = {
+        // Explicitly set undefined fields to null, as Firestore does not support 'undefined'.
+        const event = {
             userId: user.uid,
             username: username || user.email || 'Anonymous',
             eventType,
-            menuId,
+            menuId: menuId || null,
             timestamp: new Date().toISOString(),
         };
 

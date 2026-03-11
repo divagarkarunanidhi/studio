@@ -32,9 +32,9 @@ export type AppConfiguration = z.infer<typeof AppConfigurationSchema>;
 // Usage Tracking Schema
 export const UsageEventSchema = z.object({
     userId: z.string(),
-    username: z.string().optional(),
+    username: z.string().optional().nullable(),
     eventType: z.enum(['login', 'logout', 'menu_click', 'session_pulse']),
-    menuId: z.string().optional(),
+    menuId: z.string().optional().nullable(),
     timestamp: z.string(),
 });
 export type UsageEvent = z.infer<typeof UsageEventSchema>;
