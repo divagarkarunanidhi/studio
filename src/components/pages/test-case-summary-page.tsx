@@ -4,7 +4,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import type { AppConfiguration, TestCaseAnalysisInput, TestCaseAnalysisOutput } from '@/lib/types';
 import { analyzeTestCases } from '@/ai/flows/test-case-analysis-flow';
 import * as XLSX from 'xlsx';
@@ -30,6 +30,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Skeleton } from '../ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { Label } from '../ui/label';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 type TestCaseData = { [key: string]: string };
@@ -302,14 +303,13 @@ export function TestCaseSummaryPage({ externalUploadTrigger = 0, userRole }: Tes
     }
   }, [distributionData, reusedFromLabels, reusedInLabels, reusabilityData.count, totalSavingHours, totalSavingDays]);
 
-  const handleSaveConfig = async () => {
+  const handleSaveConfig = () => {
     if (!configRef) return;
-    try {
-        await setDoc(configRef, { reusabilityLabels: newReusabilityLabels }, { merge: true });
-        toast({ title: 'Config Saved', description: 'Reusability labels updated successfully.' });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to save configuration.' });
-    }
+    
+    // Pattern 1: Non-blocking mutation with emission
+    setDocumentNonBlocking(configRef, { reusabilityLabels: newReusabilityLabels }, { merge: true });
+    
+    toast({ title: 'Update Initiated', description: 'Reusability labels update has been sent.' });
   };
 
 

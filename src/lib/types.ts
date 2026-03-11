@@ -29,6 +29,16 @@ export const AppConfigurationSchema = z.object({
   
 export type AppConfiguration = z.infer<typeof AppConfigurationSchema>;
 
+// Usage Tracking Schema
+export const UsageEventSchema = z.object({
+    userId: z.string(),
+    username: z.string().optional(),
+    eventType: z.enum(['login', 'logout', 'menu_click', 'session_pulse']),
+    menuId: z.string().optional(),
+    timestamp: z.string(),
+});
+export type UsageEvent = z.infer<typeof UsageEventSchema>;
+
 // AI Flow Schemas
 export const DefectAnalysisInputSchema = z.object({
     defects: z.array(DefectSchema),

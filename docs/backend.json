@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Defect": {
@@ -58,6 +59,19 @@
         "creationDate",
         "reportedBy"
       ]
+    },
+    "UsageEvent": {
+      "title": "UsageEvent",
+      "type": "object",
+      "description": "Logs of user interactions and system events for auditing and analytics.",
+      "properties": {
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "eventType": { "enum": ["login", "logout", "menu_click", "session_pulse"] },
+        "menuId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "eventType", "timestamp"]
     }
   },
   "auth": {
@@ -75,7 +89,7 @@
           "schema": {
             "$ref": "#/backend/entities/user"
           },
-          "description": "Collection for user profiles. Each document represents a Firebase authenticated user. Although no explicit schema for 'user' was provided, this path is essential for anchoring user-specific data. It enables path-based authorization for owned subcollections.",
+          "description": "Collection for user profiles.",
           "params": [
             {
               "name": "userId",
@@ -91,20 +105,27 @@
           "schema": {
             "$ref": "#/backend/entities/Defect"
           },
-          "description": "Subcollection containing Defect documents uploaded by a specific user. This structure ensures strict data segregation and ownership, where each defect is directly linked to the user who uploaded it. Includes denormalized 'userId' in the path for authorization independence and simplified security rules.",
+          "description": "Subcollection containing Defect documents uploaded by a specific user.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique Firebase Authentication User ID (UID) of the user who owns/uploaded this defect."
-            },
-            {
-              "name": "defectId",
-              "description": "The unique identifier for a specific Defect document."
-            }
+            { "name": "userId", "description": "Owner UID" },
+            { "name": "defectId", "description": "Defect ID" }
+          ]
+        }
+      },
+      {
+        "path": "/usageEvents/{eventId}",
+        "definition": {
+          "entityName": "UsageEvent",
+          "schema": {
+            "$ref": "#/backend/entities/UsageEvent"
+          },
+          "description": "A flat collection of usage logs for administrative oversight.",
+          "params": [
+            { "name": "eventId", "description": "Unique ID for the usage event." }
           ]
         }
       }
     ],
-    "reasoning": "The recommended Firestore structure prioritizes user data isolation, security, and query efficiency, adhering strictly to the core design principles. Each user's uploaded defect data is stored within a subcollection under their unique user ID, specifically at `/users/{userId}/defects/{defectId}`. This hierarchical path establishes clear ownership, making authorization rules simple and robust.\n\n**Authorization Independence:** This structure achieves authorization independence by embedding the `userId` directly into the document path. For any `Defect` document, its owner (`userId`) is immediately inferable from its path (`/users/{userId}/defects/{defectId}`). This design eliminates the need for expensive and complex `get()` calls in Firestore Security Rules to check parent documents or external user role collections. A rule can simply verify `request.auth.uid == userId` to grant access, ensuring atomic operations (transactions/batches) remain unaffected and rules are easy to debug. The `reportedBy` and `assignedTo` fields within the Defect document are treated as data attributes from the CSV, not as authorization UIDs.\n\n**Support for QAPs (Rules are not Filters):** All documents within a user's `/users/{userId}/defects` subcollection share the same security posture: they are owned by and accessible to `userId`. This homogeneous security posture ensures that when a user queries their own `/users/{userId}/defects` collection, the security rules can grant full read access to that collection based solely on `request.auth.uid == userId`. The application can then apply any necessary filters (e.g., `status == 'Ready for Testing'`, `creationDate > yesterday`, `domain == 'Backend'`) client-side or through Firestore queries. The rules do not attempt to filter data; they only determine access permission for the requested data set. This allows for efficient `list` operations without compromising security or performance, as rules are evaluated before query execution and do not incur additional reads for filtering logic."
+    "reasoning": "Standard hierarchical structure for user data, plus a central collection for cross-user usage metrics accessible by admins."
   }
 }

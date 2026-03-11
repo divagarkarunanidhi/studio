@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -34,6 +35,7 @@ import {
   FileText,
   MonitorPlay,
   FilterX,
+  BarChart3,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -76,9 +78,11 @@ import * as XLSX from 'xlsx';
 import { doc, getDoc } from 'firebase/firestore';
 import { TestCaseSummaryPage } from './test-case-summary-page';
 import { SeleniumDashboardPage } from './selenium-dashboard-page';
+import { useUsageTracking } from '@/hooks/use-usage-tracking';
+import { UsageDetailsPage } from './usage-details-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard' | 'usage-details';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -225,6 +229,9 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [filterReportedBy, setFilterReportedBy] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Usage Tracking
+  const { logEvent } = useUsageTracking(userProfile?.username);
 
   // Attention Column Filters State
   const [attentionFilters, setAttentionFilters] = useState<DefectFilters>({
@@ -404,12 +411,14 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   };
   
   const handleLogout = async () => {
+    logEvent('logout');
     await signOut(auth);
   };
 
   const handleViewChange = (view: View) => {
     setActiveView(view);
     setShowUploader(false);
+    logEvent('menu_click', view);
   };
 
   const yesterdayDefectsCount = useMemo(() => {
@@ -448,6 +457,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'feedback-management': 'Feedback Management',
     'test-case-summary': 'Test Case Summary',
     'selenium-dashboard': 'Selenium Dashboard',
+    'usage-details': 'Application Usage Details',
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -464,6 +474,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'feedback-management': 'View, edit, and delete saved few-shot learning examples.',
     'test-case-summary': 'Upload and visualize test case data by label.',
     'selenium-dashboard': 'Visualize results from Selenium test runs.',
+    'usage-details': 'Monitor application engagement and feature popularity.',
   };
 
   const uniqueDomains = useMemo(() => {
@@ -783,6 +794,14 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             )}
             {userRole === 'admin' && (
               <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="Usage Details" isActive={activeView === 'usage-details'} onClick={() => handleViewChange('usage-details')}>
+                  <BarChart3 />
+                  Usage Details
+                  </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {userRole === 'admin' && (
+              <SidebarMenuItem>
                   <SidebarMenuButton tooltip="Configuration" isActive={activeView === 'configuration'} onClick={() => handleViewChange('configuration')}>
                   <Settings />
                   Configuration
@@ -947,6 +966,9 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
             )}
              {activeView === 'configuration' && userRole === 'admin' && (
               <ConfigurationPage />
+            )}
+            {activeView === 'usage-details' && userRole === 'admin' && (
+              <UsageDetailsPage />
             )}
 
             {activeView === 'all-defects' && (

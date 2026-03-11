@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Settings } from 'lucide-react';
 import { AppConfigurationSchema } from '@/lib/types';
 import type { AppConfiguration } from '@/lib/types';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export function ConfigurationPage() {
   const { toast } = useToast();
@@ -46,20 +47,15 @@ export function ConfigurationPage() {
   }, [configData, form]);
 
   const onSubmit = async (values: AppConfiguration) => {
-    try {
-      await setDoc(configRef, values, { merge: true });
-      toast({
-        title: 'Success!',
-        description: 'Configuration has been updated.',
-      });
-    } catch (error: any) {
-      console.error('Failed to save configuration:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error Saving Configuration',
-        description: error.message || 'An unknown error occurred.',
-      });
-    }
+    if (!configRef) return;
+    
+    // Pattern 1: Non-blocking mutation with emission
+    setDocumentNonBlocking(configRef, values, { merge: true });
+    
+    toast({
+        title: 'Update Initiated',
+        description: 'Global configuration update has been sent to the server.',
+    });
   };
 
   const handleTestConnection = async () => {
