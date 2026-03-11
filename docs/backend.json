@@ -1,71 +1,63 @@
-
 {
   "entities": {
     "Defect": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Defect",
       "type": "object",
-      "description": "Represents a defect record from the uploaded CSV file.",
+      "description": "Represents a single software defect reported in the system, detailing its characteristics, status, and assignment.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the Defect entity."
         },
+        "title": {
+          "type": "string",
+          "description": "A concise title or summary of the defect."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed explanation of the defect, including steps to reproduce and expected vs. actual results."
+        },
         "domain": {
           "type": "string",
-          "description": "The domain to which the defect belongs."
-        },
-        "reportedBy": {
-          "type": "string",
-          "description": "The user who reported the defect."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "The date and time when the defect was created.",
-          "format": "date-time"
+          "description": "The functional or technical domain/module to which the defect belongs."
         },
         "status": {
           "type": "string",
-          "description": "The current status of the defect (e.g., 'To-Do', 'Ready for Testing')."
+          "description": "The current lifecycle status of the defect (e.g., To-Do, In Progress, Ready for Testing, Closed, Reopened)."
         },
-        "aiSuggestion": {
+        "severity": {
           "type": "string",
-          "description": "The AI's suggestion for defect reduction."
+          "description": "The impact level of the defect on the system or user (e.g., Critical, Major, Minor, Trivial)."
         },
-        "userSuggestion": {
+        "priority": {
           "type": "string",
-          "description": "The user's suggestion for defect reduction."
+          "description": "The urgency with which the defect needs to be addressed and resolved (e.g., High, Medium, Low)."
         },
-        "refinedFeedback": {
+        "creationDate": {
           "type": "string",
-          "description": "AI-refined feedback based on user suggestion, used for future predictions."
+          "description": "The timestamp indicating when the defect was initially created.",
+          "format": "date-time"
+        },
+        "reportedBy": {
+          "type": "string",
+          "description": "The name or identifier of the user who reported this defect."
+        },
+        "assignedTo": {
+          "type": "string",
+          "description": "The name or identifier of the user currently responsible for resolving the defect."
         }
       },
       "required": [
         "id",
+        "title",
         "domain",
-        "reportedBy",
-        "createdAt",
-        "status"
+        "status",
+        "severity",
+        "priority",
+        "creationDate",
+        "reportedBy"
       ]
-    },
-    "UserProfile": {
-      "title": "UserProfile",
-      "type": "object",
-      "properties": {
-        "username": { "type": "string" },
-        "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "taas", "view", "newuser"] }
-      }
-    },
-    "SharedFeedback": {
-      "title": "SharedFeedback",
-      "type": "object",
-      "properties": {
-        "defect": { "$ref": "#/backend/entities/Defect" },
-        "prediction": { "type": "object" },
-        "savedAt": { "type": "string", "format": "date-time" }
-      }
     }
   },
   "auth": {
@@ -77,39 +69,42 @@
   "firestore": {
     "structure": [
       {
-        "path": "/defects/{defectId}",
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "user",
+          "schema": {
+            "$ref": "#/backend/entities/user"
+          },
+          "description": "Collection for user profiles. Each document represents a Firebase authenticated user. Although no explicit schema for 'user' was provided, this path is essential for anchoring user-specific data. It enables path-based authorization for owned subcollections.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication User ID (UID) of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/defects/{defectId}",
         "definition": {
           "entityName": "Defect",
           "schema": {
             "$ref": "#/backend/entities/Defect"
           },
-          "description": "Stores individual defect records."
-        }
-      },
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": { "$ref": "#/backend/entities/UserProfile" },
-          "description": "User profile and role information."
-        }
-      },
-      {
-        "path": "/sharedFeedback/{feedbackId}",
-        "definition": {
-          "entityName": "SharedFeedback",
-          "schema": { "$ref": "#/backend/entities/SharedFeedback" },
-          "description": "Feedback used for few-shot learning."
-        }
-      },
-      {
-        "path": "/appConfiguration/global",
-        "definition": {
-          "entityName": "AppConfig",
-          "schema": { "type": "object" },
-          "description": "Global app settings."
+          "description": "Subcollection containing Defect documents uploaded by a specific user. This structure ensures strict data segregation and ownership, where each defect is directly linked to the user who uploaded it. Includes denormalized 'userId' in the path for authorization independence and simplified security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication User ID (UID) of the user who owns/uploaded this defect."
+            },
+            {
+              "name": "defectId",
+              "description": "The unique identifier for a specific Defect document."
+            }
+          ]
         }
       }
-    ]
+    ],
+    "reasoning": "The recommended Firestore structure prioritizes user data isolation, security, and query efficiency, adhering strictly to the core design principles. Each user's uploaded defect data is stored within a subcollection under their unique user ID, specifically at `/users/{userId}/defects/{defectId}`. This hierarchical path establishes clear ownership, making authorization rules simple and robust.\n\n**Authorization Independence:** This structure achieves authorization independence by embedding the `userId` directly into the document path. For any `Defect` document, its owner (`userId`) is immediately inferable from its path (`/users/{userId}/defects/{defectId}`). This design eliminates the need for expensive and complex `get()` calls in Firestore Security Rules to check parent documents or external user role collections. A rule can simply verify `request.auth.uid == userId` to grant access, ensuring atomic operations (transactions/batches) remain unaffected and rules are easy to debug. The `reportedBy` and `assignedTo` fields within the Defect document are treated as data attributes from the CSV, not as authorization UIDs.\n\n**Support for QAPs (Rules are not Filters):** All documents within a user's `/users/{userId}/defects` subcollection share the same security posture: they are owned by and accessible to `userId`. This homogeneous security posture ensures that when a user queries their own `/users/{userId}/defects` collection, the security rules can grant full read access to that collection based solely on `request.auth.uid == userId`. The application can then apply any necessary filters (e.g., `status == 'Ready for Testing'`, `creationDate > yesterday`, `domain == 'Backend'`) client-side or through Firestore queries. The rules do not attempt to filter data; they only determine access permission for the requested data set. This allows for efficient `list` operations without compromising security or performance, as rules are evaluated before query execution and do not incur additional reads for filtering logic."
   }
 }
