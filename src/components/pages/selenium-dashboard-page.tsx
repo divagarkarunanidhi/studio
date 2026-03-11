@@ -5,12 +5,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import type { AppConfiguration, Defect } from '@/lib/types';
+import type { AppConfiguration } from '@/lib/types';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { FileUploader } from '../ui/file-uploader';
-import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers, Terminal, Camera, Settings, Info } from 'lucide-react';
+import { Loader2, Upload, ChevronDown, ChevronRight, CheckCircle, XCircle, Download, GitCompareArrows, TrendingUp, TrendingDown, Layers, Terminal, Camera, Settings, Info } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
@@ -143,10 +143,6 @@ const formatNanosToTime = (nanos: number) => {
     return `${minutes}m ${seconds}s`;
 };
 
-/**
- * Standard consolidation logic used by both the dashboard list and the detail modal.
- * Optimized to preserve source report IDs for smart fetching.
- */
 const performConsolidation = (reportsToConsolidate: any[], id: string, title: string, jobDesc: string): ReportSummary => {
     const sorted = [...reportsToConsolidate].sort((a, b) => {
         const dateA = a.uploadedAt ? new Date(a.uploadedAt).getTime() : 0;
@@ -354,7 +350,6 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
             setIsLoadingDetails(true);
             try {
                 if (reportSummary.id.startsWith('consolidated')) {
-                    // Optimized fetching: only fetch reports that are actually "winners" for at least one scenario
                     const requiredIds = Array.from(new Set(reportSummary.scenarios.map(s => s.sourceReportId).filter(id => id !== null)));
                     
                     if (requiredIds.length === 0) return;
@@ -362,7 +357,6 @@ const DetailModal = ({ reportSummary, jiraLink, allProcessedReports }: { reportS
                     setLoadingProgress({ current: 0, total: requiredIds.length });
                     
                     const fetchedReports: any[] = [];
-                    // Sequential batch fetching to avoid memory issues with massive JSONs
                     for (let i = 0; i < requiredIds.length; i++) {
                         const id = requiredIds[i];
                         const res = await fetch(`/api/selenium/details?id=${id}`);
@@ -725,13 +719,12 @@ export function SeleniumDashboardPage() {
     
     const [isLoading, setIsLoading] = useState(true);
     const [showUploader, setShowUploader] = useState(false);
-    const [testCaseDetails, setTestCaseDetails] = useState<TestCase[]>([]);
     const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
 
     const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
     const { data: configData } = useDoc<AppConfiguration>(configRef);
 
-    const jiraLink = useMemo(() => configData?.jiraLink || "", [configData]);
+    const jiraLink = configData?.jiraLink || "";
 
     const domainDateRanges = useMemo(() => {
         const ranges: Record<string, DateRange | undefined> = {};
@@ -792,11 +785,6 @@ export function SeleniumDashboardPage() {
         const loadInitialData = async () => {
             setIsLoading(true);
             try {
-                const tcResponse = await fetch('/api/test-cases/latest');
-                if (tcResponse.ok) {
-                    const tcData = await tcResponse.json();
-                    if (tcData && tcData.testCases) setTestCaseDetails(tcData.testCases);
-                }
                 await fetchReports(1);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Error Initializing Dashboard', description: error.message });

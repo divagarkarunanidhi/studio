@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useAuth, useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { useAuth, useFirestore, useUser, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import type { WithId } from '@/firebase/firestore/use-collection';
-import type { SavedPrediction, AppConfiguration, DefectPrediction, Defect } from '@/lib/types';
+import type { SavedPrediction, AppConfiguration, DefectPrediction } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Bookmark, Trash2, Save, HelpCircle } from 'lucide-react';
+import { Bookmark, Trash2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Tooltip,
@@ -39,7 +38,7 @@ import { deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase
 const SEVERITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low'];
 const PRIORITY_OPTIONS = ['Highest', 'High', 'Medium', 'Low', 'Lowest'];
 
-function FeedbackRow({ feedback, jiraLink, userId }: { feedback: WithId<SavedPrediction>, jiraLink: string, userId: string }) {
+function FeedbackRow({ feedback, jiraLink }: { feedback: WithId<SavedPrediction>, jiraLink: string }) {
     const { toast } = useToast();
     const firestore = useFirestore();
     const [editablePrediction, setEditablePrediction] = useState(feedback.prediction);
@@ -216,27 +215,17 @@ function FeedbackRow({ feedback, jiraLink, userId }: { feedback: WithId<SavedPre
 export function FeedbackManagementPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
-    const [jiraLink, setJiraLink] = useState<string>("");
+
+    const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
+    const { data: configData } = useDoc<AppConfiguration>(configRef);
+
+    const jiraLink = configData?.jiraLink || "";
 
     const feedbackColRef = useMemoFirebase(
         () => (user ? collection(firestore, 'sharedFeedback') : null),
         [firestore, user]
     );
     const { data: feedbackData, isLoading: isFeedbackLoading, error } = useCollection<SavedPrediction>(feedbackColRef);
-
-    useEffect(() => {
-        const fetchConfig = async () => {
-            if (!firestore) return;
-            const configRef = doc(firestore, 'appConfiguration', 'global');
-            const configSnap = await getDoc(configRef);
-            if (configSnap.exists()) {
-                const configData = configSnap.data() as AppConfiguration;
-                setJiraLink(configData.jiraLink);
-            }
-        };
-        fetchConfig();
-    }, [firestore]);
-
 
     const isLoading = isUserLoading || isFeedbackLoading;
 
@@ -285,7 +274,7 @@ export function FeedbackManagementPage() {
                                 ))
                             ) : feedbackData && feedbackData.length > 0 ? (
                                 feedbackData.map(feedbackItem => (
-                                   <FeedbackRow key={feedbackItem.id} feedback={feedbackItem} jiraLink={jiraLink} userId={user!.uid} />
+                                   <FeedbackRow key={feedbackItem.id} feedback={feedbackItem} jiraLink={jiraLink} />
                                 ))
                             ) : (
                                 <TableRow>

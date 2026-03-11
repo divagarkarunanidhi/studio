@@ -1,10 +1,9 @@
-
 "use client";
 
 import * as React from "react";
 import { Pie, PieChart, Cell, Tooltip } from "recharts";
-import { doc, getDoc } from "firebase/firestore";
-import { useFirestore, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import { useFirestore, useMemoFirebase, useDoc } from "@/firebase";
 import {
   Card,
   CardContent,
@@ -62,21 +61,12 @@ export function DefectPieChart({
   description,
   isLoading,
 }: DefectPieChartProps) {
-  const [jiraLink, setJiraLink] = React.useState<string>("");
   const firestore = useFirestore();
 
-  React.useEffect(() => {
-    const fetchConfig = async () => {
-        const configRef = doc(firestore, 'appConfiguration', 'global');
-        const configSnap = await getDoc(configRef);
-        if (configSnap.exists()) {
-            const configData = configSnap.data() as AppConfiguration;
-            setJiraLink(configData.jiraLink);
-        }
-    };
-    fetchConfig();
-  }, [firestore]);
+  const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
+  const { data: configData, isLoading: isConfigLoading } = useDoc<AppConfiguration>(configRef);
 
+  const jiraLink = configData?.jiraLink || "";
 
   const chartConfig = React.useMemo(() => {
     return data.reduce((acc, item, index) => {
@@ -92,7 +82,7 @@ export function DefectPieChart({
     return data.reduce((acc, item) => acc + item.count, 0);
   }, [data]);
   
-  if (isLoading) {
+  if (isLoading || isConfigLoading) {
     return (
         <Card>
             <CardHeader>

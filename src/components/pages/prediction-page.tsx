@@ -19,8 +19,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lightbulb, AlertTriangle, Wand2, Bookmark, BookmarkCheck, HelpCircle, Check, Loader2 } from 'lucide-react';
-import { doc, getDoc, collection } from 'firebase/firestore';
-import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { doc, collection } from 'firebase/firestore';
+import { useFirestore, useUser, errorEmitter, FirestorePermissionError, useDoc, useMemoFirebase } from '@/firebase';
 import {
     Select,
     SelectContent,
@@ -49,24 +49,15 @@ export function PredictionPage({ defects, uniqueDomains }: PredictionPageProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
-  const [jiraLink, setJiraLink] = useState<string>("");
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [savedPredictionIds, setSavedPredictionIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const fetchConfig = async () => {
-        if (!firestore) return;
-        const configRef = doc(firestore, 'appConfiguration', 'global');
-        const configSnap = await getDoc(configRef);
-        if (configSnap.exists()) {
-            const configData = configSnap.data() as AppConfiguration;
-            setJiraLink(configData.jiraLink);
-        }
-    };
-    fetchConfig();
-  }, [firestore]);
+  const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
+  const { data: configData } = useDoc<AppConfiguration>(configRef);
+
+  const jiraLink = configData?.jiraLink || "";
 
   const filteredDefects = useMemo(() => {
     if (!selectedDomain) return [];

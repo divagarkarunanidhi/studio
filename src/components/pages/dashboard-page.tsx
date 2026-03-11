@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -57,7 +56,7 @@ import {
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
-import { useUser, useAuth, useFirestore } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import {
     AlertDialog,
@@ -75,7 +74,7 @@ import type { UserProfile } from '@/app/page';
 import { ConfigurationPage } from './configuration-page';
 import { FeedbackManagementPage } from './feedback-management-page';
 import * as XLSX from 'xlsx';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { TestCaseSummaryPage } from './test-case-summary-page';
 import { SeleniumDashboardPage } from './selenium-dashboard-page';
 import { useUsageTracking } from '@/hooks/use-usage-tracking';
@@ -233,6 +232,16 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   // Usage Tracking
   const { logEvent } = useUsageTracking(userProfile?.username);
 
+  // Global Config
+  const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
+  const { data: configData } = useDoc<AppConfiguration>(configRef);
+
+  useEffect(() => {
+    if (configData?.jiraLink) {
+      setJiraLink(configData.jiraLink);
+    }
+  }, [configData]);
+
   // Attention Column Filters State
   const [attentionFilters, setAttentionFilters] = useState<DefectFilters>({
     domain: '',
@@ -248,19 +257,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   const [showUploader, setShowUploader] = useState(false);
   const [tcUploadTrigger, setTcUploadTrigger] = useState(0);
 
-  useEffect(() => {
-    const fetchConfig = async () => {
-        if (!firestore) return;
-        const configRef = doc(firestore, 'appConfiguration', 'global');
-        const configSnap = await getDoc(configRef);
-        if (configSnap.exists()) {
-            const configData = configSnap.data() as AppConfiguration;
-            setJiraLink(configData.jiraLink);
-        }
-    };
-    fetchConfig();
-  }, [firestore]);
-  
   const handleLoadFromServer = useCallback(async () => {
     setDefectsLoading(true);
     try {
