@@ -43,8 +43,19 @@ export function UsageDetailsPage() {
         const pulses = events.filter(e => e.eventType === 'session_pulse');
         const authEvents = events.filter(e => e.eventType === 'login' || e.eventType === 'logout');
         
-        // Count unique users
-        const uniqueUsers = new Set(events.map(e => e.userId)).size;
+        // Group unique users with their details
+        const userMap = new Map<string, { username: string, lastSeen: string }>();
+        events.forEach(e => {
+            const existing = userMap.get(e.userId);
+            if (!existing || e.timestamp > existing.lastSeen) {
+                userMap.set(e.userId, { 
+                    username: e.username || 'Anonymous', 
+                    lastSeen: e.timestamp 
+                });
+            }
+        });
+        const activeUsersList = Array.from(userMap.values()).sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
+        const uniqueUsers = activeUsersList.length;
 
         // Calculate hours (pulse = 5 mins)
         const totalMinutes = pulses.length * 5;
@@ -114,6 +125,7 @@ export function UsageDetailsPage() {
             totalLogins: logins.length,
             authEvents,
             uniqueUsers,
+            activeUsersList,
             totalHours,
             sessionHistory: sortedSessions,
             menuData,
@@ -261,7 +273,54 @@ export function UsageDetailsPage() {
                 </Dialog>
 
                 <StatCard title="Feature Interactions" value={stats.totalClicks} icon={<MousePointer2 />} description="Total menu clicks recorded" />
-                <StatCard title="Unique Active Users" value={stats.uniqueUsers} icon={<Activity />} description="Across all recorded events" />
+                
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <div className="cursor-pointer transition-transform hover:scale-[1.02]">
+                            <StatCard 
+                                title="Unique Active Users" 
+                                value={<span className="text-primary hover:underline">{stats.uniqueUsers}</span>} 
+                                icon={<Activity />} 
+                                description="Across all recorded events (click for details)" 
+                            />
+                        </div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Active Users List</DialogTitle>
+                            <DialogDescription>
+                                A list of unique users who have interacted with the application.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <ScrollArea className="h-[300px] pr-4">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>User</TableHead>
+                                        <TableHead className="text-right">Last Activity</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {stats.activeUsersList.map((u, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell className="font-medium text-xs">{u.username}</TableCell>
+                                            <TableCell className="text-right text-[10px] text-muted-foreground">
+                                                {format(parseISO(u.lastSeen), 'MMM d, h:mm a')}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {stats.activeUsersList.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={2} className="text-center text-muted-foreground py-4">
+                                                No active users found in history.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
