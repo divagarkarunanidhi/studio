@@ -50,6 +50,31 @@ export function UsageDetailsPage() {
         const totalMinutes = pulses.length * 5;
         const totalHours = (totalMinutes / 60).toFixed(1);
 
+        // Group pulses by user for engagement breakdown
+        const userPulses = pulses.reduce((acc, pulse) => {
+            const key = pulse.userId;
+            if (!acc[key]) {
+                acc[key] = {
+                    username: pulse.username || 'Anonymous',
+                    count: 0,
+                    first: pulse.timestamp,
+                    last: pulse.timestamp
+                };
+            }
+            acc[key].count++;
+            if (pulse.timestamp < acc[key].first) acc[key].first = pulse.timestamp;
+            if (pulse.timestamp > acc[key].last) acc[key].last = pulse.timestamp;
+            return acc;
+        }, {} as Record<string, { username: string, count: number, first: string, last: string }>);
+
+        const userEngagement = Object.entries(userPulses).map(([id, data]) => ({
+            id,
+            username: data.username,
+            hours: (data.count * 5 / 60).toFixed(1),
+            first: data.first,
+            last: data.last
+        })).sort((a, b) => Number(b.hours) - Number(a.hours));
+
         // Group menu clicks
         const menuUsage = menuClicks.reduce((acc, e) => {
             const id = e.menuId || 'Unknown';
@@ -67,6 +92,7 @@ export function UsageDetailsPage() {
             authEvents,
             uniqueUsers,
             totalHours,
+            userEngagement,
             menuData,
             recentEvents: events.slice(0, 10)
         };
@@ -88,7 +114,59 @@ export function UsageDetailsPage() {
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatCard title="Total Application Hours" value={`${stats.totalHours} hrs`} icon={<Clock />} description="Based on active session pulses" />
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <div className="cursor-pointer transition-transform hover:scale-[1.02]">
+                            <StatCard 
+                                title="Total Application Hours" 
+                                value={<span className="text-primary hover:underline">{stats.totalHours} hrs</span>} 
+                                icon={<Clock />} 
+                                description="Based on active session pulses (click for breakdown)" 
+                            />
+                        </div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>User Engagement Breakdown</DialogTitle>
+                            <DialogDescription>
+                                Estimated active hours per user based on activity pulses.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <ScrollArea className="h-[400px] pr-4">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>User</TableHead>
+                                        <TableHead className="text-right">Hours</TableHead>
+                                        <TableHead className="text-right">First Active</TableHead>
+                                        <TableHead className="text-right">Last Active</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {stats.userEngagement.map((user, idx) => (
+                                        <TableRow key={idx}>
+                                            <TableCell className="font-medium text-xs">{user.username}</TableCell>
+                                            <TableCell className="text-right text-xs font-bold">{user.hours}h</TableCell>
+                                            <TableCell className="text-right text-[10px] text-muted-foreground">
+                                                {format(parseISO(user.first), 'MMM d, h:mm a')}
+                                            </TableCell>
+                                            <TableCell className="text-right text-[10px] text-muted-foreground">
+                                                {format(parseISO(user.last), 'MMM d, h:mm a')}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {stats.userEngagement.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                                                No engagement data recorded.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
                 
                 <Dialog>
                     <DialogTrigger asChild>
