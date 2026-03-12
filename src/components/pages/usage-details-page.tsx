@@ -63,19 +63,24 @@ export function UsageDetailsPage() {
         const activeUsersList = Array.from(userMap.values()).sort((a, b) => b.lastSeen.localeCompare(a.lastSeen));
         const uniqueUsers = activeUsersList.length;
 
-        // Calculate hours (pulse = 5 mins)
+        // Calculate total hours for the stat card (pulse = 5 mins)
         const totalMinutes = pulses.length * 5;
-        const totalHours = (totalMinutes / 60).toFixed(1);
+        const totalHoursFormatted = (totalMinutes / 60).toFixed(1);
 
         // Reconstruct sessions: Group login/logout events and pulses chronologically
-        const chronEvents = [...events].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+        const chronEvents = [...rawEvents].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
         const sessionList: any[] = [];
         const activeSessions: Record<string, any> = {};
 
         chronEvents.forEach(e => {
             if (e.eventType === 'login') {
+                // If there's an existing session that wasn't closed, mark it as Incomplete
                 if (activeSessions[e.userId]) {
-                    sessionList.push({ ...activeSessions[e.userId], logout: 'Incomplete' });
+                    sessionList.push({ 
+                        ...activeSessions[e.userId], 
+                        logout: 'Incomplete',
+                        duration: activeSessions[e.userId].pulses * 5
+                    });
                 }
                 activeSessions[e.userId] = {
                     userId: e.userId,
@@ -94,7 +99,7 @@ export function UsageDetailsPage() {
                     const session = { 
                         ...activeSessions[e.userId], 
                         logout: e.timestamp,
-                        duration: (activeSessions[e.userId].pulses * 5 / 60).toFixed(1)
+                        duration: activeSessions[e.userId].pulses * 5
                     };
                     sessionList.push(session);
                     delete activeSessions[e.userId];
@@ -102,11 +107,12 @@ export function UsageDetailsPage() {
             }
         });
 
+        // Any sessions still active
         Object.values(activeSessions).forEach(s => {
             sessionList.push({ 
                 ...s, 
                 logout: 'Active', 
-                duration: (s.pulses * 5 / 60).toFixed(1) 
+                duration: s.pulses * 5 
             });
         });
 
@@ -128,7 +134,7 @@ export function UsageDetailsPage() {
             authEvents,
             uniqueUsers,
             activeUsersList,
-            totalHours,
+            totalHours: totalHoursFormatted,
             sessionHistory: sortedSessions,
             menuData,
             recentEvents: events.slice(0, 10)
@@ -213,7 +219,7 @@ export function UsageDetailsPage() {
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right text-xs font-bold text-primary">
-                                                {session.duration}h
+                                                {session.duration} mins
                                             </TableCell>
                                         </TableRow>
                                     ))}
