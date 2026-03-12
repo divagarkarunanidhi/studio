@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -13,6 +12,15 @@ import type { UsageEvent } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell, Tooltip } from "recharts";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
@@ -54,6 +62,7 @@ export function UsageDetailsPage() {
         return {
             totalClicks: menuClicks.length,
             totalLogins: logins.length,
+            loginEvents: logins,
             uniqueUsers,
             totalHours,
             menuData,
@@ -78,7 +87,55 @@ export function UsageDetailsPage() {
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard title="Total Application Hours" value={`${stats.totalHours} hrs`} icon={<Clock />} description="Based on active session pulses" />
-                <StatCard title="User Logins" value={stats.totalLogins} icon={<Users />} description="Total login events tracked" />
+                
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <div className="cursor-pointer transition-transform hover:scale-[1.02]">
+                            <StatCard 
+                                title="User Logins" 
+                                value={<span className="text-primary hover:underline">{stats.totalLogins}</span>} 
+                                icon={<Users />} 
+                                description="Total login events (click to view)" 
+                            />
+                        </div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>User Login History</DialogTitle>
+                            <DialogDescription>
+                                A detailed list of recent user login events tracked by the system.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <ScrollArea className="h-[400px] pr-4">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>User</TableHead>
+                                        <TableHead className="text-right">Login Time</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {stats.loginEvents.map((login, idx) => (
+                                        <TableRow key={idx}>
+                                            <TableCell className="font-medium text-xs">{login.username}</TableCell>
+                                            <TableCell className="text-right text-[10px] text-muted-foreground">
+                                                {format(parseISO(login.timestamp), 'MMM d, yyyy h:mm a')}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {stats.loginEvents.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={2} className="text-center text-muted-foreground py-4">
+                                                No login events recorded.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
+
                 <StatCard title="Feature Interactions" value={stats.totalClicks} icon={<MousePointer2 />} description="Total menu clicks recorded" />
                 <StatCard title="Unique Active Users" value={stats.uniqueUsers} icon={<Activity />} description="Across all recorded events" />
             </div>
