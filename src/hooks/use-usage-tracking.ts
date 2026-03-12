@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
@@ -22,6 +23,7 @@ export function useUsageTracking(username?: string) {
     const firestore = useFirestore();
     const auth = useAuth();
     const lastActivityRef = useRef<number>(Date.now());
+    const hasLoggedLoginRef = useRef<boolean>(false);
 
     const logEvent = useCallback((eventType: UsageEvent['eventType'], menuId?: string) => {
         if (!user || !firestore) return;
@@ -57,18 +59,13 @@ export function useUsageTracking(username?: string) {
         };
     }, []);
 
-    // Track Login
+    // Track Login - Reliable session start logging
     useEffect(() => {
-        if (user) {
-            // We check sessionStorage to avoid logging login multiple times in one session
-            // However, we clear it on unmount if it's a dev environment or if we want more frequent heartbeats
-            const sessionKey = `logged_login_${user.uid}`;
-            if (!sessionStorage.getItem(sessionKey)) {
-                logEvent('login');
-                sessionStorage.setItem(sessionKey, 'true');
-            }
+        if (user && firestore && !hasLoggedLoginRef.current) {
+            logEvent('login');
+            hasLoggedLoginRef.current = true;
         }
-    }, [user, logEvent]);
+    }, [user, firestore, logEvent]);
 
     // Pulse tracking for session duration
     useEffect(() => {
@@ -92,10 +89,6 @@ export function useUsageTracking(username?: string) {
         const logoutInterval = setInterval(() => {
             const now = Date.now();
             if (now - lastActivityRef.current >= AUTO_LOGOUT_THRESHOLD) {
-                // Before logging out, we clear the session storage so the next login is tracked
-                const sessionKey = `logged_login_${user.uid}`;
-                sessionStorage.removeItem(sessionKey);
-                
                 logEvent('logout');
                 signOut(auth).catch(err => console.error("Auto-logout error:", err));
             }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -252,7 +253,7 @@ export function UsageDetailsPage() {
                                 <TableBody>
                                     {stats.authEvents.map((event, idx) => (
                                         <TableRow key={idx}>
-                                            <TableCell className="font-medium text-xs">{event.username}</TableCell>
+                                            <TableCell className="font-medium text-xs">{event.username || 'Anonymous'}</TableCell>
                                             <TableCell className="text-xs">
                                                 <Badge 
                                                     variant={event.eventType === 'login' ? 'default' : 'secondary'} 
@@ -365,12 +366,12 @@ export function UsageDetailsPage() {
                             <TableBody>
                                 {stats.recentEvents.map((event, i) => (
                                     <TableRow key={i}>
-                                        <TableCell className="font-medium text-xs">{event.username}</TableCell>
+                                        <TableCell className="font-medium text-xs">{event.username || 'Anonymous'}</TableCell>
                                         <TableCell className="text-xs">
                                             {event.eventType === 'menu_click' ? `Clicked: ${event.menuId}` : event.eventType}
                                         </TableCell>
                                         <TableCell className="text-right text-[10px] text-muted-foreground">
-                                            {format(parseISO(event.timestamp), 'MMM d, h:mm a')}
+                                            {format(parseISO(event.timestamp), 'MMM d, yyyy h:mm a')}
                                         </TableCell>
                                     </TableRow>
                                 ))}
