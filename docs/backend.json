@@ -16,32 +16,37 @@
           "description": "A concise title or summary of the defect."
         },
         "description": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "A detailed explanation of the defect, including steps to reproduce and expected vs. actual results."
         },
         "domain": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "The functional or technical domain/module to which the defect belongs."
         },
         "status": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "The current lifecycle status of the defect (e.g., To-Do, In Progress, Ready for Testing, Closed, Reopened)."
         },
         "severity": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "The impact level of the defect on the system or user (e.g., Critical, Major, Minor, Trivial)."
         },
         "priority": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "The urgency with which the defect needs to be addressed and resolved (e.g., High, Medium, Low)."
         },
-        "creationDate": {
+        "created_at": {
           "type": "string",
           "description": "The timestamp indicating when the defect was initially created.",
           "format": "date-time"
         },
-        "reportedBy": {
-          "type": "string",
+        "updated": {
+          "type": ["string", "null"],
+          "description": "The timestamp indicating when the defect was last updated.",
+          "format": "date-time"
+        },
+        "reported_by": {
+          "type": ["string", "null"],
           "description": "The name or identifier of the user who reported this defect."
         }
       },
@@ -57,9 +62,9 @@
       "description": "Logs of user interactions and system events for auditing and analytics.",
       "properties": {
         "userId": { "type": "string" },
-        "username": { "type": "string" },
+        "username": { "type": ["string", "null"] },
         "eventType": { "enum": ["login", "logout", "menu_click", "session_pulse"] },
-        "menuId": { "type": "string" },
+        "menuId": { "type": ["string", "null"] },
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "eventType", "timestamp"]
@@ -73,7 +78,9 @@
         "mongodbUri": { "type": "string" },
         "mongodbDbName": { "type": "string" },
         "geminiModel": { "type": "string" },
-        "jiraLink": { "type": "string" }
+        "geminiRetryModel": { "type": "string" },
+        "jiraLink": { "type": "string" },
+        "reusabilityLabels": { "type": "string" }
       }
     },
     "SavedPrediction": {
@@ -85,6 +92,16 @@
         "prediction": { "type": "object" },
         "savedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "user": {
+      "title": "user",
+      "type": "object",
+      "description": "User profile data.",
+      "properties": {
+        "username": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "enum": ["admin", "taas", "view", "newuser"] }
+      }
     }
   },
   "auth": {
@@ -94,57 +111,35 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "user",
-          "schema": {
-            "$ref": "#/backend/entities/user"
-          },
-          "description": "Collection for user profiles."
-        }
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/user"
       },
-      {
-        "path": "/users/{userId}/defects/{defectId}",
-        "definition": {
-          "entityName": "Defect",
-          "schema": {
-            "$ref": "#/backend/entities/Defect"
-          },
-          "description": "Subcollection containing Defect documents uploaded by a specific user."
-        }
+      "description": "Collection for user profiles."
+    },
+    "/users/{userId}/defects/{defectId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Defect"
       },
-      {
-        "path": "/usageEvents/{eventId}",
-        "definition": {
-          "entityName": "UsageEvent",
-          "schema": {
-            "$ref": "#/backend/entities/UsageEvent"
-          },
-          "description": "A flat collection of usage logs for administrative oversight."
-        }
+      "description": "Subcollection containing Defect documents uploaded by a specific user."
+    },
+    "/usageEvents/{eventId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UsageEvent"
       },
-      {
-        "path": "/appConfiguration/global",
-        "definition": {
-          "entityName": "AppConfiguration",
-          "schema": {
-            "$ref": "#/backend/entities/AppConfiguration"
-          },
-          "description": "Singleton document for global app settings."
-        }
+      "description": "A flat collection of usage logs for administrative oversight."
+    },
+    "/appConfiguration/global": {
+      "schema": {
+        "$ref": "#/backend/entities/AppConfiguration"
       },
-      {
-        "path": "/sharedFeedback/{feedbackId}",
-        "definition": {
-          "entityName": "SavedPrediction",
-          "schema": {
-            "$ref": "#/backend/entities/SavedPrediction"
-          },
-          "description": "Collection of expert feedback examples for AI few-shot learning."
-        }
-      }
-    ]
+      "description": "Singleton document for global app settings."
+    },
+    "/sharedFeedback/{feedbackId}": {
+      "schema": {
+        "$ref": "#/backend/entities/SavedPrediction"
+      },
+      "description": "Collection of expert feedback examples for AI few-shot learning."
+    }
   }
 }

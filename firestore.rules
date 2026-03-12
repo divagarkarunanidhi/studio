@@ -14,6 +14,7 @@ service cloud.firestore {
     }
 
     function getUserData() {
+      // Safely fetch user data. Note: rules check for existance implicitly if data is accessed.
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
@@ -49,7 +50,9 @@ service cloud.firestore {
     }
 
     match /usageEvents/{eventId} {
-      allow create: if isSignedIn();
+      // Allow any signed-in user to create an activity log entry
+      allow create: if request.auth.uid != null;
+      // Restrict viewing usage logs to administrators
       allow read, list: if hasRole('admin');
     }
   }
