@@ -21,6 +21,7 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
@@ -40,6 +41,7 @@ export function UsageDetailsPage() {
         const menuClicks = events.filter(e => e.eventType === 'menu_click');
         const logins = events.filter(e => e.eventType === 'login');
         const pulses = events.filter(e => e.eventType === 'session_pulse');
+        const authEvents = events.filter(e => e.eventType === 'login' || e.eventType === 'logout');
         
         // Count unique users
         const uniqueUsers = new Set(events.map(e => e.userId)).size;
@@ -62,7 +64,7 @@ export function UsageDetailsPage() {
         return {
             totalClicks: menuClicks.length,
             totalLogins: logins.length,
-            loginEvents: logins,
+            authEvents,
             uniqueUsers,
             totalHours,
             menuData,
@@ -95,15 +97,15 @@ export function UsageDetailsPage() {
                                 title="User Logins" 
                                 value={<span className="text-primary hover:underline">{stats.totalLogins}</span>} 
                                 icon={<Users />} 
-                                description="Total login events (click to view)" 
+                                description="Total login events (click to view details)" 
                             />
                         </div>
                     </DialogTrigger>
                     <DialogContent className="max-w-md">
                         <DialogHeader>
-                            <DialogTitle>User Login History</DialogTitle>
+                            <DialogTitle>User Access History</DialogTitle>
                             <DialogDescription>
-                                A detailed list of recent user login events tracked by the system.
+                                A chronological list of recent login and logout events.
                             </DialogDescription>
                         </DialogHeader>
                         <ScrollArea className="h-[400px] pr-4">
@@ -111,22 +113,31 @@ export function UsageDetailsPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>User</TableHead>
-                                        <TableHead className="text-right">Login Time</TableHead>
+                                        <TableHead>Action</TableHead>
+                                        <TableHead className="text-right">Time</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {stats.loginEvents.map((login, idx) => (
+                                    {stats.authEvents.map((event, idx) => (
                                         <TableRow key={idx}>
-                                            <TableCell className="font-medium text-xs">{login.username}</TableCell>
+                                            <TableCell className="font-medium text-xs">{event.username}</TableCell>
+                                            <TableCell className="text-xs">
+                                                <Badge 
+                                                    variant={event.eventType === 'login' ? 'default' : 'secondary'} 
+                                                    className="text-[8px] uppercase px-1 py-0 h-4"
+                                                >
+                                                    {event.eventType}
+                                                </Badge>
+                                            </TableCell>
                                             <TableCell className="text-right text-[10px] text-muted-foreground">
-                                                {format(parseISO(login.timestamp), 'MMM d, yyyy h:mm a')}
+                                                {format(parseISO(event.timestamp), 'MMM d, yyyy h:mm a')}
                                             </TableCell>
                                         </TableRow>
                                     ))}
-                                    {stats.loginEvents.length === 0 && (
+                                    {stats.authEvents.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="text-center text-muted-foreground py-4">
-                                                No login events recorded.
+                                            <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
+                                                No access events recorded.
                                             </TableCell>
                                         </TableRow>
                                     )}
