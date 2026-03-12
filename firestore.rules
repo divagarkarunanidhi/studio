@@ -51,7 +51,7 @@ service cloud.firestore {
 
     match /usageEvents/{eventId} {
       // Allow any signed-in user to create an activity log entry
-      allow create: if request.auth.uid != null;
+      allow create: if isSignedIn();
       // Restrict viewing usage logs to administrators
       allow read, list: if hasRole('admin');
     }

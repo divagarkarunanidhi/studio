@@ -80,7 +80,8 @@
         "geminiModel": { "type": "string" },
         "geminiRetryModel": { "type": "string" },
         "jiraLink": { "type": "string" },
-        "reusabilityLabels": { "type": "string" }
+        "reusabilityLabels": { "type": "string" },
+        "seleniumDomainDateRanges": { "type": "object" }
       }
     },
     "SavedPrediction": {
