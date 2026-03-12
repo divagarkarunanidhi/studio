@@ -52,9 +52,10 @@ export function UsageDetailsPage() {
         // Group unique users with their details
         const userMap = new Map<string, { username: string, lastSeen: string }>();
         events.forEach(e => {
-            const existing = userMap.get(e.userId);
+            const userId = e.userId;
+            const existing = userMap.get(userId);
             if (!existing || e.timestamp > existing.lastSeen) {
-                userMap.set(e.userId, { 
+                userMap.set(userId, { 
                     username: e.username || 'Anonymous', 
                     lastSeen: e.timestamp 
                 });
@@ -79,7 +80,7 @@ export function UsageDetailsPage() {
                     sessionList.push({ 
                         ...activeSessions[e.userId], 
                         logout: 'Incomplete',
-                        duration: activeSessions[e.userId].pulses * 5
+                        duration: Math.max(5, activeSessions[e.userId].pulses * 5)
                     });
                 }
                 activeSessions[e.userId] = {
@@ -99,7 +100,7 @@ export function UsageDetailsPage() {
                     const session = { 
                         ...activeSessions[e.userId], 
                         logout: e.timestamp,
-                        duration: activeSessions[e.userId].pulses * 5
+                        duration: Math.max(5, activeSessions[e.userId].pulses * 5)
                     };
                     sessionList.push(session);
                     delete activeSessions[e.userId];
@@ -112,7 +113,7 @@ export function UsageDetailsPage() {
             sessionList.push({ 
                 ...s, 
                 logout: 'Active', 
-                duration: s.pulses * 5 
+                duration: Math.max(5, s.pulses * 5) 
             });
         });
 
@@ -233,10 +234,10 @@ export function UsageDetailsPage() {
                     <DialogTrigger asChild>
                         <div className="cursor-pointer transition-transform hover:scale-[1.02]">
                             <StatCard 
-                                title="User Logins" 
-                                value={<span className="text-primary hover:underline">{stats.totalLogins}</span>} 
+                                title="User Access Summary" 
+                                value={<span className="text-primary hover:underline">{stats.totalLogins} Logins</span>} 
                                 icon={<Users />} 
-                                description="Total login events (click to view details)" 
+                                description="Total login events (click to view log)" 
                             />
                         </div>
                     </DialogTrigger>
@@ -257,7 +258,7 @@ export function UsageDetailsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {stats.authEvents.map((event, idx) => (
+                                    {[...stats.authEvents].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map((event, idx) => (
                                         <TableRow key={idx}>
                                             <TableCell className="font-medium text-xs">{event.username || 'Anonymous'}</TableCell>
                                             <TableCell className="text-xs">

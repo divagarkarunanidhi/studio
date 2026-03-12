@@ -2,59 +2,22 @@
 {
   "entities": {
     "Defect": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Defect",
       "type": "object",
-      "description": "Represents a single software defect reported in the system, detailing its characteristics, status, and assignment.",
+      "description": "Represents a single software defect reported in the system.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Defect entity."
-        },
-        "summary": {
-          "type": "string",
-          "description": "A concise title or summary of the defect."
-        },
-        "description": {
-          "type": ["string", "null"],
-          "description": "A detailed explanation of the defect, including steps to reproduce and expected vs. actual results."
-        },
-        "domain": {
-          "type": ["string", "null"],
-          "description": "The functional or technical domain/module to which the defect belongs."
-        },
-        "status": {
-          "type": ["string", "null"],
-          "description": "The current lifecycle status of the defect (e.g., To-Do, In Progress, Ready for Testing, Closed, Reopened)."
-        },
-        "severity": {
-          "type": ["string", "null"],
-          "description": "The impact level of the defect on the system or user (e.g., Critical, Major, Minor, Trivial)."
-        },
-        "priority": {
-          "type": ["string", "null"],
-          "description": "The urgency with which the defect needs to be addressed and resolved (e.g., High, Medium, Low)."
-        },
-        "created_at": {
-          "type": "string",
-          "description": "The timestamp indicating when the defect was initially created.",
-          "format": "date-time"
-        },
-        "updated": {
-          "type": ["string", "null"],
-          "description": "The timestamp indicating when the defect was last updated.",
-          "format": "date-time"
-        },
-        "reported_by": {
-          "type": ["string", "null"],
-          "description": "The name or identifier of the user who reported this defect."
-        }
+        "id": { "type": "string" },
+        "summary": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "domain": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] },
+        "severity": { "type": ["string", "null"] },
+        "priority": { "type": ["string", "null"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated": { "type": ["string", "null"], "format": "date-time" },
+        "reported_by": { "type": ["string", "null"] }
       },
-      "required": [
-        "id",
-        "summary",
-        "created_at"
-      ]
+      "required": ["id", "summary", "created_at"]
     },
     "UsageEvent": {
       "title": "UsageEvent",
@@ -72,7 +35,7 @@
     "AppConfiguration": {
       "title": "AppConfiguration",
       "type": "object",
-      "description": "Global application settings including API keys and external links.",
+      "description": "Global application settings.",
       "properties": {
         "geminiApiKey": { "type": "string" },
         "mongodbUri": { "type": "string" },
@@ -80,14 +43,14 @@
         "geminiModel": { "type": "string" },
         "geminiRetryModel": { "type": "string" },
         "jiraLink": { "type": "string" },
-        "reusabilityLabels": { "type": "string" },
+        "reusabilityLabels": { "type": ["string", "null"] },
         "seleniumDomainDateRanges": { "type": "object" }
       }
     },
     "SavedPrediction": {
       "title": "SavedPrediction",
       "type": "object",
-      "description": "An expert-validated defect prediction example used for AI training.",
+      "description": "Expert validated feedback for AI training.",
       "properties": {
         "defect": { "$ref": "#/backend/entities/Defect" },
         "prediction": { "type": "object" },
@@ -106,41 +69,28 @@
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
     "/users/{userId}": {
-      "schema": {
-        "$ref": "#/backend/entities/user"
-      },
-      "description": "Collection for user profiles."
+      "schema": { "$ref": "#/backend/entities/user" },
+      "description": "User profiles."
     },
     "/users/{userId}/defects/{defectId}": {
-      "schema": {
-        "$ref": "#/backend/entities/Defect"
-      },
-      "description": "Subcollection containing Defect documents uploaded by a specific user."
+      "schema": { "$ref": "#/backend/entities/Defect" },
+      "description": "User-specific defect uploads."
     },
     "/usageEvents/{eventId}": {
-      "schema": {
-        "$ref": "#/backend/entities/UsageEvent"
-      },
-      "description": "A flat collection of usage logs for administrative oversight."
+      "schema": { "$ref": "#/backend/entities/UsageEvent" },
+      "description": "Application usage logs."
     },
     "/appConfiguration/global": {
-      "schema": {
-        "$ref": "#/backend/entities/AppConfiguration"
-      },
-      "description": "Singleton document for global app settings."
+      "schema": { "$ref": "#/backend/entities/AppConfiguration" },
+      "description": "Global settings singleton."
     },
     "/sharedFeedback/{feedbackId}": {
-      "schema": {
-        "$ref": "#/backend/entities/SavedPrediction"
-      },
-      "description": "Collection of expert feedback examples for AI few-shot learning."
+      "schema": { "$ref": "#/backend/entities/SavedPrediction" },
+      "description": "Expert feedback examples."
     }
   }
 }
