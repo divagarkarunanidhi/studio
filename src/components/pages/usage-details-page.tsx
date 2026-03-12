@@ -50,30 +50,53 @@ export function UsageDetailsPage() {
         const totalMinutes = pulses.length * 5;
         const totalHours = (totalMinutes / 60).toFixed(1);
 
-        // Group pulses by user for engagement breakdown
-        const userPulses = pulses.reduce((acc, pulse) => {
-            const key = pulse.userId;
-            if (!acc[key]) {
-                acc[key] = {
-                    username: pulse.username || 'Anonymous',
-                    count: 0,
-                    first: pulse.timestamp,
-                    last: pulse.timestamp
-                };
-            }
-            acc[key].count++;
-            if (pulse.timestamp < acc[key].first) acc[key].first = pulse.timestamp;
-            if (pulse.timestamp > acc[key].last) acc[key].last = pulse.timestamp;
-            return acc;
-        }, {} as Record<string, { username: string, count: number, first: string, last: string }>);
+        // Reconstruct sessions: Group login/logout events and pulses chronologically
+        const chronEvents = [...events].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+        const sessionList: any[] = [];
+        const activeSessions: Record<string, any> = {};
 
-        const userEngagement = Object.entries(userPulses).map(([id, data]) => ({
-            id,
-            username: data.username,
-            hours: (data.count * 5 / 60).toFixed(1),
-            first: data.first,
-            last: data.last
-        })).sort((a, b) => Number(b.hours) - Number(a.hours));
+        chronEvents.forEach(e => {
+            if (e.eventType === 'login') {
+                // If there's an existing session that didn't logout, close it first
+                if (activeSessions[e.userId]) {
+                    sessionList.push({ ...activeSessions[e.userId], logout: 'Incomplete' });
+                }
+                activeSessions[e.userId] = {
+                    userId: e.userId,
+                    username: e.username || 'Anonymous',
+                    login: e.timestamp,
+                    pulses: 0,
+                    lastActivity: e.timestamp
+                };
+            } else if (e.eventType === 'session_pulse') {
+                if (activeSessions[e.userId]) {
+                    activeSessions[e.userId].pulses++;
+                    activeSessions[e.userId].lastActivity = e.timestamp;
+                }
+            } else if (e.eventType === 'logout') {
+                if (activeSessions[e.userId]) {
+                    const session = { 
+                        ...activeSessions[e.userId], 
+                        logout: e.timestamp,
+                        duration: (activeSessions[e.userId].pulses * 5 / 60).toFixed(1)
+                    };
+                    sessionList.push(session);
+                    delete activeSessions[e.userId];
+                }
+            }
+        });
+
+        // Add any remaining active sessions
+        Object.values(activeSessions).forEach(s => {
+            sessionList.push({ 
+                ...s, 
+                logout: 'Active', 
+                duration: (s.pulses * 5 / 60).toFixed(1) 
+            });
+        });
+
+        // Sort sessions by most recent login
+        const sortedSessions = sessionList.sort((a, b) => b.login.localeCompare(a.login));
 
         // Group menu clicks
         const menuUsage = menuClicks.reduce((acc, e) => {
@@ -92,7 +115,7 @@ export function UsageDetailsPage() {
             authEvents,
             uniqueUsers,
             totalHours,
-            userEngagement,
+            sessionHistory: sortedSessions,
             menuData,
             recentEvents: events.slice(0, 10)
         };
@@ -125,40 +148,52 @@ export function UsageDetailsPage() {
                             />
                         </div>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-4xl">
                         <DialogHeader>
-                            <DialogTitle>User Engagement Breakdown</DialogTitle>
+                            <DialogTitle>Session History Breakdown</DialogTitle>
                             <DialogDescription>
-                                Estimated active hours per user based on activity pulses.
+                                Individual user sessions reconstructed from login, logout, and activity pulses.
                             </DialogDescription>
                         </DialogHeader>
-                        <ScrollArea className="h-[400px] pr-4">
+                        <ScrollArea className="h-[500px] pr-4">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>User</TableHead>
-                                        <TableHead className="text-right">Hours</TableHead>
-                                        <TableHead className="text-right">First Active</TableHead>
-                                        <TableHead className="text-right">Last Active</TableHead>
+                                        <TableHead>Login Time</TableHead>
+                                        <TableHead>Logout / Last Pulse</TableHead>
+                                        <TableHead className="text-right">Active Duration</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {stats.userEngagement.map((user, idx) => (
+                                    {stats.sessionHistory.map((session, idx) => (
                                         <TableRow key={idx}>
-                                            <TableCell className="font-medium text-xs">{user.username}</TableCell>
-                                            <TableCell className="text-right text-xs font-bold">{user.hours}h</TableCell>
-                                            <TableCell className="text-right text-[10px] text-muted-foreground">
-                                                {format(parseISO(user.first), 'MMM d, h:mm a')}
+                                            <TableCell className="font-medium text-xs">
+                                                {session.username}
                                             </TableCell>
-                                            <TableCell className="text-right text-[10px] text-muted-foreground">
-                                                {format(parseISO(user.last), 'MMM d, h:mm a')}
+                                            <TableCell className="text-[10px] text-muted-foreground">
+                                                {format(parseISO(session.login), 'MMM d, h:mm a')}
+                                            </TableCell>
+                                            <TableCell className="text-[10px]">
+                                                {session.logout === 'Active' ? (
+                                                    <Badge variant="outline" className="text-[8px] text-green-600 bg-green-50">Active</Badge>
+                                                ) : session.logout === 'Incomplete' ? (
+                                                    <span className="text-muted-foreground italic">Timed out</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">
+                                                        {format(parseISO(session.logout), 'MMM d, h:mm a')}
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right text-xs font-bold text-primary">
+                                                {session.duration}h
                                             </TableCell>
                                         </TableRow>
                                     ))}
-                                    {stats.userEngagement.length === 0 && (
+                                    {stats.sessionHistory.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                                                No engagement data recorded.
+                                                No session data recorded yet.
                                             </TableCell>
                                         </TableRow>
                                     )}
