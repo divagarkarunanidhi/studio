@@ -2,12 +2,12 @@
 
 import { useMemo } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, limit, query } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatCard } from '../dashboard/stat-card';
-import { Activity, MousePointer2, Users, Clock, History } from 'lucide-react';
+import { Activity, MousePointer2, Users, Clock, History, AlertCircle } from 'lucide-react';
 import type { UsageEvent } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell, Tooltip } from "recharts";
@@ -22,21 +22,26 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
 export function UsageDetailsPage() {
     const firestore = useFirestore();
     
+    // Fetch raw collection to avoid complex indexing requirements for 'orderBy' in MVP
     const usageColRef = useMemoFirebase(
-        () => query(collection(firestore, 'usageEvents'), orderBy('timestamp', 'desc'), limit(1000)),
+        () => query(collection(firestore, 'usageEvents'), limit(1000)),
         [firestore]
     );
     
-    const { data: events, isLoading } = useCollection<UsageEvent>(usageColRef);
+    const { data: rawEvents, isLoading } = useCollection<UsageEvent>(usageColRef);
 
     const stats = useMemo(() => {
-        if (!events) return null;
+        if (!rawEvents || rawEvents.length === 0) return null;
+
+        // Sort events by timestamp descending client-side
+        const events = [...rawEvents].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
         const menuClicks = events.filter(e => e.eventType === 'menu_click');
         const logins = events.filter(e => e.eventType === 'login');
@@ -68,7 +73,6 @@ export function UsageDetailsPage() {
 
         chronEvents.forEach(e => {
             if (e.eventType === 'login') {
-                // If there's an existing session that didn't logout, close it first
                 if (activeSessions[e.userId]) {
                     sessionList.push({ ...activeSessions[e.userId], logout: 'Incomplete' });
                 }
@@ -97,7 +101,6 @@ export function UsageDetailsPage() {
             }
         });
 
-        // Add any remaining active sessions
         Object.values(activeSessions).forEach(s => {
             sessionList.push({ 
                 ...s, 
@@ -106,10 +109,8 @@ export function UsageDetailsPage() {
             });
         });
 
-        // Sort sessions by most recent login
         const sortedSessions = sessionList.sort((a, b) => b.login.localeCompare(a.login));
 
-        // Group menu clicks
         const menuUsage = menuClicks.reduce((acc, e) => {
             const id = e.menuId || 'Unknown';
             acc[id] = (acc[id] || 0) + 1;
@@ -131,7 +132,7 @@ export function UsageDetailsPage() {
             menuData,
             recentEvents: events.slice(0, 10)
         };
-    }, [events]);
+    }, [rawEvents]);
 
     if (isLoading) {
         return (
@@ -144,7 +145,20 @@ export function UsageDetailsPage() {
         );
     }
 
-    if (!stats) return null;
+    if (!stats) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 text-center space-y-4">
+                <Alert className="max-w-md">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>No Usage Data Recorded</AlertTitle>
+                    <AlertDescription>
+                        Usage metrics are collected as you and other users interact with the application. 
+                        Please interact with some menu options or wait a few minutes for the first session pulse to be recorded.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -202,13 +216,6 @@ export function UsageDetailsPage() {
                                             </TableCell>
                                         </TableRow>
                                     ))}
-                                    {stats.sessionHistory.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                                                No session data recorded yet.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
                                 </TableBody>
                             </Table>
                         </ScrollArea>
@@ -259,13 +266,6 @@ export function UsageDetailsPage() {
                                             </TableCell>
                                         </TableRow>
                                     ))}
-                                    {stats.authEvents.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
-                                                No access events recorded.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
                                 </TableBody>
                             </Table>
                         </ScrollArea>
@@ -309,13 +309,6 @@ export function UsageDetailsPage() {
                                             </TableCell>
                                         </TableRow>
                                     ))}
-                                    {stats.activeUsersList.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={2} className="text-center text-muted-foreground py-4">
-                                                No active users found in history.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
                                 </TableBody>
                             </Table>
                         </ScrollArea>

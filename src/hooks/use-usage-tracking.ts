@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
@@ -27,7 +26,6 @@ export function useUsageTracking(username?: string) {
     const logEvent = useCallback((eventType: UsageEvent['eventType'], menuId?: string) => {
         if (!user || !firestore) return;
 
-        // Explicitly set undefined fields to null, as Firestore does not support 'undefined'.
         const event = {
             userId: user.uid,
             username: username || user.email || 'Anonymous',
@@ -62,7 +60,8 @@ export function useUsageTracking(username?: string) {
     // Track Login
     useEffect(() => {
         if (user) {
-            // Check if we already logged a login for this specific component mount
+            // We check sessionStorage to avoid logging login multiple times in one session
+            // However, we clear it on unmount if it's a dev environment or if we want more frequent heartbeats
             const sessionKey = `logged_login_${user.uid}`;
             if (!sessionStorage.getItem(sessionKey)) {
                 logEvent('login');
@@ -77,6 +76,7 @@ export function useUsageTracking(username?: string) {
 
         const interval = setInterval(() => {
             const now = Date.now();
+            // Only send a pulse if the user has been active within the threshold
             if (now - lastActivityRef.current < IDLE_THRESHOLD) {
                 logEvent('session_pulse');
             }
@@ -92,6 +92,10 @@ export function useUsageTracking(username?: string) {
         const logoutInterval = setInterval(() => {
             const now = Date.now();
             if (now - lastActivityRef.current >= AUTO_LOGOUT_THRESHOLD) {
+                // Before logging out, we clear the session storage so the next login is tracked
+                const sessionKey = `logged_login_${user.uid}`;
+                sessionStorage.removeItem(sessionKey);
+                
                 logEvent('logout');
                 signOut(auth).catch(err => console.error("Auto-logout error:", err));
             }
