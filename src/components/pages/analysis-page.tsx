@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb, AlertTriangle, ListChecks, Target, ChevronDown } from 'lucide-react';
+import { Lightbulb, AlertTriangle, ListChecks, Target, ChevronDown, CalendarIcon } from 'lucide-react';
 import type { Defect, DefectAnalysisOutput } from '@/lib/types';
 import { analyzeDefects } from '@/ai/flows/defect-analysis-flow';
 import { Button } from '../ui/button';
@@ -22,6 +23,9 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from '@/lib/utils';
+import { DateRangePicker } from '../ui/date-range-picker';
+import type { DateRange } from 'react-day-picker';
+import { isWithinInterval, parseISO } from 'date-fns';
 
 interface AnalysisPageProps {
   defects: Defect[];
@@ -76,6 +80,7 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const { user } = useUser();
 
   // State for top-level collapsible sections
@@ -91,13 +96,29 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
   };
 
   const filteredDefects = useMemo(() => {
-    if (!selectedDomain) return [];
-    return defects.filter((d) => d.domain === selectedDomain);
-  }, [defects, selectedDomain]);
+    let result = defects;
+    
+    if (selectedDomain && selectedDomain !== 'all') {
+      result = result.filter((d) => d.domain === selectedDomain);
+    }
+    
+    if (dateRange?.from && dateRange?.to) {
+      const interval = { start: dateRange.from, end: dateRange.to };
+      result = result.filter(d => {
+        try {
+          return isWithinInterval(parseISO(d.created_at), interval);
+        } catch {
+          return false;
+        }
+      });
+    }
+    
+    return result;
+  }, [defects, selectedDomain, dateRange]);
 
   const handleRunAnalysis = useCallback(async () => {
     if (filteredDefects.length === 0) {
-        setError("No defects found for the selected domain.");
+        setError("No defects found for the selected criteria.");
         return;
     }
     if (!user) {
@@ -225,23 +246,35 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
         <CardHeader>
           <CardTitle>Static Defect Analysis</CardTitle>
           <CardDescription>
-            AI-powered insights into your defect data. Select a domain to begin the analysis.
+            AI-powered insights into your defect data. Select a domain or filter by date range to begin.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex items-center gap-4">
-            <Select value={selectedDomain} onValueChange={setSelectedDomain}>
-                <SelectTrigger className="w-[240px]">
-                    <SelectValue placeholder="Select a Domain" />
-                </SelectTrigger>
-                <SelectContent>
-                    {uniqueDomains.map(domain => (
-                    <SelectItem key={domain} value={domain}>{domain}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Button onClick={handleRunAnalysis} disabled={isLoading || !selectedDomain}>
-                {isLoading ? 'Analyzing...' : 'Run Analysis'}
-            </Button>
+        <CardContent className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium text-muted-foreground">Domain</label>
+                <Select value={selectedDomain} onValueChange={setSelectedDomain}>
+                    <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Select Domain" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Domains</SelectItem>
+                        {uniqueDomains.map(domain => (
+                        <SelectItem key={domain} value={domain}>{domain}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium text-muted-foreground">Date Range (Optional)</label>
+                <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+            </div>
+
+            <div className="flex flex-col justify-end pt-6">
+                <Button onClick={handleRunAnalysis} disabled={isLoading || (!selectedDomain && !dateRange)}>
+                    {isLoading ? 'Analyzing...' : 'Run Analysis'}
+                </Button>
+            </div>
         </CardContent>
       </Card>
       
@@ -253,22 +286,22 @@ export function AnalysisPage({ defects, uniqueDomains }: AnalysisPageProps) {
         </Alert>
       )}
 
-      {(!analysis && !isLoading && !error && !selectedDomain) && (
+      {(!analysis && !isLoading && !error && !selectedDomain && !dateRange) && (
         <Alert className='w-full'>
           <Lightbulb className="h-4 w-4" />
           <AlertTitle>Ready for Analysis</AlertTitle>
           <AlertDescription>
-            Please select a domain from the dropdown above to start the analysis.
+            Please select a domain (or "All Domains") and an optional date range from the filters above to start the analysis.
           </AlertDescription>
         </Alert>
       )}
 
-      {(selectedDomain && !isLoading && !analysis && !error) && (
+      {( (selectedDomain || dateRange) && !isLoading && !analysis && !error) && (
         <Alert className='w-full'>
           <Lightbulb className="h-4 w-4" />
-          <AlertTitle>Domain Selected</AlertTitle>
+          <AlertTitle>Criteria Selected</AlertTitle>
           <AlertDescription>
-            Click the "Run Analysis" button to generate insights for the '{selectedDomain}' domain.
+            Click the "Run Analysis" button to generate insights for {selectedDomain === 'all' ? 'all domains' : (selectedDomain ? `'${selectedDomain}'` : 'selected filters')} {dateRange?.from ? `within the selected date range` : ''}.
           </AlertDescription>
         </Alert>
       )}
