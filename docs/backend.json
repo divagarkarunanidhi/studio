@@ -32,6 +32,32 @@
       },
       "required": ["userId", "eventType", "timestamp"]
     },
+    "AgentTask": {
+      "title": "AgentTask",
+      "type": "object",
+      "description": "Represents a single automated agent pipeline execution.",
+      "properties": {
+        "id": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": ["string", "null"], "format": "date-time" },
+        "status": { "enum": ["in-progress", "completed", "failed"] },
+        "resultsSummary": { "type": ["string", "null"] }
+      }
+    },
+    "AgentActivity": {
+      "title": "AgentActivity",
+      "type": "object",
+      "description": "Individual logs for each agent within a task.",
+      "properties": {
+        "taskId": { "type": "string" },
+        "agentId": { "type": "number" },
+        "agentName": { "type": "string" },
+        "status": { "enum": ["pending", "running", "success", "error"] },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "data": { "type": ["object", "null"] }
+      }
+    },
     "AppConfiguration": {
       "title": "AppConfiguration",
       "type": "object",
@@ -83,6 +109,14 @@
     "/usageEvents/{eventId}": {
       "schema": { "$ref": "#/backend/entities/UsageEvent" },
       "description": "Application usage logs."
+    },
+    "/agentTasks/{taskId}": {
+      "schema": { "$ref": "#/backend/entities/AgentTask" },
+      "description": "History of agent pipeline runs."
+    },
+    "/agentTasks/{taskId}/activities/{activityId}": {
+      "schema": { "$ref": "#/backend/entities/AgentActivity" },
+      "description": "Detailed logs for each step in a task."
     },
     "/appConfiguration/global": {
       "schema": { "$ref": "#/backend/entities/AppConfiguration" },

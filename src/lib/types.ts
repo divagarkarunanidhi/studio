@@ -39,6 +39,27 @@ export const UsageEventSchema = z.object({
 });
 export type UsageEvent = z.infer<typeof UsageEventSchema>;
 
+// Agent Schemas
+export const AgentTaskSchema = z.object({
+    id: z.string(),
+    startTime: z.string(),
+    endTime: z.string().optional().nullable(),
+    status: z.enum(['in-progress', 'completed', 'failed']),
+    resultsSummary: z.string().optional().nullable(),
+});
+export type AgentTask = z.infer<typeof AgentTaskSchema>;
+
+export const AgentActivitySchema = z.object({
+    taskId: z.string(),
+    agentId: z.number(),
+    agentName: z.string(),
+    status: z.enum(['pending', 'running', 'success', 'error']),
+    message: z.string(),
+    timestamp: z.string(),
+    data: z.any().optional().nullable(),
+});
+export type AgentActivity = z.infer<typeof AgentActivitySchema>;
+
 // AI Flow Schemas
 export const DefectAnalysisInputSchema = z.object({
     defects: z.array(DefectSchema),

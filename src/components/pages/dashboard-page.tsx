@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -35,6 +36,7 @@ import {
   MonitorPlay,
   FilterX,
   BarChart3,
+  Bot,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -79,9 +81,10 @@ import { TestCaseSummaryPage } from './test-case-summary-page';
 import { SeleniumDashboardPage } from './selenium-dashboard-page';
 import { useUsageTracking } from '@/hooks/use-usage-tracking';
 import { UsageDetailsPage } from './usage-details-page';
+import { AIAgentsPage } from './ai-agents-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard' | 'usage-details';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard' | 'usage-details' | 'ai-agents';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -454,6 +457,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'test-case-summary': 'Test Case Summary',
     'selenium-dashboard': 'Selenium Dashboard',
     'usage-details': 'Application Usage Details',
+    'ai-agents': 'AI Agents Dashboard',
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -471,6 +475,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'test-case-summary': 'Upload and visualize test case data by label.',
     'selenium-dashboard': 'Visualize results from Selenium test runs.',
     'usage-details': 'Monitor application engagement and feature popularity.',
+    'ai-agents': 'Unattended AI agents for automated failure analysis and self-healing.',
   };
 
   const uniqueDomains = useMemo(() => {
@@ -727,6 +732,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
+              <SidebarMenuButton tooltip="AI Agents" isActive={activeView === 'ai-agents'} onClick={() => handleViewChange('ai-agents')}>
+                <Bot />
+                AI Agents
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton tooltip="Trend Analysis" isActive={activeView === 'trend-analysis'} onClick={() => handleViewChange('trend-analysis')}>
                 <LineChart />
                 Trend Analysis
@@ -924,6 +935,10 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
                   </CardContent>
                 </Card>
               </>
+            )}
+
+            {activeView === 'ai-agents' && (
+                <AIAgentsPage />
             )}
 
             {activeView === 'trend-analysis' && (
