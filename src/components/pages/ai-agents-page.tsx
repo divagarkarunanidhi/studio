@@ -23,7 +23,8 @@ import {
     Settings,
     ShieldCheck,
     Save,
-    FlaskConical
+    FlaskConical,
+    PlayCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -185,7 +186,10 @@ export function AIAgentsPage() {
         setAgents(prev => prev.map((a, i) => i === index ? { ...a, status: 'success', lastRun: new Date().toISOString() } : a));
         addLog(agent.id, `Completed successfully. Found ${Math.floor(Math.random() * 10)} relevant items.`);
         
-        setProgress(((index + 1) / AGENTS_CONFIG.length) * 100);
+        // Only update global progress if we are in a pipeline run
+        if (isPipelineRunning) {
+            setProgress(((index + 1) / AGENTS_CONFIG.length) * 100);
+        }
     };
 
     const startPipeline = async () => {
@@ -208,6 +212,8 @@ export function AIAgentsPage() {
             description: "All 8 AI Agents have finished their unattended tasks."
         });
     };
+
+    const isAnyAgentRunning = agents.some(a => a.status === 'running');
 
     // Auto-polling simulation
     useEffect(() => {
@@ -244,7 +250,7 @@ export function AIAgentsPage() {
                             {autoMode ? "ACTIVE" : "OFF"}
                         </Button>
                     </div>
-                    <Button onClick={startPipeline} disabled={isPipelineRunning}>
+                    <Button onClick={startPipeline} disabled={isPipelineRunning || isAnyAgentRunning}>
                         {isPipelineRunning ? (
                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Running Pipeline...</>
                         ) : (
@@ -286,7 +292,21 @@ export function AIAgentsPage() {
                                             {idx === 5 && <RefreshCcw className="h-4 w-4 text-primary" />}
                                             {idx >= 6 && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-1.5">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-6 w-6 text-primary hover:bg-primary/10"
+                                                onClick={() => runAgent(idx)}
+                                                disabled={isPipelineRunning || agent.status === 'running'}
+                                                title={`Run ${agent.name} individually`}
+                                            >
+                                                {agent.status === 'running' ? (
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                ) : (
+                                                    <PlayCircle className="h-3.5 w-3.5" />
+                                                )}
+                                            </Button>
                                             {idx === 0 && (
                                                 <Dialog>
                                                     <DialogTrigger asChild>
@@ -350,7 +370,7 @@ export function AIAgentsPage() {
                                                 agent.status === 'idle' ? 'outline' :
                                                 agent.status === 'running' ? 'default' :
                                                 agent.status === 'success' ? 'secondary' : 'destructive'
-                                            } className="text-[10px] uppercase">
+                                            } className="text-[10px] uppercase px-1.5">
                                                 {agent.status}
                                             </Badge>
                                         </div>
