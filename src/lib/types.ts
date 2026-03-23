@@ -25,6 +25,10 @@ export const AppConfigurationSchema = z.object({
     jiraLink: z.string().url('Must be a valid URL.').min(1, 'JIRA Link is required.'),
     reusabilityLabels: z.string().optional().nullable(),
     seleniumDomainDateRanges: z.record(z.any()).optional(),
+    // Confluence Fetcher Configuration
+    confluencePath: z.string().optional().nullable(),
+    confluenceUser: z.string().optional().nullable(),
+    confluencePassword: z.string().optional().nullable(),
 });
   
 export type AppConfiguration = z.infer<typeof AppConfigurationSchema>;

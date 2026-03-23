@@ -13,7 +13,6 @@ import {
     CheckCircle2, 
     XCircle, 
     Loader2, 
-    History, 
     Cpu, 
     Network, 
     Database, 
@@ -22,11 +21,28 @@ import {
     FileJson,
     Terminal,
     AlertCircle,
-    ChevronRight
+    Settings,
+    ShieldCheck,
+    Save
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import type { AppConfiguration } from '@/lib/types';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogDescription,
+    DialogFooter
+} from "@/components/ui/dialog";
+import { Label } from '../ui/label';
+import { Input } from '../ui/input';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface AgentStatus {
     id: number;
@@ -57,6 +73,33 @@ export function AIAgentsPage() {
     const [progress, setProgress] = useState(0);
     const [autoMode, setAutoMode] = useState(false);
     const { toast } = useToast();
+    const firestore = useFirestore();
+    
+    const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
+    const { data: configData } = useDoc<AppConfiguration>(configRef);
+
+    // Form state for quick configuration dialog
+    const [confluencePath, setConfluencePath] = useState('');
+    const [confluenceUser, setConfluenceUser] = useState('');
+    const [confluencePassword, setConfluencePassword] = useState('');
+
+    useEffect(() => {
+        if (configData) {
+            setConfluencePath(configData.confluencePath || '');
+            setConfluenceUser(configData.confluenceUser || '');
+            setConfluencePassword(configData.confluencePassword || '');
+        }
+    }, [configData]);
+
+    const handleSaveConfig = () => {
+        if (!configRef) return;
+        setDocumentNonBlocking(configRef, { 
+            confluencePath, 
+            confluenceUser, 
+            confluencePassword 
+        }, { merge: true });
+        toast({ title: "Configuration Updated", description: "Confluence fetcher settings have been saved." });
+    };
     
     const logsEndRef = useRef<HTMLDivElement>(null);
 
@@ -85,7 +128,14 @@ export function AIAgentsPage() {
         setCurrentAgentIndex(index);
         
         setAgents(prev => prev.map((a, i) => i === index ? { ...a, status: 'running' } : a));
-        addLog(agent.id, `Starting unattended task...`);
+        
+        if (agent.id === 1) {
+            const path = configData?.confluencePath || "Default Confluence Page";
+            addLog(agent.id, `Connecting to Confluence at ${path}...`);
+            addLog(agent.id, `Authenticating as ${configData?.confluenceUser || 'anonymous'}...`);
+        } else {
+            addLog(agent.id, `Starting unattended task...`);
+        }
 
         // Simulate varying processing times
         const duration = Math.random() * 2000 + 1500;
@@ -196,13 +246,62 @@ export function AIAgentsPage() {
                                             {idx === 5 && <RefreshCcw className="h-4 w-4 text-primary" />}
                                             {idx >= 6 && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                         </div>
-                                        <Badge variant={
-                                            agent.status === 'idle' ? 'outline' :
-                                            agent.status === 'running' ? 'default' :
-                                            agent.status === 'success' ? 'secondary' : 'destructive'
-                                        } className="text-[10px] uppercase">
-                                            {agent.status}
-                                        </Badge>
+                                        <div className="flex gap-2">
+                                            {idx === 0 && (
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                            <Settings className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogHeader>
+                                                            <DialogTitle>Configure Confluence Fetcher</DialogTitle>
+                                                            <DialogDescription>Input the details for Agent 1 to connect to your report repository.</DialogDescription>
+                                                        </DialogHeader>
+                                                        <div className="space-y-4 py-4">
+                                                            <div className="space-y-2">
+                                                                <Label>Confluence Path (URL)</Label>
+                                                                <Input 
+                                                                    placeholder="https://..." 
+                                                                    value={confluencePath}
+                                                                    onChange={(e) => setConfluencePath(e.target.value)}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Username</Label>
+                                                                <Input 
+                                                                    placeholder="user@dhl.com" 
+                                                                    value={confluenceUser}
+                                                                    onChange={(e) => setConfluenceUser(e.target.value)}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Password / API Token</Label>
+                                                                <Input 
+                                                                    type="password" 
+                                                                    placeholder="••••••••" 
+                                                                    value={confluencePassword}
+                                                                    onChange={(e) => setConfluencePassword(e.target.value)}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <DialogFooter>
+                                                            <Button onClick={handleSaveConfig} className="gap-2">
+                                                                <Save className="h-4 w-4" /> Save Details
+                                                            </Button>
+                                                        </DialogFooter>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            )}
+                                            <Badge variant={
+                                                agent.status === 'idle' ? 'outline' :
+                                                agent.status === 'running' ? 'default' :
+                                                agent.status === 'success' ? 'secondary' : 'destructive'
+                                            } className="text-[10px] uppercase">
+                                                {agent.status}
+                                            </Badge>
+                                        </div>
                                     </div>
                                     <CardTitle className="text-sm mt-2">{agent.name}</CardTitle>
                                     <CardDescription className="text-[11px] leading-tight h-8 overflow-hidden">
@@ -210,7 +309,10 @@ export function AIAgentsPage() {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardFooter className="p-4 pt-0 text-[10px] text-muted-foreground flex justify-between">
-                                    <span>Last run: {agent.lastRun ? format(new Date(agent.lastRun), 'HH:mm') : 'Never'}</span>
+                                    <div className="flex items-center gap-1">
+                                        <span>Last run: {agent.lastRun ? format(new Date(agent.lastRun), 'HH:mm') : 'Never'}</span>
+                                        {idx === 0 && (configData?.confluencePath ? <ShieldCheck className="h-3 w-3 text-green-500" title="Configured" /> : <AlertCircle className="h-3 w-3 text-amber-500" title="Missing Config" />)}
+                                    </div>
                                     {agent.status === 'running' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                                 </CardFooter>
                             </Card>

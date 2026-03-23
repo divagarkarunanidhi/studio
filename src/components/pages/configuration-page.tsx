@@ -14,10 +14,11 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Settings } from 'lucide-react';
+import { Settings, Cpu } from 'lucide-react';
 import { AppConfigurationSchema } from '@/lib/types';
 import type { AppConfiguration } from '@/lib/types';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Separator } from '../ui/separator';
 
 export function ConfigurationPage() {
   const { toast } = useToast();
@@ -36,7 +37,10 @@ export function ConfigurationPage() {
       geminiModel: 'googleai/gemini-1.5-flash',
       geminiRetryModel: 'googleai/gemini-1.5-pro',
       jiraLink: '',
-      reusabilityLabels: ''
+      reusabilityLabels: '',
+      confluencePath: '',
+      confluenceUser: '',
+      confluencePassword: ''
     },
   });
 
@@ -49,7 +53,6 @@ export function ConfigurationPage() {
   const onSubmit = async (values: AppConfiguration) => {
     if (!configRef) return;
     
-    // Pattern 1: Non-blocking mutation with emission
     setDocumentNonBlocking(configRef, values, { merge: true });
     
     toast({
@@ -93,21 +96,20 @@ export function ConfigurationPage() {
 
   if (isConfigLoading) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Application Configuration</CardTitle>
-                <CardDescription>Manage global application settings and API keys.</CardDescription>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-32" />
-            </CardContent>
-        </Card>
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Application Configuration</CardTitle>
+                    <CardDescription>Manage global application settings and API keys.</CardDescription>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-32" />
+                </CardContent>
+            </Card>
+        </div>
     );
   }
 
@@ -133,103 +135,173 @@ export function ConfigurationPage() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="geminiApiKey"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Gemini API Key</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="Enter your Gemini API Key" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="mongodbUri"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>MongoDB URI</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="Enter your MongoDB Connection String" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="mongodbDbName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>MongoDB Database Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., TAASBugSenseAI" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="geminiModel"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Primary Gemini Model</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., googleai/gemini-1.5-flash" {...field} />
-                  </FormControl>
-                  <FormDescription>Use standard strings like 'googleai/gemini-1.5-flash' or 'googleai/gemini-1.5-pro'.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="geminiRetryModel"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Fallback/Retry Gemini Model</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., googleai/gemini-1.5-pro" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="jiraLink"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>JIRA Base URL</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., https://your-company.atlassian.net" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="reusabilityLabels"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Reusability Labels</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., FordKOCPilot,ToshibaPilot,FradleyPilot,Bacardi" {...field} value={field.value || ''} />
-                  </FormControl>
-                  <FormDescription>Comma-separated list of labels to use for reusability analysis filtering.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex items-center gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Core Infrastructure
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="geminiApiKey"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Gemini API Key</FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="Enter your Gemini API Key" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="jiraLink"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>JIRA Base URL</FormLabel>
+                        <FormControl>
+                            <Input placeholder="https://your-company.atlassian.net" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="mongodbUri"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>MongoDB URI</FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="Enter your MongoDB Connection String" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="mongodbDbName"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>MongoDB Database Name</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., TAASBugSenseAI" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Cpu className="h-5 w-5" />
+                    AI Agent Settings (Unattended Agents)
+                </h3>
+                <div className="grid grid-cols-1 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="confluencePath"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Agent 1: Confluence Fetcher Path</FormLabel>
+                        <FormControl>
+                            <Input placeholder="https://confluence.example.com/display/PROJ/Reports" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormDescription>The direct URL to the Confluence page containing Cucumber HTML reports.</FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                        control={form.control}
+                        name="confluenceUser"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Confluence Username</FormLabel>
+                            <FormControl>
+                                <Input placeholder="user@dhl.com" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={form.control}
+                        name="confluencePassword"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Confluence Password / Token</FormLabel>
+                            <FormControl>
+                                <Input type="password" placeholder="Enter password or API token" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Model & Feature Tuning</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="geminiModel"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Primary Gemini Model</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., googleai/gemini-1.5-flash" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="geminiRetryModel"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Fallback/Retry Gemini Model</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., googleai/gemini-1.5-pro" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+                <FormField
+                control={form.control}
+                name="reusabilityLabels"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Reusability Labels</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g., FordKOCPilot,ToshibaPilot,FradleyPilot,Bacardi" {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
+
+            <div className="flex items-center gap-4 pt-4 border-t">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Saving...' : 'Save Configuration'}
+                {form.formState.isSubmitting ? 'Saving...' : 'Save All Configurations'}
                 </Button>
                 <Button type="button" variant="outline" onClick={handleTestConnection} disabled={isTesting}>
                     {isTesting ? 'Testing...' : 'Test MongoDB Connection'}

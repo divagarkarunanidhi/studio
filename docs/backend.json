@@ -70,7 +70,10 @@
         "geminiRetryModel": { "type": "string" },
         "jiraLink": { "type": "string" },
         "reusabilityLabels": { "type": ["string", "null"] },
-        "seleniumDomainDateRanges": { "type": "object" }
+        "seleniumDomainDateRanges": { "type": "object" },
+        "confluencePath": { "type": ["string", "null"] },
+        "confluenceUser": { "type": ["string", "null"] },
+        "confluencePassword": { "type": ["string", "null"] }
       }
     },
     "SavedPrediction": {
