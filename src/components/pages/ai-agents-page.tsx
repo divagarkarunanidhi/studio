@@ -24,7 +24,9 @@ import {
     ShieldCheck,
     Save,
     FlaskConical,
-    PlayCircle
+    PlayCircle,
+    Link2,
+    FileCode
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -52,6 +54,7 @@ interface AgentStatus {
     status: 'idle' | 'running' | 'success' | 'error';
     lastRun: string | null;
     logs: string[];
+    extraInfo?: string; // Used to store fetched file names or specific status notes
 }
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
@@ -170,10 +173,19 @@ export function AIAgentsPage() {
         
         setAgents(prev => prev.map((a, i) => i === index ? { ...a, status: 'running' } : a));
         
+        // Simulation details for Confluence Fetcher
+        let extra = undefined;
         if (agent.id === 1) {
             const path = configData?.confluencePath || "Default Confluence Page";
-            addLog(agent.id, `Connecting to Confluence at ${path}...`);
+            addLog(agent.id, `Handshaking with Confluence at ${path}...`);
             addLog(agent.id, `Authenticating as ${configData?.confluenceUser || 'anonymous'}...`);
+            
+            // Artificial delay for realism
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            addLog(agent.id, "Connection established. Scanning for latest HTML report...");
+            
+            const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
+            extra = `cucumber_report_${timestamp}.html`;
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
@@ -183,8 +195,18 @@ export function AIAgentsPage() {
         await new Promise(resolve => setTimeout(resolve, duration));
 
         // Mock success for simulation
-        setAgents(prev => prev.map((a, i) => i === index ? { ...a, status: 'success', lastRun: new Date().toISOString() } : a));
-        addLog(agent.id, `Completed successfully. Found ${Math.floor(Math.random() * 10)} relevant items.`);
+        setAgents(prev => prev.map((a, i) => i === index ? { 
+            ...a, 
+            status: 'success', 
+            lastRun: new Date().toISOString(),
+            extraInfo: extra || a.extraInfo // Preserve if not index 0
+        } : a));
+
+        if (agent.id === 1) {
+            addLog(agent.id, `Successfully fetched: ${extra}`);
+        } else {
+            addLog(agent.id, `Completed successfully. Found ${Math.floor(Math.random() * 10)} relevant items.`);
+        }
         
         // Only update global progress if we are in a pipeline run
         if (isPipelineRunning) {
@@ -198,7 +220,7 @@ export function AIAgentsPage() {
         setIsPipelineRunning(true);
         setProgress(0);
         
-        // Reset statuses
+        // Reset statuses for a clean run
         setAgents(prev => prev.map(a => ({ ...a, status: 'idle' })));
 
         for (let i = 0; i < AGENTS_CONFIG.length; i++) {
@@ -275,7 +297,7 @@ export function AIAgentsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {agents.map((agent, idx) => (
                     <Card key={agent.id} className={cn(
-                        "transition-all duration-300",
+                        "transition-all duration-300 flex flex-col",
                         agent.status === 'running' && "ring-2 ring-primary ring-offset-2",
                         agent.status === 'success' && "bg-green-50/30 border-green-200"
                     )}>
@@ -378,7 +400,30 @@ export function AIAgentsPage() {
                                 {agent.description}
                             </CardDescription>
                         </CardHeader>
-                        <CardFooter className="p-4 pt-0 text-[10px] text-muted-foreground flex justify-between">
+                        <CardContent className="px-4 py-2 flex-1">
+                            {idx === 0 && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                            <Link2 className="h-2.5 w-2.5" /> Connection:
+                                        </span>
+                                        <Badge variant="outline" className={cn(
+                                            "text-[9px] px-1 h-4",
+                                            configData?.confluencePath ? "text-green-600 border-green-200 bg-green-50" : "text-amber-600 border-amber-200 bg-amber-50"
+                                        )}>
+                                            {configData?.confluencePath ? "CONNECTED" : "OFFLINE"}
+                                        </Badge>
+                                    </div>
+                                    {agent.extraInfo && (
+                                        <div className="p-1.5 bg-primary/5 border border-primary/10 rounded text-[9px] font-mono flex items-center gap-1.5 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                            <FileCode className="h-3 w-3 text-primary shrink-0" />
+                                            <span className="truncate" title={agent.extraInfo}>{agent.extraInfo}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </CardContent>
+                        <CardFooter className="p-4 pt-0 text-[10px] text-muted-foreground flex justify-between border-t mt-auto pt-2">
                             <div className="flex items-center gap-1">
                                 <span>Last run: {agent.lastRun ? format(new Date(agent.lastRun), 'HH:mm') : 'Never'}</span>
                                 {idx === 0 && (configData?.confluencePath ? <ShieldCheck className="h-3 w-3 text-green-500" title="Configured" /> : <AlertCircle className="h-3 w-3 text-amber-500" title="Missing Config" />)}
@@ -389,7 +434,7 @@ export function AIAgentsPage() {
                 ))}
             </div>
 
-            <Card className="w-full flex flex-col">
+            <Card className="w-full flex flex-col mt-auto">
                 <CardHeader className="pb-2 border-b">
                     <CardTitle className="text-sm flex items-center gap-2">
                         <Terminal className="h-4 w-4" />
