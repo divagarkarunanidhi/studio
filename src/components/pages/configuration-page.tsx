@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -14,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Settings, Cpu } from 'lucide-react';
+import { Settings, Cpu, FlaskConical, Loader2 } from 'lucide-react';
 import { AppConfigurationSchema } from '@/lib/types';
 import type { AppConfiguration } from '@/lib/types';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -23,7 +22,8 @@ import { Separator } from '../ui/separator';
 export function ConfigurationPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const [isTesting, setIsTesting] = useState(false);
+  const [isTestingMongo, setIsTestingMongo] = useState(false);
+  const [isTestingConfluence, setIsTestingConfluence] = useState(false);
 
   const configRef = useMemoFirebase(() => doc(firestore, 'appConfiguration', 'global'), [firestore]);
   const { data: configData, isLoading: isConfigLoading, error: configError } = useDoc<AppConfiguration>(configRef);
@@ -61,8 +61,8 @@ export function ConfigurationPage() {
     });
   };
 
-  const handleTestConnection = async () => {
-    setIsTesting(true);
+  const handleTestMongo = async () => {
+    setIsTestingMongo(true);
     toast({
         title: "Testing Connection...",
         description: "Attempting to connect to MongoDB with saved credentials."
@@ -90,7 +90,47 @@ export function ConfigurationPage() {
             description: 'An unexpected error occurred while testing the connection.',
         });
     } finally {
-        setIsTesting(false);
+        setIsTestingMongo(false);
+    }
+  };
+
+  const handleTestConfluence = async () => {
+    const values = form.getValues();
+    if (!values.confluencePath || !values.confluenceUser || !values.confluencePassword) {
+        toast({
+            variant: 'destructive',
+            title: 'Missing Details',
+            description: 'Please provide all Confluence settings before testing.'
+        });
+        return;
+    }
+
+    setIsTestingConfluence(true);
+    try {
+        const response = await fetch('/api/confluence/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                path: values.confluencePath,
+                user: values.confluenceUser,
+                password: values.confluencePassword
+            })
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+            toast({ title: 'Connection Successful', description: result.message });
+        } else {
+            throw new Error(result.error || 'Failed to connect.');
+        }
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Test Failed',
+            description: error.message
+        });
+    } finally {
+        setIsTestingConfluence(false);
     }
   };
 
@@ -137,10 +177,16 @@ export function ConfigurationPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    Core Infrastructure
-                </h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Settings className="h-5 w-5" />
+                        Core Infrastructure
+                    </h3>
+                    <Button type="button" variant="ghost" size="sm" onClick={handleTestMongo} disabled={isTestingMongo}>
+                        {isTestingMongo ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <FlaskConical className="h-3 w-3 mr-2" />}
+                        Test MongoDB
+                    </Button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                     control={form.control}
@@ -202,10 +248,16 @@ export function ConfigurationPage() {
             <Separator />
 
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Cpu className="h-5 w-5" />
-                    AI Agent Settings (Unattended Agents)
-                </h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Cpu className="h-5 w-5" />
+                        AI Agent Settings (Unattended Agents)
+                    </h3>
+                    <Button type="button" variant="ghost" size="sm" onClick={handleTestConfluence} disabled={isTestingConfluence}>
+                        {isTestingConfluence ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <FlaskConical className="h-3 w-3 mr-2" />}
+                        Test Confluence
+                    </Button>
+                </div>
                 <div className="grid grid-cols-1 gap-4">
                     <FormField
                     control={form.control}
@@ -302,9 +354,6 @@ export function ConfigurationPage() {
             <div className="flex items-center gap-4 pt-4 border-t">
                 <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? 'Saving...' : 'Save All Configurations'}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleTestConnection} disabled={isTesting}>
-                    {isTesting ? 'Testing...' : 'Test MongoDB Connection'}
                 </Button>
             </div>
           </form>

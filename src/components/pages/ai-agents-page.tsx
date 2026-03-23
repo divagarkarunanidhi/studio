@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -23,7 +22,8 @@ import {
     AlertCircle,
     Settings,
     ShieldCheck,
-    Save
+    Save,
+    FlaskConical
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -55,7 +55,7 @@ interface AgentStatus {
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 1, name: "Confluence Fetcher", description: "Polls Confluence every 5m for the latest Cucumber HTML report." },
-    { id: 2, name: "Report Parser", description: "Analyzes HTML/JSON content to identify passed and failed test cases." },
+    { id: 2, name: "Report Parser", description: "Analyse agent 1 HTML report and Identify the pass and failure." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using AI." },
     { id: 4, name: "Jira Defect Scout", description: "Checks Jira API for existing bugs related to functional failures." },
     { id: 5, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
@@ -82,6 +82,7 @@ export function AIAgentsPage() {
     const [confluencePath, setConfluencePath] = useState('');
     const [confluenceUser, setConfluenceUser] = useState('');
     const [confluencePassword, setConfluencePassword] = useState('');
+    const [isTesting, setIsTesting] = useState(false);
 
     useEffect(() => {
         if (configData) {
@@ -99,6 +100,45 @@ export function AIAgentsPage() {
             confluencePassword 
         }, { merge: true });
         toast({ title: "Configuration Updated", description: "Confluence fetcher settings have been saved." });
+    };
+
+    const handleTestConnection = async () => {
+        if (!confluencePath || !confluenceUser || !confluencePassword) {
+            toast({ 
+                variant: 'destructive', 
+                title: 'Missing Details', 
+                description: 'Please fill in all connection details before testing.' 
+            });
+            return;
+        }
+
+        setIsTesting(true);
+        try {
+            const response = await fetch('/api/confluence/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    path: confluencePath,
+                    user: confluenceUser,
+                    password: confluencePassword
+                })
+            });
+            const result = await response.json();
+
+            if (response.ok) {
+                toast({ title: "Test Successful", description: result.message });
+            } else {
+                throw new Error(result.error || "Failed to connect.");
+            }
+        } catch (error: any) {
+            toast({ 
+                variant: 'destructive', 
+                title: "Connection Failed", 
+                description: error.message 
+            });
+        } finally {
+            setIsTesting(false);
+        }
     };
     
     const logsEndRef = useRef<HTMLDivElement>(null);
@@ -286,8 +326,20 @@ export function AIAgentsPage() {
                                                                 />
                                                             </div>
                                                         </div>
-                                                        <DialogFooter>
-                                                            <Button onClick={handleSaveConfig} className="gap-2">
+                                                        <DialogFooter className="flex-col sm:flex-row gap-2">
+                                                            <Button 
+                                                                variant="outline" 
+                                                                onClick={handleTestConnection} 
+                                                                disabled={isTesting}
+                                                                className="w-full sm:w-auto"
+                                                            >
+                                                                {isTesting ? (
+                                                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testing...</>
+                                                                ) : (
+                                                                    <><FlaskConical className="mr-2 h-4 w-4" /> Test Connection</>
+                                                                )}
+                                                            </Button>
+                                                            <Button onClick={handleSaveConfig} className="gap-2 w-full sm:w-auto">
                                                                 <Save className="h-4 w-4" /> Save Details
                                                             </Button>
                                                         </DialogFooter>
