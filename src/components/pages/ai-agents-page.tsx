@@ -272,157 +272,151 @@ export function AIAgentsPage() {
                 </Card>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {agents.map((agent, idx) => (
-                            <Card key={agent.id} className={cn(
-                                "transition-all duration-300",
-                                agent.status === 'running' && "ring-2 ring-primary ring-offset-2",
-                                agent.status === 'success' && "bg-green-50/30 border-green-200"
-                            )}>
-                                <CardHeader className="p-4 pb-2">
-                                    <div className="flex justify-between items-start">
-                                        <div className="bg-primary/10 p-2 rounded-lg">
-                                            {idx === 0 && <Network className="h-4 w-4 text-primary" />}
-                                            {idx === 1 && <FileJson className="h-4 w-4 text-primary" />}
-                                            {idx === 2 && <Cpu className="h-4 w-4 text-primary" />}
-                                            {idx === 3 && <ExternalLink className="h-4 w-4 text-primary" />}
-                                            {idx === 4 && <Database className="h-4 w-4 text-primary" />}
-                                            {idx === 5 && <RefreshCcw className="h-4 w-4 text-primary" />}
-                                            {idx >= 6 && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                                        </div>
-                                        <div className="flex gap-1.5">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-6 w-6 text-primary hover:bg-primary/10"
-                                                onClick={() => runAgent(idx)}
-                                                disabled={isPipelineRunning || agent.status === 'running'}
-                                                title={`Run ${agent.name} individually`}
-                                            >
-                                                {agent.status === 'running' ? (
-                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                ) : (
-                                                    <PlayCircle className="h-3.5 w-3.5" />
-                                                )}
-                                            </Button>
-                                            {idx === 0 && (
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6">
-                                                            <Settings className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent>
-                                                        <DialogHeader>
-                                                            <DialogTitle>Configure Confluence Fetcher</DialogTitle>
-                                                            <DialogDescription>Input the details for Agent 1 to connect to your report repository.</DialogDescription>
-                                                        </DialogHeader>
-                                                        <div className="space-y-4 py-4">
-                                                            <div className="space-y-2">
-                                                                <Label>Confluence Path (URL)</Label>
-                                                                <Input 
-                                                                    placeholder="https://..." 
-                                                                    value={confluencePath}
-                                                                    onChange={(e) => setConfluencePath(e.target.value)}
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Username</Label>
-                                                                <Input 
-                                                                    placeholder="user@dhl.com" 
-                                                                    value={confluenceUser}
-                                                                    onChange={(e) => setConfluenceUser(e.target.value)}
-                                                                />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Password / API Token</Label>
-                                                                <Input 
-                                                                    type="password" 
-                                                                    placeholder="••••••••" 
-                                                                    value={confluencePassword}
-                                                                    onChange={(e) => setConfluencePassword(e.target.value)}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <DialogFooter className="flex-col sm:flex-row gap-2">
-                                                            <Button 
-                                                                variant="outline" 
-                                                                onClick={handleTestConnection} 
-                                                                disabled={isTesting}
-                                                                className="w-full sm:w-auto"
-                                                            >
-                                                                {isTesting ? (
-                                                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testing...</>
-                                                                ) : (
-                                                                    <><FlaskConical className="mr-2 h-4 w-4" /> Test Connection</>
-                                                                )}
-                                                            </Button>
-                                                            <Button onClick={handleSaveConfig} className="gap-2 w-full sm:w-auto">
-                                                                <Save className="h-4 w-4" /> Save Details
-                                                            </Button>
-                                                        </DialogFooter>
-                                                    </DialogContent>
-                                                </Dialog>
-                                            )}
-                                            <Badge variant={
-                                                agent.status === 'idle' ? 'outline' :
-                                                agent.status === 'running' ? 'default' :
-                                                agent.status === 'success' ? 'secondary' : 'destructive'
-                                            } className="text-[10px] uppercase px-1.5">
-                                                {agent.status}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                    <CardTitle className="text-sm mt-2">{agent.name}</CardTitle>
-                                    <CardDescription className="text-[11px] leading-tight h-8 overflow-hidden">
-                                        {agent.description}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardFooter className="p-4 pt-0 text-[10px] text-muted-foreground flex justify-between">
-                                    <div className="flex items-center gap-1">
-                                        <span>Last run: {agent.lastRun ? format(new Date(agent.lastRun), 'HH:mm') : 'Never'}</span>
-                                        {idx === 0 && (configData?.confluencePath ? <ShieldCheck className="h-3 w-3 text-green-500" title="Configured" /> : <AlertCircle className="h-3 w-3 text-amber-500" title="Missing Config" />)}
-                                    </div>
-                                    {agent.status === 'running' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                                </CardFooter>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <Card className="h-full flex flex-col">
-                        <CardHeader className="pb-2 border-b">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <Terminal className="h-4 w-4" />
-                                Agent Console Output
-                            </CardTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {agents.map((agent, idx) => (
+                    <Card key={agent.id} className={cn(
+                        "transition-all duration-300",
+                        agent.status === 'running' && "ring-2 ring-primary ring-offset-2",
+                        agent.status === 'success' && "bg-green-50/30 border-green-200"
+                    )}>
+                        <CardHeader className="p-4 pb-2">
+                            <div className="flex justify-between items-start">
+                                <div className="bg-primary/10 p-2 rounded-lg">
+                                    {idx === 0 && <Network className="h-4 w-4 text-primary" />}
+                                    {idx === 1 && <FileJson className="h-4 w-4 text-primary" />}
+                                    {idx === 2 && <Cpu className="h-4 w-4 text-primary" />}
+                                    {idx === 3 && <ExternalLink className="h-4 w-4 text-primary" />}
+                                    {idx === 4 && <Database className="h-4 w-4 text-primary" />}
+                                    {idx === 5 && <RefreshCcw className="h-4 w-4 text-primary" />}
+                                    {idx >= 6 && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                </div>
+                                <div className="flex gap-1.5">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-6 w-6 text-primary hover:bg-primary/10"
+                                        onClick={() => runAgent(idx)}
+                                        disabled={isPipelineRunning || agent.status === 'running'}
+                                        title={`Run ${agent.name} individually`}
+                                    >
+                                        {agent.status === 'running' ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                            <PlayCircle className="h-3.5 w-3.5" />
+                                        )}
+                                    </Button>
+                                    {idx === 0 && (
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Configure Confluence Fetcher</DialogTitle>
+                                                    <DialogDescription>Input the details for Agent 1 to connect to your report repository.</DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Confluence Path (URL)</Label>
+                                                        <Input 
+                                                            placeholder="https://..." 
+                                                            value={confluencePath}
+                                                            onChange={(e) => setConfluencePath(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Username</Label>
+                                                        <Input 
+                                                            placeholder="user@dhl.com" 
+                                                            value={confluenceUser}
+                                                            onChange={(e) => setConfluenceUser(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Password / API Token</Label>
+                                                        <Input 
+                                                            type="password" 
+                                                            placeholder="••••••••" 
+                                                            value={confluencePassword}
+                                                            onChange={(e) => setConfluencePassword(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <DialogFooter className="flex-col sm:flex-row gap-2">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        onClick={handleTestConnection} 
+                                                        disabled={isTesting}
+                                                        className="w-full sm:w-auto"
+                                                    >
+                                                        {isTesting ? (
+                                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testing...</>
+                                                        ) : (
+                                                            <><FlaskConical className="mr-2 h-4 w-4" /> Test Connection</>
+                                                        )}
+                                                    </Button>
+                                                    <Button onClick={handleSaveConfig} className="gap-2 w-full sm:w-auto">
+                                                        <Save className="h-4 w-4" /> Save Details
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
+                                    <Badge variant={
+                                        agent.status === 'idle' ? 'outline' :
+                                        agent.status === 'running' ? 'default' :
+                                        agent.status === 'success' ? 'secondary' : 'destructive'
+                                    } className="text-[10px] uppercase px-1.5">
+                                        {agent.status}
+                                    </Badge>
+                                </div>
+                            </div>
+                            <CardTitle className="text-sm mt-2">{agent.name}</CardTitle>
+                            <CardDescription className="text-[11px] leading-tight h-8 overflow-hidden">
+                                {agent.description}
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-grow p-0 overflow-hidden">
-                            <ScrollArea className="h-[500px] w-full bg-slate-950 font-mono text-[11px] p-4 text-slate-300">
-                                {agents.some(a => a.logs.length > 0) ? (
-                                    <div className="space-y-1">
-                                        {agents.flatMap(a => a.logs.map((log, i) => (
-                                            <div key={`${a.id}-${i}`} className="flex gap-2">
-                                                <span className="text-primary shrink-0">[{a.name}]</span>
-                                                <span className="whitespace-pre-wrap">{log}</span>
-                                            </div>
-                                        )))}
-                                        <div ref={logsEndRef} />
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-2 opacity-50">
-                                        <Terminal className="h-8 w-8" />
-                                        <p>No activity recorded.</p>
-                                    </div>
-                                )}
-                            </ScrollArea>
-                        </CardContent>
+                        <CardFooter className="p-4 pt-0 text-[10px] text-muted-foreground flex justify-between">
+                            <div className="flex items-center gap-1">
+                                <span>Last run: {agent.lastRun ? format(new Date(agent.lastRun), 'HH:mm') : 'Never'}</span>
+                                {idx === 0 && (configData?.confluencePath ? <ShieldCheck className="h-3 w-3 text-green-500" title="Configured" /> : <AlertCircle className="h-3 w-3 text-amber-500" title="Missing Config" />)}
+                            </div>
+                            {agent.status === 'running' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                        </CardFooter>
                     </Card>
-                </div>
+                ))}
             </div>
+
+            <Card className="w-full flex flex-col">
+                <CardHeader className="pb-2 border-b">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                        <Terminal className="h-4 w-4" />
+                        Agent Console Output
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 overflow-hidden">
+                    <ScrollArea className="h-[300px] w-full bg-slate-950 font-mono text-[11px] p-4 text-slate-300">
+                        {agents.some(a => a.logs.length > 0) ? (
+                            <div className="space-y-1">
+                                {agents.flatMap(a => a.logs.map((log, i) => (
+                                    <div key={`${a.id}-${i}`} className="flex gap-2">
+                                        <span className="text-primary shrink-0">[{a.name}]</span>
+                                        <span className="whitespace-pre-wrap">{log}</span>
+                                    </div>
+                                )))}
+                                <div ref={logsEndRef} />
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-2 opacity-50">
+                                <Terminal className="h-8 w-8" />
+                                <p>No activity recorded.</p>
+                            </div>
+                        )}
+                    </ScrollArea>
+                </CardContent>
+            </Card>
 
             <Card className="border-dashed">
                 <CardHeader>
