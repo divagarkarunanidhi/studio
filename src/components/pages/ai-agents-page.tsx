@@ -191,18 +191,46 @@ export function AIAgentsPage() {
         let metrics: AgentMetrics | undefined = undefined;
 
         if (agent.id === 1) {
-            const path = configData?.confluencePath || "Default Confluence Page";
-            addLog(agent.id, `Handshaking with Confluence at ${path}...`);
-            addLog(agent.id, `Authenticating as ${configData?.confluenceUser || 'anonymous'}...`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const path = configData?.confluencePath;
+            const user = configData?.confluenceUser;
+            const password = configData?.confluencePassword;
+
+            addLog(agent.id, `Connecting to Confluence at ${path || 'unconfigured path'}...`);
             
-            if (uploadedReport) {
-                addLog(agent.id, `Found manually provided original report: ${uploadedReport.name}`);
-                extra = uploadedReport.name;
-            } else {
-                addLog(agent.id, "Connection established. Scanning for latest HTML report...");
-                const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
-                extra = `cucumber_report_${timestamp}.html`;
+            let fetchedFromApi = false;
+
+            if (path && user && password) {
+                try {
+                    const response = await fetch('/api/confluence/fetch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path, user, password })
+                    });
+                    
+                    const result = await response.json();
+                    if (response.ok) {
+                        addLog(agent.id, `Successfully fetched live report from Confluence: ${result.fileName}`);
+                        extra = result.fileName;
+                        setUploadedReport({ name: result.fileName, content: result.content });
+                        fetchedFromApi = true;
+                    } else {
+                        addLog(agent.id, `Live Fetch Note: ${result.error || 'Check configuration'}.`);
+                    }
+                } catch (e) {
+                    addLog(agent.id, `Connection to Confluence API timed out. Checking for local overrides...`);
+                }
+            }
+
+            if (!fetchedFromApi) {
+                if (uploadedReport) {
+                    addLog(agent.id, `Found manually provided original report: ${uploadedReport.name}`);
+                    extra = uploadedReport.name;
+                } else {
+                    addLog(agent.id, "No live report found and no manual upload present. Initializing simulation...");
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
+                    extra = `cucumber_report_${timestamp}.html`;
+                }
             }
         } else if (agent.id === 2) {
             addLog(agent.id, "Identifying report structure from Agent 1 output...");
@@ -210,21 +238,19 @@ export function AIAgentsPage() {
             addLog(agent.id, "Parsing Gherkin features and scenario outcomes...");
             
             // Try to parse real metrics if an original report was provided
-            let total = 13; // Default for requested 13
+            let total = 13; // Default
             let failed = 2;
             
             if (uploadedReport) {
-                // Simple regex extraction for realistic feedback if they upload a standard Cucumber report
                 const content = uploadedReport.content;
-                const scenarioMatches = content.match(/class="scenario"/g) || content.match(/<div class="element">/g);
+                const scenarioMatches = content.match(/class="scenario"/g) || content.match(/<div class="element">/g) || content.match(/class="element"/g);
                 if (scenarioMatches) {
                     total = scenarioMatches.length;
                     const failedMatches = content.match(/class="failed"/g) || content.match(/status-failed/g);
-                    failed = failedMatches ? Math.floor(failedMatches.length / 5) : 0; // heuristic for step vs scenario
+                    failed = failedMatches ? Math.floor(failedMatches.length / 5) : 0; // heuristic
                     if (failed > total) failed = Math.floor(total * 0.2);
                 }
             } else {
-                // Exactly 13 as per requested scenario count calibration
                 total = 13;
                 failed = Math.floor(Math.random() * 3) + 1;
             }
@@ -232,7 +258,7 @@ export function AIAgentsPage() {
             const passed = total - failed;
             metrics = { total, passed, failed };
             
-            addLog(agent.id, `Analysis Complete: ${total} total scenarios identified in the original report.`);
+            addLog(agent.id, `Analysis Complete: ${total} total scenarios identified.`);
             addLog(agent.id, `Results: ${passed} Passed, ${failed} Failed.`);
         } else {
             addLog(agent.id, `Starting unattended task...`);
@@ -250,7 +276,7 @@ export function AIAgentsPage() {
         } : a));
 
         if (agent.id === 1) {
-            addLog(agent.id, `Successfully fetched: ${extra}`);
+            addLog(agent.id, `Agent 1 verified report: ${extra}`);
         } else if (agent.id !== 2) {
             addLog(agent.id, `Completed successfully. Found ${Math.floor(Math.random() * 10)} relevant items.`);
         }
