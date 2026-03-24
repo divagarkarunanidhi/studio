@@ -26,7 +26,8 @@ import {
     FlaskConical,
     PlayCircle,
     Link2,
-    FileCode
+    FileCode,
+    Activity
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,12 @@ import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
+interface AgentMetrics {
+    total: number;
+    passed: number;
+    failed: number;
+}
+
 interface AgentStatus {
     id: number;
     name: string;
@@ -54,7 +61,8 @@ interface AgentStatus {
     status: 'idle' | 'running' | 'success' | 'error';
     lastRun: string | null;
     logs: string[];
-    extraInfo?: string; // Used to store fetched file names or specific status notes
+    extraInfo?: string; 
+    metrics?: AgentMetrics;
 }
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
@@ -82,7 +90,6 @@ export function AIAgentsPage() {
     const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
     const { data: configData } = useDoc<AppConfiguration>(configRef);
 
-    // Form state for quick configuration dialog
     const [confluencePath, setConfluencePath] = useState('');
     const [confluenceUser, setConfluenceUser] = useState('');
     const [confluencePassword, setConfluencePassword] = useState('');
@@ -173,42 +180,50 @@ export function AIAgentsPage() {
         
         setAgents(prev => prev.map((a, i) => i === index ? { ...a, status: 'running' } : a));
         
-        // Simulation details for Confluence Fetcher
         let extra = undefined;
+        let metrics: AgentMetrics | undefined = undefined;
+
         if (agent.id === 1) {
             const path = configData?.confluencePath || "Default Confluence Page";
             addLog(agent.id, `Handshaking with Confluence at ${path}...`);
             addLog(agent.id, `Authenticating as ${configData?.confluenceUser || 'anonymous'}...`);
-            
-            // Artificial delay for realism
             await new Promise(resolve => setTimeout(resolve, 1000));
             addLog(agent.id, "Connection established. Scanning for latest HTML report...");
-            
             const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
             extra = `cucumber_report_${timestamp}.html`;
+        } else if (agent.id === 2) {
+            addLog(agent.id, "Identifying report structure from Agent 1 output...");
+            await new Promise(resolve => setTimeout(resolve, 800));
+            addLog(agent.id, "Parsing Gherkin features and scenario outcomes...");
+            
+            const total = Math.floor(Math.random() * 40) + 60;
+            const failed = Math.floor(Math.random() * 12) + 3;
+            const passed = total - failed;
+            metrics = { total, passed, failed };
+            
+            addLog(agent.id, `Analysis Complete: ${total} total scenarios found.`);
+            addLog(agent.id, `Results: ${passed} Passed, ${failed} Failed.`);
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
 
-        // Simulate varying processing times
         const duration = Math.random() * 2000 + 1500;
         await new Promise(resolve => setTimeout(resolve, duration));
 
-        // Mock success for simulation
         setAgents(prev => prev.map((a, i) => i === index ? { 
             ...a, 
             status: 'success', 
             lastRun: new Date().toISOString(),
-            extraInfo: extra || a.extraInfo // Preserve if not index 0
+            extraInfo: extra || a.extraInfo,
+            metrics: metrics || a.metrics
         } : a));
 
         if (agent.id === 1) {
             addLog(agent.id, `Successfully fetched: ${extra}`);
-        } else {
+        } else if (agent.id !== 2) {
             addLog(agent.id, `Completed successfully. Found ${Math.floor(Math.random() * 10)} relevant items.`);
         }
         
-        // Only update global progress if we are in a pipeline run
         if (isPipelineRunning) {
             setProgress(((index + 1) / AGENTS_CONFIG.length) * 100);
         }
@@ -216,17 +231,12 @@ export function AIAgentsPage() {
 
     const startPipeline = async () => {
         if (isPipelineRunning) return;
-        
         setIsPipelineRunning(true);
         setProgress(0);
-        
-        // Reset statuses for a clean run
         setAgents(prev => prev.map(a => ({ ...a, status: 'idle' })));
-
         for (let i = 0; i < AGENTS_CONFIG.length; i++) {
             await runAgent(i);
         }
-
         setIsPipelineRunning(false);
         setCurrentAgentIndex(-1);
         toast({
@@ -237,19 +247,18 @@ export function AIAgentsPage() {
 
     const isAnyAgentRunning = agents.some(a => a.status === 'running');
 
-    // Auto-polling simulation
     useEffect(() => {
         let timer: any;
         if (autoMode && !isPipelineRunning) {
             timer = setInterval(() => {
                 startPipeline();
-            }, 300000); // Every 5 minutes
+            }, 300000);
         }
         return () => clearInterval(timer);
     }, [autoMode, isPipelineRunning]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-12">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -420,6 +429,26 @@ export function AIAgentsPage() {
                                             <span className="truncate" title={agent.extraInfo}>{agent.extraInfo}</span>
                                         </div>
                                     )}
+                                </div>
+                            )}
+                            {idx === 1 && agent.metrics && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-500">
+                                    <div className="flex items-center justify-between text-[10px]">
+                                        <span className="text-muted-foreground flex items-center gap-1">
+                                            <Activity className="h-2.5 w-2.5" /> Execution Summary:
+                                        </span>
+                                        <span className="font-bold">{agent.metrics.total} Total</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-green-500/10 border border-green-200 rounded p-1 text-center">
+                                            <div className="text-[8px] text-green-600 font-semibold uppercase">Passed</div>
+                                            <div className="text-xs font-bold text-green-700">{agent.metrics.passed}</div>
+                                        </div>
+                                        <div className="bg-red-500/10 border border-red-200 rounded p-1 text-center">
+                                            <div className="text-[8px] text-red-600 font-semibold uppercase">Failed</div>
+                                            <div className="text-xs font-bold text-red-700">{agent.metrics.failed}</div>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </CardContent>
