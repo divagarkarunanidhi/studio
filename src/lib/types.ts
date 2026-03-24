@@ -141,3 +141,16 @@ export const TestCaseAnalysisOutputSchema = z.object({
     analysis: z.string().describe("A concise summary of the test case portfolio, including distribution and reusability insights."),
 });
 export type TestCaseAnalysisOutput = z.infer<typeof TestCaseAnalysisOutputSchema>;
+
+// Agent 2 Report Parser Schema
+export const ReportParserOutputSchema = z.object({
+    total: z.number().describe("The total number of scenarios identified."),
+    passed: z.number().describe("The number of passed scenarios."),
+    failed: z.number().describe("The number of failed scenarios."),
+    scenarios: z.array(z.object({
+        name: z.string().describe("The name of the test scenario."),
+        status: z.enum(['passed', 'failed']).describe("The final status of the test scenario."),
+        tags: z.array(z.string()).describe("A list of name tags or identifiers associated with the scenario (e.g. @TC_101).")
+    })).describe("A detailed list of scenarios found in the report.")
+});
+export type ReportParserOutput = z.infer<typeof ReportParserOutputSchema>;

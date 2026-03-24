@@ -33,7 +33,8 @@ import {
     Eye,
     Upload,
     HelpCircle,
-    Hash
+    Hash,
+    Sparkles
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -53,6 +54,7 @@ import {
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { parseReportWithAI } from '@/ai/flows/report-parser-flow';
 
 interface AgentMetrics {
     total: number;
@@ -247,7 +249,12 @@ export function AIAgentsPage() {
                     addLog(agent.id, "Simulation Mode: No live report found.");
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
-                    extra = `cucumber_report_${timestamp}.html`;
+                    const fileName = `cucumber_report_${timestamp}.html`;
+                    const mockHtml = generateMockHtml(fileName);
+                    const newReport = { name: fileName, content: mockHtml };
+                    reportRef.current = newReport;
+                    setUploadedReport(newReport);
+                    extra = fileName;
                 }
             }
         } else if (agent.id === 2) {
@@ -312,23 +319,53 @@ export function AIAgentsPage() {
                         addLog(agent.id, `${r.status.toUpperCase()}: ${r.name}${tagLabel}`);
                     });
                 } else {
-                    // Fallback to text-based pattern matching if DOM selectors fail
-                    addLog(agent.id, "Advanced selectors yielded no results. Attempting pattern matching...");
+                    addLog(agent.id, "Advanced selectors yielded no results. Attempting AI-assisted extraction...");
                     
-                    const textContent = doc.body.innerText || doc.body.textContent || "";
-                    const summaryRegex = /(\d+)\s+scenarios?\s*\((\d+)\s+passed,\s*(\d+)\s+failed\)/i;
-                    const match = textContent.match(summaryRegex);
-                    
-                    if (match) {
+                    try {
+                        // Clean HTML to save tokens and avoid noise
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = html;
+                        // Remove large style and script blocks
+                        const scripts = tempDiv.querySelectorAll('script, style');
+                        scripts.forEach(s => s.remove());
+                        
+                        const bodyText = tempDiv.innerText || tempDiv.textContent || "";
+                        // Truncate to ensure it fits in model context while still being descriptive
+                        const snippet = bodyText.substring(0, 15000); 
+                        
+                        const aiResult = await parseReportWithAI(snippet);
+                        
                         metrics = { 
-                            total: parseInt(match[1], 10), 
-                            passed: parseInt(match[2], 10), 
-                            failed: parseInt(match[3], 10) 
+                            total: aiResult.total, 
+                            passed: aiResult.passed, 
+                            failed: aiResult.failed 
                         };
-                        addLog(agent.id, `Metrics extracted via regex from summary footer.`);
-                    } else {
-                        addLog(agent.id, "No identifiable test cases found in HTML. Using default baseline.");
-                        metrics = { total: 13, passed: 11, failed: 2 };
+                        
+                        addLog(agent.id, `AI Extraction Successful: Found ${aiResult.total} scenarios.`);
+                        
+                        // Detailed logging of test cases with tags from AI
+                        aiResult.scenarios.forEach((r: any) => {
+                            const tagLabel = r.tags && r.tags.length > 0 ? ` [Tags: ${r.tags.join(', ')}]` : '';
+                            addLog(agent.id, `${r.status.toUpperCase()}: ${r.name}${tagLabel}`);
+                        });
+                    } catch (aiErr: any) {
+                        addLog(agent.id, `AI analysis failed: ${aiErr.message}. Attempting basic pattern matching...`);
+                        
+                        const textContent = doc.body.innerText || doc.body.textContent || "";
+                        const summaryRegex = /(\d+)\s+scenarios?\s*\((\d+)\s+passed,\s*(\d+)\s+failed\)/i;
+                        const match = textContent.match(summaryRegex);
+                        
+                        if (match) {
+                            metrics = { 
+                                total: parseInt(match[1], 10), 
+                                passed: parseInt(match[2], 10), 
+                                failed: parseInt(match[3], 10) 
+                            };
+                            addLog(agent.id, `Metrics extracted via regex from summary footer.`);
+                        } else {
+                            addLog(agent.id, "No identifiable test cases found. Using default baseline.");
+                            metrics = { total: 13, passed: 11, failed: 2 };
+                        }
                     }
                 }
             } else {
@@ -336,7 +373,9 @@ export function AIAgentsPage() {
                 metrics = { total: 13, passed: 11, failed: 2 };
             }
             
-            addLog(agent.id, `Final Analysis: ${metrics.passed} Passed, ${metrics.failed} Failed.`);
+            if (metrics) {
+                addLog(agent.id, `Final Analysis: ${metrics.passed} Passed, ${metrics.failed} Failed.`);
+            }
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
@@ -725,7 +764,10 @@ export function AIAgentsPage() {
                                         <span className="text-muted-foreground flex items-center gap-1">
                                             <Activity className="h-2.5 w-2.5" /> Execution Summary:
                                         </span>
-                                        <span className="font-bold">{agent.metrics.total} Total</span>
+                                        <span className="font-bold flex items-center gap-1">
+                                            {agent.metrics.total} Total
+                                            <Sparkles className="h-2.5 w-2.5 text-primary" title="Analyzed with AI" />
+                                        </span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div className="bg-green-500/10 border border-green-200 rounded p-1 text-center">
