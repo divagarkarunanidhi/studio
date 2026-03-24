@@ -41,6 +41,7 @@ export async function POST(request: Request) {
         }
 
         // 2. Identify Page ID from the URL
+        // Support formats: ?pageId=123, /pages/123, /pages/123/Title
         let pageId: string | null = null;
         const pageIdMatch = path.match(/pageId=(\d+)/) || path.match(/\/pages\/(\d+)(?:\/|$)/);
         
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
         if (!pageId) {
             return NextResponse.json({ 
-                error: "Could not identify Page ID from the URL. Please ensure your URL contains a numeric ID (e.g., .../pages/123456)." 
+                error: "Could not identify Page ID from the URL. Please ensure your URL contains a numeric ID (e.g., .../pages/123456). Tip: You can find the real ID by clicking 'Share' -> 'Copy Link' in Confluence." 
             }, { status: 400 });
         }
 
@@ -81,14 +82,20 @@ export async function POST(request: Request) {
                 } 
                 
                 if (listRes.status === 401) {
-                    return NextResponse.json({ error: "Unauthorized: Please verify Username and API Token (Cloud) or Password (Server)." }, { status: 401 });
+                    return NextResponse.json({ error: "Unauthorized (401): Please verify your Email and API Token. Note: Confluence Cloud requires an API Token, not your password." }, { status: 401 });
+                }
+
+                if (listRes.status === 404) {
+                    // We continue the loop if it's a 404, as different base URLs might work
+                    const errorBody = await listRes.text();
+                    lastError = errorBody || "Page Not Found";
+                    continue;
                 }
 
                 if (listRes.status === 403) {
-                    return NextResponse.json({ error: "Forbidden: You don't have permission to access attachments on this page." }, { status: 403 });
+                    return NextResponse.json({ error: "Forbidden (403): Your account does not have permission to access attachments on this page." }, { status: 403 });
                 }
 
-                // If it's not JSON, read as text to get error details (prevents "Unexpected end of JSON" error)
                 const errorBody = await listRes.text();
                 lastError = errorBody.substring(0, 200) || listRes.statusText;
                 
@@ -97,9 +104,12 @@ export async function POST(request: Request) {
             }
         }
 
-        return NextResponse.json({ 
-            error: `Failed to fetch from Confluence API. (Status: ${lastStatus}). Details: ${lastError}` 
-        }, { status: 502 });
+        // If we reached here, all paths failed
+        const detailedMsg = lastStatus === 404 
+            ? `Page ID ${pageId} was not found (404). This often means the ID is incorrect or your API Token lacks permissions for this specific page. Try finding the ID via 'Page Information' or use a direct link to the attachment.`
+            : `Failed to fetch from Confluence API. (Status: ${lastStatus}). Details: ${lastError}`;
+
+        return NextResponse.json({ error: detailedMsg }, { status: 502 });
 
     } catch (e: any) {
         console.error("Confluence Fetch Error:", e);
@@ -144,7 +154,13 @@ async function processAttachments(data: any, baseUrl: string, headers: any) {
     }
 
     // Build the full download URL
-    const downloadUrl = downloadRelativeUrl.startsWith('http') ? downloadRelativeUrl : `${baseUrl}${downloadRelativeUrl}`;
+    // Ensure the baseUrl doesn't double up on /wiki if the link already contains it
+    let finalBaseUrl = baseUrl;
+    if (downloadRelativeUrl.startsWith('/wiki') && baseUrl.endsWith('/wiki')) {
+        finalBaseUrl = baseUrl.substring(0, baseUrl.length - 5);
+    }
+
+    const downloadUrl = downloadRelativeUrl.startsWith('http') ? downloadRelativeUrl : `${finalBaseUrl}${downloadRelativeUrl}`;
     
     const contentRes = await fetch(downloadUrl, { 
         headers: { ...headers, 'Accept': '*/*' }, 

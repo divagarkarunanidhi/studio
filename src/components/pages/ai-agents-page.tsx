@@ -30,7 +30,8 @@ import {
     Activity,
     Download,
     Eye,
-    Upload
+    Upload,
+    HelpCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -217,6 +218,9 @@ export function AIAgentsPage() {
                         fetchedFromApi = true;
                     } else {
                         addLog(agent.id, `Fetch Failed: ${result.error || 'Unknown API error'}`);
+                        if (result.error?.includes('404')) {
+                            addLog(agent.id, "DIAGNOSTIC: Ensure you are using an Email + API Token. Standard passwords often fail with 404 on Cloud APIs.");
+                        }
                         executionStatus = 'error';
                     }
                 } catch (e: any) {
@@ -561,7 +565,10 @@ export function AIAgentsPage() {
                                                         />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label>Password / API Token</Label>
+                                                        <Label className="flex items-center gap-2">
+                                                            Password / API Token
+                                                            <HelpCircle className="h-3 w-3 text-muted-foreground" title="Confluence Cloud requires an API Token, not your password." />
+                                                        </Label>
                                                         <Input 
                                                             type="password" 
                                                             placeholder="••••••••" 
