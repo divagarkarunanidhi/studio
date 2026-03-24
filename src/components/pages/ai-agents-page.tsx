@@ -69,8 +69,8 @@ interface AgentStatus {
 }
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
-    { id: 1, name: "Confluence Fetcher", description: "Polls Confluence every 5m for the latest Cucumber HTML report." },
-    { id: 2, name: "Report Parser", description: "Analyse agent 1 HTML report and Identify the pass and failure." },
+    { id: 1, name: "Confluence Fetcher", description: "Polls Confluence for the latest Cucumber HTML report." },
+    { id: 2, name: "Report Parser", description: "Analyze agent 1 HTML report and Identify the pass and failure." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using AI." },
     { id: 4, name: "Jira Defect Scout", description: "Checks Jira API for existing bugs related to functional failures." },
     { id: 5, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
@@ -192,11 +192,11 @@ export function AIAgentsPage() {
         let executionStatus: 'success' | 'error' = 'success';
 
         if (agent.id === 1) {
-            const path = configData?.confluencePath;
-            const user = configData?.confluenceUser;
-            const password = configData?.confluencePassword;
+            const path = confluencePath || configData?.confluencePath;
+            const user = confluenceUser || configData?.confluenceUser;
+            const password = confluencePassword || configData?.confluencePassword;
 
-            addLog(agent.id, `Connecting to Confluence at ${path || 'unconfigured path'}...`);
+            addLog(agent.id, `Attempting live fetch from Confluence...`);
             
             let fetchedFromApi = false;
 
@@ -208,20 +208,30 @@ export function AIAgentsPage() {
                         body: JSON.stringify({ path, user, password })
                     });
                     
-                    const result = await response.json();
+                    const responseText = await response.text();
+                    let result;
+                    try {
+                        result = JSON.parse(responseText);
+                    } catch (e) {
+                        throw new Error(`Invalid response from server. Check URL and credentials.`);
+                    }
+
                     if (response.ok) {
                         addLog(agent.id, `Successfully fetched live report: ${result.fileName}`);
                         extra = result.fileName;
                         setUploadedReport({ name: result.fileName, content: result.content });
                         fetchedFromApi = true;
                     } else {
-                        addLog(agent.id, `Fetch Error: ${result.error || 'Unknown error'}.`);
+                        addLog(agent.id, `Fetch Error: ${result.error || 'Connection failed'}.`);
                         executionStatus = 'error';
                     }
                 } catch (e: any) {
-                    addLog(agent.id, `Network Error: ${e.message || 'Connection failed'}. Checking local overrides...`);
+                    addLog(agent.id, `Network Error: ${e.message}. Checking local overrides...`);
                     executionStatus = 'error';
                 }
+            } else {
+                addLog(agent.id, "Connection details missing. Please check Agent 1 settings.");
+                executionStatus = 'error';
             }
 
             if (!fetchedFromApi && executionStatus === 'success') {
@@ -240,17 +250,17 @@ export function AIAgentsPage() {
             await new Promise(resolve => setTimeout(resolve, 800));
             addLog(agent.id, "Parsing Gherkin features and scenario outcomes...");
             
-            // Try to parse real metrics if an original report was provided
             let total = 13; // Default
             let failed = 2;
             
             if (uploadedReport) {
                 const content = uploadedReport.content;
+                // Basic heuristic to count scenarios in a Cucumber HTML report
                 const scenarioMatches = content.match(/class="scenario"/g) || content.match(/<div class="element">/g) || content.match(/class="element"/g);
                 if (scenarioMatches) {
                     total = scenarioMatches.length;
                     const failedMatches = content.match(/class="failed"/g) || content.match(/status-failed/g);
-                    failed = failedMatches ? Math.floor(failedMatches.length / 5) : 0; // heuristic
+                    failed = failedMatches ? Math.floor(failedMatches.length / 5) : 0; // heuristic since multiple things get the 'failed' class
                     if (failed > total) failed = Math.floor(total * 0.2);
                 }
             } else {
@@ -617,9 +627,9 @@ export function AIAgentsPage() {
                                         </span>
                                         <Badge variant="outline" className={cn(
                                             "text-[9px] px-1.5 h-4",
-                                            configData?.confluencePath ? "text-green-600 border-green-200 bg-green-50" : "text-amber-600 border-amber-200 bg-amber-50"
+                                            (configData?.confluencePath || confluencePath) ? "text-green-600 border-green-200 bg-green-50" : "text-amber-600 border-amber-200 bg-amber-50"
                                         )}>
-                                            {configData?.confluencePath ? "CONNECTED" : "OFFLINE"}
+                                            {(configData?.confluencePath || confluencePath) ? "CONNECTED" : "OFFLINE"}
                                         </Badge>
                                     </div>
                                     {agent.extraInfo && (
@@ -657,7 +667,7 @@ export function AIAgentsPage() {
                         <CardFooter className="p-4 pt-0 text-[10px] text-muted-foreground flex justify-between border-t mt-auto pt-2">
                             <div className="flex items-center gap-1">
                                 <span>Last run: {agent.lastRun ? format(new Date(agent.lastRun), 'HH:mm') : 'Never'}</span>
-                                {idx === 0 && (configData?.confluencePath ? <ShieldCheck className="h-3 w-3 text-green-500" title="Configured" /> : <AlertCircle className="h-3 w-3 text-amber-500" title="Missing Config" />)}
+                                {idx === 0 && ((configData?.confluencePath || confluencePath) ? <ShieldCheck className="h-3 w-3 text-green-500" title="Configured" /> : <AlertCircle className="h-3 w-3 text-amber-500" title="Missing Config" />)}
                             </div>
                             {agent.status === 'running' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                         </CardFooter>

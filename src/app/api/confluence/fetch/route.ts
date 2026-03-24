@@ -54,38 +54,34 @@ export async function POST(request: Request) {
         const baseUrl = urlObj.origin;
         
         // Try standard Cloud path first
-        const apiPath = `${baseUrl}/wiki/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`;
+        const apiPaths = [
+            `${baseUrl}/wiki/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`,
+            `${baseUrl}/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`
+        ];
 
-        try {
-            const listRes = await fetch(apiPath, { headers, signal: AbortSignal.timeout(10000) });
-            
-            if (listRes.ok) {
-                const data = await listRes.json();
-                return processAttachments(data, baseUrl, headers);
+        let lastError = "Confluence API error";
+
+        for (const apiPath of apiPaths) {
+            try {
+                const listRes = await fetch(apiPath, { headers, signal: AbortSignal.timeout(10000) });
+                const contentType = listRes.headers.get('content-type');
+                
+                if (listRes.ok && contentType?.includes('application/json')) {
+                    const data = await listRes.json();
+                    return await processAttachments(data, baseUrl, headers);
+                } else if (listRes.status === 401) {
+                    return NextResponse.json({ error: "Unauthorized: Please verify your Username and API Token/Password." }, { status: 401 });
+                } else if (listRes.status === 403) {
+                    return NextResponse.json({ error: "Forbidden: You don't have permission to access attachments on this page." }, { status: 403 });
+                }
+                
+                lastError = `API endpoint ${apiPath} returned ${listRes.status} ${listRes.statusText}`;
+            } catch (err: any) {
+                lastError = err.message || "Network request failed";
             }
-
-            // Fallback for instances that don't use the /wiki prefix (Server/Data Center or specific Cloud setups)
-            const altApiPath = `${baseUrl}/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`;
-            const altRes = await fetch(altApiPath, { headers, signal: AbortSignal.timeout(10000) });
-            
-            if (altRes.ok) {
-                const data = await altRes.json();
-                return processAttachments(data, baseUrl, headers);
-            }
-
-            // If both failed, report the status of the first one
-            const statusText = listRes.status === 401 ? "Unauthorized (Check your API Token/Password)" : 
-                               listRes.status === 403 ? "Forbidden (User lacks permissions)" : 
-                               listRes.statusText;
-            
-            throw new Error(`Confluence API error: ${listRes.status} ${statusText}`);
-
-        } catch (fetchErr: any) {
-            if (fetchErr.name === 'TimeoutError') {
-                throw new Error("Request to Confluence timed out. Check if the instance is reachable.");
-            }
-            throw fetchErr;
         }
+
+        return NextResponse.json({ error: `Failed to connect to Confluence API: ${lastError}` }, { status: 502 });
 
     } catch (e: any) {
         console.error("Confluence Fetch Error:", e);
@@ -109,9 +105,7 @@ async function processAttachments(data: any, baseUrl: string, headers: any) {
         })[0];
 
     if (!latestHtml) {
-        return NextResponse.json({ 
-            error: "No HTML attachments found on the specified Confluence page. Please upload a .html report to the page first." 
-        }, { status: 404 });
+        throw new Error("No HTML attachments found on the specified Confluence page. Please upload a .html report to the page first.");
     }
 
     // Download the content of the identified attachment
@@ -121,7 +115,10 @@ async function processAttachments(data: any, baseUrl: string, headers: any) {
     }
 
     const downloadUrl = downloadRelativeUrl.startsWith('http') ? downloadRelativeUrl : `${baseUrl}${downloadRelativeUrl}`;
-    const contentRes = await fetch(downloadUrl, { headers, signal: AbortSignal.timeout(15000) });
+    const contentRes = await fetch(downloadUrl, { 
+        headers: { ...headers, 'Accept': '*/*' }, 
+        signal: AbortSignal.timeout(15000) 
+    });
     
     if (!contentRes.ok) {
         throw new Error(`Failed to download report content: ${contentRes.status} ${contentRes.statusText}`);
