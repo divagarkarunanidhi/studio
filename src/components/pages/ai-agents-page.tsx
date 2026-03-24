@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -594,43 +593,16 @@ export function AIAgentsPage() {
                                     {idx === 0 && (
                                         <div className="flex gap-1">
                                             {(reportRef.current || agent.extraInfo) && (
-                                                <>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-6 w-6 text-primary"
-                                                        onClick={() => handleViewReport(reportRef.current?.name || agent.extraInfo!)}
-                                                        title="View fetched report (Original HTML)"
-                                                    >
-                                                        <Eye className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="icon" 
-                                                        className="h-6 w-6 text-primary"
-                                                        onClick={() => handleDownloadReport(reportRef.current?.name || agent.extraInfo!)}
-                                                        title="Download original HTML report"
-                                                    >
-                                                        <Download className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-6 w-6 text-primary"
+                                                    onClick={() => handleViewReport(reportRef.current?.name || agent.extraInfo!)}
+                                                    title="View fetched report (Original HTML)"
+                                                >
+                                                    <Eye className="h-3.5 w-3.5" />
+                                                </Button>
                                             )}
-                                            <input 
-                                                type="file" 
-                                                ref={fileInputRef} 
-                                                onChange={handleManualUpload} 
-                                                accept=".html" 
-                                                className="hidden" 
-                                            />
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-6 w-6 text-primary"
-                                                onClick={() => fileInputRef.current?.click()}
-                                                title="Upload Local HTML Report (Original)"
-                                            >
-                                                <Upload className="h-3.5 w-3.5" />
-                                            </Button>
                                         </div>
                                     )}
                                     <Button 
