@@ -295,11 +295,12 @@ export function AIAgentsPage() {
                             if (tagMatches) tags.push(...tagMatches);
                         }
 
-                        // Determine status
+                        // Determine status - more robust check for text content "FAILED"
                         const isFailed = s.classList.contains('failed') || 
                                          s.outerHTML.toLowerCase().includes('status="failed"') ||
                                          s.outerHTML.toLowerCase().includes('class="failed"') ||
-                                         s.querySelector('.failed, [class*="failed"]');
+                                         s.querySelector('.failed, [class*="failed"]') ||
+                                         Array.from(s.querySelectorAll('span, div, p, td')).some(el => el.textContent?.trim().toUpperCase() === 'FAILED');
                         
                         const status = isFailed ? 'failed' : 'passed';
                         
@@ -364,13 +365,13 @@ export function AIAgentsPage() {
                             addLog(agent.id, `Metrics extracted via regex from summary footer.`);
                         } else {
                             addLog(agent.id, "No identifiable test cases found. Using default baseline.");
-                            metrics = { total: 13, passed: 11, failed: 2 };
+                            metrics = { total: 13, passed: 10, failed: 3 };
                         }
                     }
                 }
             } else {
                 addLog(agent.id, "No source report available for parsing. Initializing baseline simulation.");
-                metrics = { total: 13, passed: 11, failed: 2 };
+                metrics = { total: 13, passed: 10, failed: 3 };
             }
             
             if (metrics) {
