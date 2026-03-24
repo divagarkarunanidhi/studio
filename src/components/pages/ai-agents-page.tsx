@@ -29,7 +29,8 @@ import {
     FileCode,
     Activity,
     Download,
-    Eye
+    Eye,
+    Upload
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -87,6 +88,9 @@ export function AIAgentsPage() {
     const [progress, setProgress] = useState(0);
     const [autoMode, setAutoMode] = useState(false);
     const [previewReport, setPreviewReport] = useState<{ name: string, content: string } | null>(null);
+    const [uploadedReport, setUploadedReport] = useState<{ name: string, content: string } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    
     const { toast } = useToast();
     const firestore = useFirestore();
     
@@ -191,21 +195,44 @@ export function AIAgentsPage() {
             addLog(agent.id, `Handshaking with Confluence at ${path}...`);
             addLog(agent.id, `Authenticating as ${configData?.confluenceUser || 'anonymous'}...`);
             await new Promise(resolve => setTimeout(resolve, 1000));
-            addLog(agent.id, "Connection established. Scanning for latest HTML report...");
-            const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
-            extra = `cucumber_report_${timestamp}.html`;
+            
+            if (uploadedReport) {
+                addLog(agent.id, `Found manually provided original report: ${uploadedReport.name}`);
+                extra = uploadedReport.name;
+            } else {
+                addLog(agent.id, "Connection established. Scanning for latest HTML report...");
+                const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
+                extra = `cucumber_report_${timestamp}.html`;
+            }
         } else if (agent.id === 2) {
             addLog(agent.id, "Identifying report structure from Agent 1 output...");
             await new Promise(resolve => setTimeout(resolve, 800));
             addLog(agent.id, "Parsing Gherkin features and scenario outcomes...");
             
-            // Exactly 13 as per confluence report details
-            const total = 13;
-            const failed = Math.floor(Math.random() * 3) + 1; // 1 to 3 failures for realism
+            // Try to parse real metrics if an original report was provided
+            let total = 13; // Default for requested 13
+            let failed = 2;
+            
+            if (uploadedReport) {
+                // Simple regex extraction for realistic feedback if they upload a standard Cucumber report
+                const content = uploadedReport.content;
+                const scenarioMatches = content.match(/class="scenario"/g) || content.match(/<div class="element">/g);
+                if (scenarioMatches) {
+                    total = scenarioMatches.length;
+                    const failedMatches = content.match(/class="failed"/g) || content.match(/status-failed/g);
+                    failed = failedMatches ? Math.floor(failedMatches.length / 5) : 0; // heuristic for step vs scenario
+                    if (failed > total) failed = Math.floor(total * 0.2);
+                }
+            } else {
+                // Exactly 13 as per requested scenario count calibration
+                total = 13;
+                failed = Math.floor(Math.random() * 3) + 1;
+            }
+            
             const passed = total - failed;
             metrics = { total, passed, failed };
             
-            addLog(agent.id, `Analysis Complete: ${total} total scenarios found.`);
+            addLog(agent.id, `Analysis Complete: ${total} total scenarios identified in the original report.`);
             addLog(agent.id, `Results: ${passed} Passed, ${failed} Failed.`);
         } else {
             addLog(agent.id, `Starting unattended task...`);
@@ -267,7 +294,8 @@ export function AIAgentsPage() {
                     .status-pass { color: #28a745; font-weight: bold; }
                     .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #eee; font-size: 12px; color: #555; }
                     .feature { margin-top: 30px; border-left: 4px solid #ddd; padding-left: 15px; }
-                    .scenario { margin-bottom: 15px; padding: 10px; border-radius: 4px; background: #fcfcfc; }
+                    .scenario { margin-bottom: 15px; padding: 10px; border-radius: 4px; background: #fcfcfc; border: 1px solid #eee; }
+                    .scenario-title { font-weight: 600; color: #d40511; margin-bottom: 5px; }
                 </style>
             </head>
             <body>
@@ -284,22 +312,21 @@ export function AIAgentsPage() {
                             <li><span>Status:</span> <span class="status-pass">COMPLETED</span></li>
                             <li><span>Environment:</span> <span>Production</span></li>
                             <li><span>Target Solution:</span> <span>OTM v24.1</span></li>
-                            <li><span>Browser:</span> <span>Chrome 122.0</span></li>
+                            <li><span>Scenarios Parsed:</span> <span style="font-weight: bold;">13 Total</span></li>
                         </ul>
                     </div>
                     <div class="feature">
                         <h3>Feature: Automated Shipment Invoicing</h3>
-                        <div class="scenario">
-                            <p><strong>Scenario:</strong> Generate invoice for multi-stop shipment</p>
-                            <span class="tag">@Regression</span> <span class="tag">@Financials</span>
-                        </div>
-                        <div class="scenario">
-                            <p><strong>Scenario:</strong> Validate VAT calculation for EU shipments</p>
-                            <span class="tag">@Sanity</span>
-                        </div>
+                        ${Array.from({ length: 13 }).map((_, i) => `
+                            <div class="scenario">
+                                <div class="scenario-title">Scenario ${i+1}: Validate Invoice Type ${String.fromCharCode(65 + i)}</div>
+                                <span class="tag">@Regression</span> <span class="tag">@Financials</span>
+                                <p style="font-size: 12px; margin: 5px 0;">Status: <span style="color: ${i % 5 === 0 ? '#d40511' : '#28a745'}; font-weight: bold;">${i % 5 === 0 ? 'FAILED' : 'PASSED'}</span></p>
+                            </div>
+                        `).join('')}
                     </div>
                     <hr/>
-                    <p style="text-align:center; font-size: 12px; color: #999;">End of automated report generated by TaaS AI Engine (13 Scenarios Analyzed)</p>
+                    <p style="text-align:center; font-size: 12px; color: #999;">End of automated report (13 Scenarios Analyzed)</p>
                 </div>
             </body>
             </html>
@@ -307,8 +334,8 @@ export function AIAgentsPage() {
     };
 
     const handleDownloadReport = (fileName: string) => {
-        const mockHtml = generateMockHtml(fileName);
-        const blob = new Blob([mockHtml], { type: 'text/html' });
+        const content = uploadedReport ? uploadedReport.content : generateMockHtml(fileName);
+        const blob = new Blob([content], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -323,8 +350,24 @@ export function AIAgentsPage() {
     const handleViewReport = (fileName: string) => {
         setPreviewReport({
             name: fileName,
-            content: generateMockHtml(fileName)
+            content: uploadedReport ? uploadedReport.content : generateMockHtml(fileName)
         });
+    };
+
+    const handleManualUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target?.result as string;
+            setUploadedReport({ name: file.name, content });
+            toast({
+                title: "Original Report Uploaded",
+                description: `Agent 1 will now use "${file.name}" as the original source file.`
+            });
+        };
+        reader.readAsText(file);
     };
 
     const isAnyAgentRunning = agents.some(a => a.status === 'running');
@@ -404,25 +447,45 @@ export function AIAgentsPage() {
                                     {idx >= 6 && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                 </div>
                                 <div className="flex gap-1">
-                                    {idx === 0 && agent.extraInfo && (
+                                    {idx === 0 && (
                                         <div className="flex gap-1">
+                                            {agent.extraInfo && (
+                                                <>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-6 w-6 text-primary"
+                                                        onClick={() => handleViewReport(agent.extraInfo!)}
+                                                        title="View fetched report (Original HTML)"
+                                                    >
+                                                        <Eye className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-6 w-6 text-primary"
+                                                        onClick={() => handleDownloadReport(agent.extraInfo!)}
+                                                        title="Download original HTML report"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </>
+                                            )}
+                                            <input 
+                                                type="file" 
+                                                ref={fileInputRef} 
+                                                onChange={handleManualUpload} 
+                                                accept=".html" 
+                                                className="hidden" 
+                                            />
                                             <Button 
                                                 variant="ghost" 
                                                 size="icon" 
                                                 className="h-6 w-6 text-primary"
-                                                onClick={() => handleViewReport(agent.extraInfo!)}
-                                                title="View fetched report"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                title="Upload Local HTML Report (Original)"
                                             >
-                                                <Eye className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-6 w-6 text-primary"
-                                                onClick={() => handleDownloadReport(agent.extraInfo!)}
-                                                title="Download fetched report"
-                                            >
-                                                <Download className="h-3.5 w-3.5" />
+                                                <Upload className="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
                                     )}
@@ -631,7 +694,7 @@ export function AIAgentsPage() {
                             Report Preview: {previewReport?.name}
                         </DialogTitle>
                         <DialogDescription>
-                            Rendered view of the HTML report fetched from Confluence.
+                            Rendered view of the original HTML report (Simulation Source).
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex-1 bg-muted/20 p-4">
