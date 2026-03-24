@@ -199,8 +199,9 @@ export function AIAgentsPage() {
             await new Promise(resolve => setTimeout(resolve, 800));
             addLog(agent.id, "Parsing Gherkin features and scenario outcomes...");
             
-            const total = Math.floor(Math.random() * 40) + 60;
-            const failed = Math.floor(Math.random() * 12) + 3;
+            // Adjusted to exactly 13 as per confluence report details
+            const total = 13;
+            const failed = Math.floor(Math.random() * 3) + 1; // 1 to 3 failures for realism
             const passed = total - failed;
             metrics = { total, passed, failed };
             
