@@ -11,7 +11,7 @@ export async function POST(request: Request) {
         const { path, user, password } = body;
 
         if (!path || !user || !password) {
-            return NextResponse.json({ error: "Configuration missing." }, { status: 400 });
+            return NextResponse.json({ error: "Configuration missing. Please check URL, Username, and Password/Token." }, { status: 400 });
         }
 
         const auth = Buffer.from(`${user}:${password}`).toString('base64');
@@ -24,12 +24,12 @@ export async function POST(request: Request) {
         try {
             urlObj = new URL(path);
         } catch (e) {
-            return NextResponse.json({ error: "Invalid URL format." }, { status: 400 });
+            return NextResponse.json({ error: "Invalid URL format. Please provide a full URL including https://" }, { status: 400 });
         }
 
         // 1. Check if path is a direct link to an HTML file (ignoring query params)
         if (urlObj.pathname.toLowerCase().endsWith('.html')) {
-            const res = await fetch(path, { headers });
+            const res = await fetch(path, { headers, signal: AbortSignal.timeout(15000) });
             if (res.ok) {
                 const content = await res.text();
                 const fileName = urlObj.pathname.split('/').pop() || 'latest_report.html';
@@ -38,7 +38,6 @@ export async function POST(request: Request) {
         }
 
         // 2. Assume path is a Confluence Page URL and try to find the latest HTML attachment via REST API
-        // Improved Regex: Handles ?pageId=123 (Server) and /pages/123/Title (Cloud)
         let pageId: string | null = null;
         const pageIdMatch = path.match(/pageId=(\d+)/) || path.match(/\/pages\/(\d+)(?:\/|$)/);
         
@@ -48,30 +47,45 @@ export async function POST(request: Request) {
 
         if (!pageId) {
             return NextResponse.json({ 
-                error: "Could not identify Page ID from the URL. Please use a link containing 'pageId=' (found in Page Information) or a Cloud link containing '/pages/[ID]/...'. Alternatively, provide a direct link to the .html attachment." 
+                error: "Could not identify Page ID from the URL. Ensure the URL contains a numeric ID (e.g., /pages/123456)." 
             }, { status: 400 });
         }
 
         const baseUrl = urlObj.origin;
-        // Confluence Cloud/Server standard attachment API
+        
+        // Try standard Cloud path first
         const apiPath = `${baseUrl}/wiki/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`;
 
-        const listRes = await fetch(apiPath, { headers });
-        if (!listRes.ok) {
-            // Fallback for some instances that don't use the /wiki prefix
-            const altApiPath = `${baseUrl}/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`;
-            const altRes = await fetch(altApiPath, { headers });
+        try {
+            const listRes = await fetch(apiPath, { headers, signal: AbortSignal.timeout(10000) });
             
-            if (!altRes.ok) {
-                throw new Error(`Confluence API error: ${listRes.status} ${listRes.statusText}. Verify the URL and that the user has 'View' permissions.`);
+            if (listRes.ok) {
+                const data = await listRes.json();
+                return processAttachments(data, baseUrl, headers);
             }
-            
-            const data = await altRes.json();
-            return processAttachments(data, baseUrl, headers);
-        }
 
-        const data = await listRes.json();
-        return processAttachments(data, baseUrl, headers);
+            // Fallback for instances that don't use the /wiki prefix (Server/Data Center or specific Cloud setups)
+            const altApiPath = `${baseUrl}/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`;
+            const altRes = await fetch(altApiPath, { headers, signal: AbortSignal.timeout(10000) });
+            
+            if (altRes.ok) {
+                const data = await altRes.json();
+                return processAttachments(data, baseUrl, headers);
+            }
+
+            // If both failed, report the status of the first one
+            const statusText = listRes.status === 401 ? "Unauthorized (Check your API Token/Password)" : 
+                               listRes.status === 403 ? "Forbidden (User lacks permissions)" : 
+                               listRes.statusText;
+            
+            throw new Error(`Confluence API error: ${listRes.status} ${statusText}`);
+
+        } catch (fetchErr: any) {
+            if (fetchErr.name === 'TimeoutError') {
+                throw new Error("Request to Confluence timed out. Check if the instance is reachable.");
+            }
+            throw fetchErr;
+        }
 
     } catch (e: any) {
         console.error("Confluence Fetch Error:", e);
@@ -96,7 +110,7 @@ async function processAttachments(data: any, baseUrl: string, headers: any) {
 
     if (!latestHtml) {
         return NextResponse.json({ 
-            error: "No HTML attachments found on the specified Confluence page." 
+            error: "No HTML attachments found on the specified Confluence page. Please upload a .html report to the page first." 
         }, { status: 404 });
     }
 
@@ -107,10 +121,10 @@ async function processAttachments(data: any, baseUrl: string, headers: any) {
     }
 
     const downloadUrl = downloadRelativeUrl.startsWith('http') ? downloadRelativeUrl : `${baseUrl}${downloadRelativeUrl}`;
-    const contentRes = await fetch(downloadUrl, { headers });
+    const contentRes = await fetch(downloadUrl, { headers, signal: AbortSignal.timeout(15000) });
     
     if (!contentRes.ok) {
-        throw new Error(`Failed to download report content: ${contentRes.status}`);
+        throw new Error(`Failed to download report content: ${contentRes.status} ${contentRes.statusText}`);
     }
 
     const content = await contentRes.text();

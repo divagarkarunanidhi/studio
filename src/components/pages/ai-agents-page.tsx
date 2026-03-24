@@ -189,6 +189,7 @@ export function AIAgentsPage() {
         
         let extra = undefined;
         let metrics: AgentMetrics | undefined = undefined;
+        let executionStatus: 'success' | 'error' = 'success';
 
         if (agent.id === 1) {
             const path = configData?.confluencePath;
@@ -209,19 +210,21 @@ export function AIAgentsPage() {
                     
                     const result = await response.json();
                     if (response.ok) {
-                        addLog(agent.id, `Successfully fetched live report from Confluence: ${result.fileName}`);
+                        addLog(agent.id, `Successfully fetched live report: ${result.fileName}`);
                         extra = result.fileName;
                         setUploadedReport({ name: result.fileName, content: result.content });
                         fetchedFromApi = true;
                     } else {
-                        addLog(agent.id, `Live Fetch Note: ${result.error || 'Check configuration'}.`);
+                        addLog(agent.id, `Fetch Error: ${result.error || 'Unknown error'}.`);
+                        executionStatus = 'error';
                     }
-                } catch (e) {
-                    addLog(agent.id, `Connection to Confluence API timed out. Checking for local overrides...`);
+                } catch (e: any) {
+                    addLog(agent.id, `Network Error: ${e.message || 'Connection failed'}. Checking local overrides...`);
+                    executionStatus = 'error';
                 }
             }
 
-            if (!fetchedFromApi) {
+            if (!fetchedFromApi && executionStatus === 'success') {
                 if (uploadedReport) {
                     addLog(agent.id, `Found manually provided original report: ${uploadedReport.name}`);
                     extra = uploadedReport.name;
@@ -269,16 +272,18 @@ export function AIAgentsPage() {
 
         setAgents(prev => prev.map((a, i) => i === index ? { 
             ...a, 
-            status: 'success', 
+            status: executionStatus, 
             lastRun: new Date().toISOString(),
             extraInfo: extra || a.extraInfo,
             metrics: metrics || a.metrics
         } : a));
 
-        if (agent.id === 1) {
-            addLog(agent.id, `Agent 1 verified report: ${extra}`);
-        } else if (agent.id !== 2) {
-            addLog(agent.id, `Completed successfully. Found ${Math.floor(Math.random() * 10)} relevant items.`);
+        if (executionStatus === 'success') {
+            if (agent.id === 1) {
+                addLog(agent.id, `Agent 1 verified report: ${extra}`);
+            } else if (agent.id !== 2) {
+                addLog(agent.id, `Completed successfully. Found ${Math.floor(Math.random() * 10)} relevant items.`);
+            }
         }
         
         if (isPipelineRunning) {
@@ -459,7 +464,8 @@ export function AIAgentsPage() {
                     <Card key={agent.id} className={cn(
                         "transition-all duration-300 flex flex-col",
                         agent.status === 'running' && "ring-2 ring-primary ring-offset-2",
-                        agent.status === 'success' && "bg-green-50/30 border-green-200"
+                        agent.status === 'success' && "bg-green-50/30 border-green-200",
+                        agent.status === 'error' && "bg-red-50/30 border-red-200"
                     )}>
                         <CardHeader className="p-4 pb-2">
                             <div className="flex justify-between items-start">
