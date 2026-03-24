@@ -27,6 +27,7 @@ export const AppConfigurationSchema = z.object({
     seleniumDomainDateRanges: z.record(z.any()).optional(),
     // Confluence Fetcher Configuration
     confluencePath: z.string().optional().nullable(),
+    confluencePageId: z.string().optional().nullable(),
     confluenceUser: z.string().optional().nullable(),
     confluencePassword: z.string().optional().nullable(),
 });

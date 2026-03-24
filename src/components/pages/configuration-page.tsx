@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -39,6 +40,7 @@ export function ConfigurationPage() {
       jiraLink: '',
       reusabilityLabels: '',
       confluencePath: '',
+      confluencePageId: '',
       confluenceUser: '',
       confluencePassword: ''
     },
@@ -258,49 +260,63 @@ export function ConfigurationPage() {
                         Test Confluence
                     </Button>
                 </div>
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                     control={form.control}
                     name="confluencePath"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Agent 1: Confluence Fetcher Path</FormLabel>
+                        <FormLabel>Agent 1: Confluence Base URL / Domain</FormLabel>
                         <FormControl>
-                            <Input placeholder="https://confluence.example.com/display/PROJ/Reports" {...field} value={field.value || ''} />
+                            <Input placeholder="https://taasdhl.atlassian.net/wiki" {...field} value={field.value || ''} />
                         </FormControl>
-                        <FormDescription>The direct URL to the Confluence page containing Cucumber HTML reports.</FormDescription>
+                        <FormDescription>The root URL of your Confluence instance.</FormDescription>
                         <FormMessage />
                         </FormItem>
                     )}
                     />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                        control={form.control}
-                        name="confluenceUser"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Confluence Username</FormLabel>
-                            <FormControl>
-                                <Input placeholder="user@dhl.com" {...field} value={field.value || ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="confluencePassword"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Confluence Password / Token</FormLabel>
-                            <FormControl>
-                                <Input type="password" placeholder="Enter password or API token" {...field} value={field.value || ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </div>
+                    <FormField
+                    control={form.control}
+                    name="confluencePageId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Confluence Page ID</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., 196739" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormDescription>The numeric ID of the page containing report attachments.</FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="confluenceUser"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Confluence Username</FormLabel>
+                        <FormControl>
+                            <Input placeholder="user@dhl.com" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="confluencePassword"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Confluence Password / Token</FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="Enter password or API token" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
                 </div>
             </div>
 

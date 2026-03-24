@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -31,7 +32,8 @@ import {
     Download,
     Eye,
     Upload,
-    HelpCircle
+    HelpCircle,
+    Hash
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -99,6 +101,7 @@ export function AIAgentsPage() {
     const { data: configData } = useDoc<AppConfiguration>(configRef);
 
     const [confluencePath, setConfluencePath] = useState('');
+    const [confluencePageId, setConfluencePageId] = useState('');
     const [confluenceUser, setConfluenceUser] = useState('');
     const [confluencePassword, setConfluencePassword] = useState('');
     const [isTesting, setIsTesting] = useState(false);
@@ -106,6 +109,7 @@ export function AIAgentsPage() {
     useEffect(() => {
         if (configData) {
             setConfluencePath(configData.confluencePath || '');
+            setConfluencePageId(configData.confluencePageId || '');
             setConfluenceUser(configData.confluenceUser || '');
             setConfluencePassword(configData.confluencePassword || '');
         }
@@ -115,6 +119,7 @@ export function AIAgentsPage() {
         if (!configRef) return;
         setDocumentNonBlocking(configRef, { 
             confluencePath, 
+            confluencePageId,
             confluenceUser, 
             confluencePassword 
         }, { merge: true });
@@ -194,10 +199,12 @@ export function AIAgentsPage() {
 
         if (agent.id === 1) {
             const path = confluencePath || configData?.confluencePath;
+            const pageId = confluencePageId || configData?.confluencePageId;
             const user = confluenceUser || configData?.confluenceUser;
             const password = confluencePassword || configData?.confluencePassword;
 
             addLog(agent.id, `Connecting to Confluence at ${path}...`);
+            if (pageId) addLog(agent.id, `Targeting Page ID: ${pageId}`);
             
             let fetchedFromApi = false;
 
@@ -206,7 +213,7 @@ export function AIAgentsPage() {
                     const response = await fetch('/api/confluence/fetch', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path, user, password })
+                        body: JSON.stringify({ path, pageId, user, password })
                     });
                     
                     const result = await response.json();
@@ -549,11 +556,22 @@ export function AIAgentsPage() {
                                                 </DialogHeader>
                                                 <div className="space-y-4 py-4">
                                                     <div className="space-y-2">
-                                                        <Label>Confluence Path (URL)</Label>
+                                                        <Label>Confluence Base URL / Domain</Label>
                                                         <Input 
-                                                            placeholder="https://..." 
+                                                            placeholder="https://taasdhl.atlassian.net/wiki" 
                                                             value={confluencePath}
                                                             onChange={(e) => setConfluencePath(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="flex items-center gap-2">
+                                                            Page ID (Optional)
+                                                            <HelpCircle className="h-3 w-3 text-muted-foreground" title="If provided, Agent 1 will target this specific page instead of parsing the URL." />
+                                                        </Label>
+                                                        <Input 
+                                                            placeholder="e.g., 196739" 
+                                                            value={confluencePageId}
+                                                            onChange={(e) => setConfluencePageId(e.target.value)}
                                                         />
                                                     </div>
                                                     <div className="space-y-2">
