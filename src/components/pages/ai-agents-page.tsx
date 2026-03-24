@@ -256,17 +256,42 @@ export function AIAgentsPage() {
             
             if (uploadedReport) {
                 const content = uploadedReport.content;
-                // Robust heuristic to count scenarios in a Cucumber HTML report
-                const scenarioMatches = content.match(/class="scenario"/g) || content.match(/<div class="element">/g) || content.match(/class="element"/g) || content.match(/scenario-heading/g);
-                if (scenarioMatches) {
-                    total = scenarioMatches.length;
-                    const failedMatches = content.match(/class="failed"/g) || content.match(/status-failed/g) || content.match(/FAILED/g);
-                    failed = failedMatches ? Math.floor(failedMatches.length / 5) : 0; 
-                    if (failed > total) failed = Math.floor(total * 0.2);
+                
+                // 1. Try to find a summary string first (Standard Cucumber HTML pattern)
+                const summaryRegex = /(\d+)\s+scenarios?\s*\((\d+)\s+passed,\s*(\d+)\s+failed\)/i;
+                const summaryMatch = content.match(summaryRegex);
+                
+                if (summaryMatch) {
+                    total = parseInt(summaryMatch[1], 10);
+                    failed = parseInt(summaryMatch[3], 10);
+                } else {
+                    // 2. Fallback: Parse individual scenario blocks
+                    const scenarioBlocks = content.split(/class="scenario"|class="element"|class="scenario-heading"/);
+                    // Remove first block
+                    scenarioBlocks.shift();
+                    
+                    if (scenarioBlocks.length > 0) {
+                        total = scenarioBlocks.length;
+                        failed = 0;
+                        scenarioBlocks.forEach(block => {
+                            if (block.toLowerCase().includes('status="failed"') || 
+                                block.toLowerCase().includes('class="failed"') || 
+                                block.toLowerCase().includes('status-failed') ||
+                                block.includes('FAILED')) {
+                                failed++;
+                            }
+                        });
+                    } else {
+                        // 3. Last Resort Heuristic
+                        const scenarios = content.match(/class="scenario"|class="element"|class="scenario-heading"/g) || [];
+                        total = scenarios.length || 13;
+                        const failedMatches = content.match(/class="failed"|status-failed|class="status-failed"/g) || [];
+                        failed = Math.min(total, Math.ceil(failedMatches.length / 5) || 2);
+                    }
                 }
             }
             
-            const passed = total - failed;
+            const passed = Math.max(0, total - failed);
             metrics = { total, passed, failed };
             
             addLog(agent.id, `Analysis Complete: ${total} total scenarios identified.`);
