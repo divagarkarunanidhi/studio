@@ -92,6 +92,7 @@ export function AIAgentsPage() {
     const [autoMode, setAutoMode] = useState(false);
     const [previewReport, setPreviewReport] = useState<{ name: string, content: string } | null>(null);
     const [uploadedReport, setUploadedReport] = useState<{ name: string, content: string } | null>(null);
+    const reportRef = useRef<{ name: string, content: string } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     const { toast } = useToast();
@@ -221,7 +222,9 @@ export function AIAgentsPage() {
                     if (response.ok && result.success) {
                         addLog(agent.id, `Successfully fetched live report: ${result.fileName}`);
                         extra = result.fileName;
-                        setUploadedReport({ name: result.fileName, content: result.content });
+                        const newReport = { name: result.fileName, content: result.content };
+                        setUploadedReport(newReport);
+                        reportRef.current = newReport;
                         fetchedFromApi = true;
                     } else {
                         addLog(agent.id, `Fetch Failed: ${result.error || 'Unknown error'}`);
@@ -237,9 +240,9 @@ export function AIAgentsPage() {
             }
 
             if (!fetchedFromApi && executionStatus === 'success') {
-                if (uploadedReport) {
-                    addLog(agent.id, `Using manually provided report: ${uploadedReport.name}`);
-                    extra = uploadedReport.name;
+                if (reportRef.current) {
+                    addLog(agent.id, `Using existing report: ${reportRef.current.name}`);
+                    extra = reportRef.current.name;
                 } else {
                     addLog(agent.id, "Simulation Mode: No live report found.");
                     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -248,54 +251,94 @@ export function AIAgentsPage() {
                 }
             }
         } else if (agent.id === 2) {
-            addLog(agent.id, "Parsing HTML report content...");
+            addLog(agent.id, "Analyzing report metrics...");
             await new Promise(resolve => setTimeout(resolve, 800));
             
-            let total = 13; 
-            let failed = 2;
+            const currentReport = reportRef.current;
             
-            if (uploadedReport) {
-                const content = uploadedReport.content;
+            if (currentReport) {
+                const html = currentReport.content;
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
                 
-                // 1. Try to find a summary string first (Standard Cucumber HTML pattern)
+                let total = 0, passed = 0, failed = 0;
+
+                // 1. Try to find standard Cucumber summary text
+                const textContent = doc.body.innerText || doc.body.textContent || "";
                 const summaryRegex = /(\d+)\s+scenarios?\s*\((\d+)\s+passed,\s*(\d+)\s+failed\)/i;
-                const summaryMatch = content.match(summaryRegex);
+                const match = textContent.match(summaryRegex);
                 
-                if (summaryMatch) {
-                    total = parseInt(summaryMatch[1], 10);
-                    failed = parseInt(summaryMatch[3], 10);
+                if (match) {
+                    total = parseInt(match[1], 10);
+                    passed = parseInt(match[2], 10);
+                    failed = parseInt(match[3], 10);
+                    addLog(agent.id, `Metrics extracted from summary text.`);
                 } else {
-                    // 2. Fallback: Parse individual scenario blocks
-                    const scenarioBlocks = content.split(/class="scenario"|class="element"|class="scenario-heading"/);
-                    // Remove first block
-                    scenarioBlocks.shift();
+                    // 2. Search for summary table
+                    const tables = Array.from(doc.querySelectorAll('table'));
+                    let foundTable = false;
                     
-                    if (scenarioBlocks.length > 0) {
-                        total = scenarioBlocks.length;
-                        failed = 0;
-                        scenarioBlocks.forEach(block => {
-                            if (block.toLowerCase().includes('status="failed"') || 
-                                block.toLowerCase().includes('class="failed"') || 
-                                block.toLowerCase().includes('status-failed') ||
-                                block.includes('FAILED')) {
-                                failed++;
+                    for (const table of tables) {
+                        const headers = Array.from(table.querySelectorAll('th, td')).map(h => h.textContent?.trim().toLowerCase() || "");
+                        if (headers.includes('total') && (headers.includes('passed') || headers.includes('pass')) && (headers.includes('failed') || headers.includes('fail'))) {
+                            const dataRows = Array.from(table.querySelectorAll('tr')).slice(1);
+                            if (dataRows.length > 0) {
+                                // Try last row (often totals)
+                                const lastRow = dataRows[dataRows.length - 1];
+                                const cells = Array.from(lastRow.querySelectorAll('td')).map(c => parseInt(c.textContent?.trim() || "0", 10));
+                                
+                                const totalIdx = headers.indexOf('total');
+                                const passIdx = headers.indexOf('passed') !== -1 ? headers.indexOf('passed') : headers.indexOf('pass');
+                                const failIdx = headers.indexOf('failed') !== -1 ? headers.indexOf('failed') : headers.indexOf('fail');
+                                
+                                if (!isNaN(cells[totalIdx])) total = cells[totalIdx];
+                                if (!isNaN(cells[passIdx])) passed = cells[passIdx];
+                                if (!isNaN(cells[failIdx])) failed = cells[failIdx];
+                                
+                                if (total > 0) {
+                                    foundTable = true;
+                                    addLog(agent.id, `Metrics extracted from summary table.`);
+                                    break;
+                                }
                             }
-                        });
-                    } else {
-                        // 3. Last Resort Heuristic
-                        const scenarios = content.match(/class="scenario"|class="element"|class="scenario-heading"/g) || [];
-                        total = scenarios.length || 13;
-                        const failedMatches = content.match(/class="failed"|status-failed|class="status-failed"/g) || [];
-                        failed = Math.min(total, Math.ceil(failedMatches.length / 5) || 2);
+                        }
+                    }
+
+                    if (!foundTable) {
+                        // 3. Fallback: Count elements by class
+                        const scenarios = doc.querySelectorAll('.scenario, .element, [class*="scenario-heading"]');
+                        if (scenarios.length > 0) {
+                            total = scenarios.length;
+                            // Search for failure indicators within scenarios or classes
+                            failed = Array.from(scenarios).filter(s => 
+                                s.classList.contains('failed') || 
+                                s.outerHTML.toLowerCase().includes('status="failed"') ||
+                                s.outerHTML.toLowerCase().includes('class="failed"')
+                            ).length;
+                            passed = Math.max(0, total - failed);
+                            addLog(agent.id, `Metrics estimated by scenario element count.`);
+                        } else {
+                            // 4. Global Regex fallback
+                            const totalM = html.match(/Total\s*(?:Scenarios|Tests)?\s*[:\-\s]*(\d+)/i);
+                            const passM = html.match(/Passed\s*[:\-\s]*(\d+)/i);
+                            const failM = html.match(/Failed\s*[:\-\s]*(\d+)/i);
+                            
+                            total = totalM ? parseInt(totalM[1], 10) : 13;
+                            passed = passM ? parseInt(passM[1], 10) : (totalM ? total - (failM ? parseInt(failM[1], 10) : 2) : 11);
+                            failed = failM ? parseInt(failM[1], 10) : (total - passed);
+                            addLog(agent.id, `Metrics identified via pattern matching.`);
+                        }
                     }
                 }
+                
+                metrics = { total, passed, failed };
+            } else {
+                addLog(agent.id, "No live report found. Using simulation baseline.");
+                metrics = { total: 13, passed: 11, failed: 2 };
             }
             
-            const passed = Math.max(0, total - failed);
-            metrics = { total, passed, failed };
-            
-            addLog(agent.id, `Analysis Complete: ${total} total scenarios identified.`);
-            addLog(agent.id, `Results: ${passed} Passed, ${failed} Failed.`);
+            addLog(agent.id, `Analysis Complete: ${metrics.total} total scenarios identified.`);
+            addLog(agent.id, `Final Tally: ${metrics.passed} Passed, ${metrics.failed} Failed.`);
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
@@ -394,7 +437,7 @@ export function AIAgentsPage() {
     };
 
     const handleDownloadReport = (fileName: string) => {
-        const content = uploadedReport ? uploadedReport.content : generateMockHtml(fileName);
+        const content = reportRef.current ? reportRef.current.content : generateMockHtml(fileName);
         const blob = new Blob([content], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -410,7 +453,7 @@ export function AIAgentsPage() {
     const handleViewReport = (fileName: string) => {
         setPreviewReport({
             name: fileName,
-            content: uploadedReport ? uploadedReport.content : generateMockHtml(fileName)
+            content: reportRef.current ? reportRef.current.content : generateMockHtml(fileName)
         });
     };
 
@@ -421,7 +464,9 @@ export function AIAgentsPage() {
         const reader = new FileReader();
         reader.onload = (event) => {
             const content = event.target?.result as string;
-            setUploadedReport({ name: file.name, content });
+            const newReport = { name: file.name, content };
+            setUploadedReport(newReport);
+            reportRef.current = newReport;
             toast({
                 title: "Original Report Uploaded",
                 description: `Agent 1 will now use "${file.name}" as the original source file.`
@@ -510,13 +555,13 @@ export function AIAgentsPage() {
                                 <div className="flex gap-1">
                                     {idx === 0 && (
                                         <div className="flex gap-1">
-                                            {agent.extraInfo && (
+                                            {(reportRef.current || agent.extraInfo) && (
                                                 <>
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
                                                         className="h-6 w-6 text-primary"
-                                                        onClick={() => handleViewReport(agent.extraInfo!)}
+                                                        onClick={() => handleViewReport(reportRef.current?.name || agent.extraInfo!)}
                                                         title="View fetched report (Original HTML)"
                                                     >
                                                         <Eye className="h-3.5 w-3.5" />
@@ -525,7 +570,7 @@ export function AIAgentsPage() {
                                                         variant="ghost" 
                                                         size="icon" 
                                                         className="h-6 w-6 text-primary"
-                                                        onClick={() => handleDownloadReport(agent.extraInfo!)}
+                                                        onClick={() => handleDownloadReport(reportRef.current?.name || agent.extraInfo!)}
                                                         title="Download original HTML report"
                                                     >
                                                         <Download className="h-3.5 w-3.5" />
@@ -665,12 +710,12 @@ export function AIAgentsPage() {
                                             {(configData?.confluencePath || confluencePath) ? "CONNECTED" : "OFFLINE"}
                                         </Badge>
                                     </div>
-                                    {agent.extraInfo && (
+                                    {(reportRef.current || agent.extraInfo) && (
                                         <div className="space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
                                             <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Latest HTML Report:</span>
                                             <div className="p-1.5 bg-primary/5 border border-primary/10 rounded text-[9px] font-mono flex items-center gap-1.5">
                                                 <FileCode className="h-3 w-3 text-primary shrink-0" />
-                                                <span className="truncate" title={agent.extraInfo}>{agent.extraInfo}</span>
+                                                <span className="truncate" title={reportRef.current?.name || agent.extraInfo}>{reportRef.current?.name || agent.extraInfo}</span>
                                             </div>
                                         </div>
                                     )}
