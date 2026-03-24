@@ -196,7 +196,7 @@ export function AIAgentsPage() {
             const user = confluenceUser || configData?.confluenceUser;
             const password = confluencePassword || configData?.confluencePassword;
 
-            addLog(agent.id, `Attempting live fetch from Confluence...`);
+            addLog(agent.id, `Connecting to Confluence at ${path}...`);
             
             let fetchedFromApi = false;
 
@@ -208,25 +208,19 @@ export function AIAgentsPage() {
                         body: JSON.stringify({ path, user, password })
                     });
                     
-                    const responseText = await response.text();
-                    let result;
-                    try {
-                        result = JSON.parse(responseText);
-                    } catch (e) {
-                        throw new Error(`Invalid response from server. Check URL and credentials.`);
-                    }
+                    const result = await response.json();
 
-                    if (response.ok) {
+                    if (response.ok && result.success) {
                         addLog(agent.id, `Successfully fetched live report: ${result.fileName}`);
                         extra = result.fileName;
                         setUploadedReport({ name: result.fileName, content: result.content });
                         fetchedFromApi = true;
                     } else {
-                        addLog(agent.id, `Fetch Error: ${result.error || 'Connection failed'}.`);
+                        addLog(agent.id, `Fetch Failed: ${result.error || 'Unknown API error'}`);
                         executionStatus = 'error';
                     }
                 } catch (e: any) {
-                    addLog(agent.id, `Network Error: ${e.message}. Checking local overrides...`);
+                    addLog(agent.id, `Network Error: ${e.message}`);
                     executionStatus = 'error';
                 }
             } else {
@@ -236,21 +230,20 @@ export function AIAgentsPage() {
 
             if (!fetchedFromApi && executionStatus === 'success') {
                 if (uploadedReport) {
-                    addLog(agent.id, `Found manually provided original report: ${uploadedReport.name}`);
+                    addLog(agent.id, `Using manually provided report: ${uploadedReport.name}`);
                     extra = uploadedReport.name;
                 } else {
-                    addLog(agent.id, "No live report found and no manual upload present. Initializing simulation...");
+                    addLog(agent.id, "No live report found. Initializing simulation...");
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
                     extra = `cucumber_report_${timestamp}.html`;
                 }
             }
         } else if (agent.id === 2) {
-            addLog(agent.id, "Identifying report structure from Agent 1 output...");
+            addLog(agent.id, "Parsing HTML report content...");
             await new Promise(resolve => setTimeout(resolve, 800));
-            addLog(agent.id, "Parsing Gherkin features and scenario outcomes...");
             
-            let total = 13; // Default
+            let total = 13; 
             let failed = 2;
             
             if (uploadedReport) {
@@ -260,12 +253,9 @@ export function AIAgentsPage() {
                 if (scenarioMatches) {
                     total = scenarioMatches.length;
                     const failedMatches = content.match(/class="failed"/g) || content.match(/status-failed/g);
-                    failed = failedMatches ? Math.floor(failedMatches.length / 5) : 0; // heuristic since multiple things get the 'failed' class
+                    failed = failedMatches ? Math.floor(failedMatches.length / 5) : 0; 
                     if (failed > total) failed = Math.floor(total * 0.2);
                 }
-            } else {
-                total = 13;
-                failed = Math.floor(Math.random() * 3) + 1;
             }
             
             const passed = total - failed;
@@ -288,12 +278,8 @@ export function AIAgentsPage() {
             metrics: metrics || a.metrics
         } : a));
 
-        if (executionStatus === 'success') {
-            if (agent.id === 1) {
-                addLog(agent.id, `Agent 1 verified report: ${extra}`);
-            } else if (agent.id !== 2) {
-                addLog(agent.id, `Completed successfully. Found ${Math.floor(Math.random() * 10)} relevant items.`);
-            }
+        if (executionStatus === 'success' && agent.id !== 2) {
+            addLog(agent.id, `Completed successfully.`);
         }
         
         if (isPipelineRunning) {
@@ -313,7 +299,7 @@ export function AIAgentsPage() {
         setCurrentAgentIndex(-1);
         toast({
             title: "Pipeline Completed",
-            description: "All 8 AI Agents have finished their unattended tasks."
+            description: "All AI Agents have finished their unattended tasks."
         });
     };
 

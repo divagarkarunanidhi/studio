@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 /**
  * POST /api/confluence/fetch
  * Attempts to fetch the latest HTML report from a Confluence instance.
- * Handles both direct attachment links and page URLs.
+ * Handles both direct attachment links and page URLs with specific v2 Cloud API support.
  */
 export async function POST(request: Request) {
     try {
@@ -17,7 +17,8 @@ export async function POST(request: Request) {
         const auth = Buffer.from(`${user}:${password}`).toString('base64');
         const headers = { 
             'Authorization': `Basic ${auth}`,
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-Atlassian-Token': 'no-check' // Helps bypass some XSRF checks
         };
 
         let urlObj: URL;
@@ -27,7 +28,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Invalid URL format. Please provide a full URL including https://" }, { status: 400 });
         }
 
-        // 1. Check if path is a direct link to an HTML file (ignoring query params)
+        const baseUrl = urlObj.origin;
+
+        // 1. Check if path is a direct link to an HTML file
         if (urlObj.pathname.toLowerCase().endsWith('.html')) {
             const res = await fetch(path, { headers, signal: AbortSignal.timeout(15000) });
             if (res.ok) {
@@ -37,7 +40,7 @@ export async function POST(request: Request) {
             }
         }
 
-        // 2. Assume path is a Confluence Page URL and try to find the latest HTML attachment via REST API
+        // 2. Identify Page ID from the URL
         let pageId: string | null = null;
         const pageIdMatch = path.match(/pageId=(\d+)/) || path.match(/\/pages\/(\d+)(?:\/|$)/);
         
@@ -47,13 +50,14 @@ export async function POST(request: Request) {
 
         if (!pageId) {
             return NextResponse.json({ 
-                error: "Could not identify Page ID from the URL. Ensure the URL contains a numeric ID (e.g., /pages/123456)." 
+                error: "Could not identify Page ID from the URL. Please ensure your URL contains a numeric ID (e.g., .../pages/123456)." 
             }, { status: 400 });
         }
 
-        const baseUrl = urlObj.origin;
-        
-        // Define endpoints to try. We prioritize the user-requested v2 API for Cloud instances.
+        /**
+         * Define API endpoints to try in order of preference.
+         * We include variants for both Cloud (with /wiki) and Server/DC.
+         */
         const apiPaths = [
             `${baseUrl}/wiki/api/v2/pages/${pageId}/attachments?sort=-modified-date&limit=10`,
             `${baseUrl}/api/v2/pages/${pageId}/attachments?sort=-modified-date&limit=10`,
@@ -61,29 +65,41 @@ export async function POST(request: Request) {
             `${baseUrl}/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`
         ];
 
-        let lastError = "Confluence API error";
+        let lastStatus = 0;
+        let lastError = "No connection established";
 
         for (const apiPath of apiPaths) {
             try {
                 const listRes = await fetch(apiPath, { headers, signal: AbortSignal.timeout(10000) });
-                const contentType = listRes.headers.get('content-type');
+                lastStatus = listRes.status;
                 
-                if (listRes.ok && contentType?.includes('application/json')) {
+                const contentType = listRes.headers.get('content-type') || "";
+                
+                if (listRes.ok && contentType.includes('application/json')) {
                     const data = await listRes.json();
                     return await processAttachments(data, baseUrl, headers);
-                } else if (listRes.status === 401) {
-                    return NextResponse.json({ error: "Unauthorized: Please verify your Username and API Token/Password." }, { status: 401 });
-                } else if (listRes.status === 403) {
+                } 
+                
+                if (listRes.status === 401) {
+                    return NextResponse.json({ error: "Unauthorized: Please verify Username and API Token (Cloud) or Password (Server)." }, { status: 401 });
+                }
+
+                if (listRes.status === 403) {
                     return NextResponse.json({ error: "Forbidden: You don't have permission to access attachments on this page." }, { status: 403 });
                 }
+
+                // If it's not JSON, read as text to get error details (prevents "Unexpected end of JSON" error)
+                const errorBody = await listRes.text();
+                lastError = errorBody.substring(0, 200) || listRes.statusText;
                 
-                lastError = `API endpoint ${apiPath} returned ${listRes.status} ${listRes.statusText}`;
             } catch (err: any) {
                 lastError = err.message || "Network request failed";
             }
         }
 
-        return NextResponse.json({ error: `Failed to connect to Confluence API: ${lastError}` }, { status: 502 });
+        return NextResponse.json({ 
+            error: `Failed to fetch from Confluence API. (Status: ${lastStatus}). Details: ${lastError}` 
+        }, { status: 502 });
 
     } catch (e: any) {
         console.error("Confluence Fetch Error:", e);
@@ -98,6 +114,10 @@ export async function POST(request: Request) {
 async function processAttachments(data: any, baseUrl: string, headers: any) {
     const attachments = data.results || [];
 
+    if (attachments.length === 0) {
+        throw new Error("No attachments found on the specified Confluence page.");
+    }
+
     // Find the latest attachment ending in .html
     const latestHtml = attachments
         .filter((a: any) => {
@@ -105,25 +125,27 @@ async function processAttachments(data: any, baseUrl: string, headers: any) {
             return title.toLowerCase().endsWith('.html');
         })
         .sort((a: any, b: any) => {
-            // Handle both v1 (history.createdDate) and v2 (createdAt/modifiedAt) timestamps
-            const dateA = new Date(a.history?.createdDate || a.createdAt || a.modifiedAt || 0).getTime();
-            const dateB = new Date(b.history?.createdDate || b.createdAt || b.modifiedAt || 0).getTime();
+            // Priority: v2 modifiedAt -> v1 history.createdDate -> fallback 0
+            const dateA = new Date(a.modifiedAt || a.createdAt || a.history?.createdDate || 0).getTime();
+            const dateB = new Date(b.modifiedAt || b.createdAt || b.history?.createdDate || 0).getTime();
             return dateB - dateA;
         })[0];
 
     if (!latestHtml) {
-        throw new Error("No HTML attachments found on the specified Confluence page. Please upload a .html report to the page first.");
+        throw new Error("No HTML attachments found on the page. Please upload a .html report to the page first.");
     }
 
-    // Determine the download link based on API version
-    // V1 uses _links.download, V2 uses downloadLink
+    // Determine the download link
+    // Cloud V2 uses 'downloadLink', V1 uses '_links.download'
     const downloadRelativeUrl = latestHtml.downloadLink || latestHtml._links?.download || latestHtml._links?.content;
     
     if (!downloadRelativeUrl) {
-        throw new Error("Could not find a valid download link for the attachment.");
+        throw new Error("Could not find a valid download link for the identified attachment.");
     }
 
+    // Build the full download URL
     const downloadUrl = downloadRelativeUrl.startsWith('http') ? downloadRelativeUrl : `${baseUrl}${downloadRelativeUrl}`;
+    
     const contentRes = await fetch(downloadUrl, { 
         headers: { ...headers, 'Accept': '*/*' }, 
         signal: AbortSignal.timeout(15000) 
