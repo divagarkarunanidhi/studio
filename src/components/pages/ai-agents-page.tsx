@@ -74,7 +74,7 @@ interface AgentStatus {
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 1, name: "Confluence Fetcher", description: "Polls Confluence for the latest Cucumber HTML report." },
-    { id: 2, name: "Report Parser", description: "Analyze agent 1 HTML report and Identify the pass and failure." },
+    { id: 2, name: "Report Parser", description: "Analyzes Agent 1 HTML report to identify pass and failure counts." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using AI." },
     { id: 4, name: "Jira Defect Scout", description: "Checks Jira API for existing bugs related to functional failures." },
     { id: 5, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
@@ -94,7 +94,6 @@ export function AIAgentsPage() {
     const [previewReport, setPreviewReport] = useState<{ name: string, content: string } | null>(null);
     const [uploadedReport, setUploadedReport] = useState<{ name: string, content: string } | null>(null);
     const reportRef = useRef<{ name: string, content: string } | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const { toast } = useToast();
     const firestore = useFirestore();
@@ -242,11 +241,11 @@ export function AIAgentsPage() {
 
             if (!fetchedFromApi && executionStatus === 'success') {
                 if (reportRef.current) {
-                    addLog(agent.id, `Using existing report: ${reportRef.current.name}`);
+                    addLog(agent.id, `Using existing report reference: ${reportRef.current.name}`);
                     extra = reportRef.current.name;
                 } else {
-                    addLog(agent.id, "Simulation Mode: No live report found.");
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    addLog(agent.id, "Simulation Mode: Generating mock HTML report.");
+                    await new Promise(resolve => setTimeout(resolve, 800));
                     const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
                     const fileName = `cucumber_report_${timestamp}.html`;
                     const mockHtml = generateMockHtml(fileName);
@@ -257,7 +256,7 @@ export function AIAgentsPage() {
                 }
             }
         } else if (agent.id === 2) {
-            addLog(agent.id, "Initializing dynamic HTML parsing engine...");
+            addLog(agent.id, "Initializing enhanced HTML parsing engine...");
             await new Promise(resolve => setTimeout(resolve, 800));
             
             const currentReport = reportRef.current;
@@ -267,17 +266,29 @@ export function AIAgentsPage() {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, "text/html");
                 
-                // Identify scenarios using common Cucumber report selectors
-                const scenarios = doc.querySelectorAll('.scenario, .element, [class*="scenario-heading"], tr.scenario');
+                // 1. Primary Strategy: Look for scenario containers
+                let scenarios = Array.from(doc.querySelectorAll('.scenario, .element, [class*="scenario-heading"], tr.scenario'));
+                
+                // 2. Secondary Strategy: If no structured elements, search for "Scenario:" text patterns
+                if (scenarios.length === 0) {
+                    addLog(agent.id, "Standard selectors yielded 0 results. Scanning for text patterns...");
+                    const allElements = Array.from(doc.querySelectorAll('div, tr, p, h1, h2, h3, h4, h5, span'));
+                    scenarios = allElements.filter(el => {
+                        const text = el.textContent?.trim() || "";
+                        return (el.classList.contains('scenario') || /^Scenario \d+/i.test(text)) && el.children.length > 0;
+                    });
+                }
+
                 const scenarioResults: { name: string, status: string, tags: string[] }[] = [];
 
                 if (scenarios.length > 0) {
-                    addLog(agent.id, `Scanning ${scenarios.length} potential scenario blocks...`);
+                    addLog(agent.id, `Scanning ${scenarios.length} identified scenario blocks...`);
                     
                     scenarios.forEach((s, idx) => {
                         // Extract name
-                        const nameEl = s.querySelector('.scenario-name, .name, [class*="title"]');
-                        const name = nameEl?.textContent?.trim() || `Scenario ${idx + 1}`;
+                        const nameEl = s.querySelector('.scenario-name, .name, [class*="title"]') || s;
+                        let name = nameEl?.textContent?.split('\n')[0].trim() || `Scenario ${idx + 1}`;
+                        if (name.length > 100) name = name.substring(0, 100) + "...";
                         
                         // Extract tags (Test Case Name Tags)
                         const tags: string[] = [];
@@ -291,65 +302,78 @@ export function AIAgentsPage() {
                         if (tags.length === 0) {
                             const text = s.textContent || "";
                             const tagMatches = text.match(/@[a-zA-Z0-9_\-]+/g);
-                            if (tagMatches) tags.push(...tagMatches);
+                            if (tagMatches) tags.push(...Array.from(new Set(tagMatches)));
                         }
 
-                        // Determine status - more robust check for text content "FAILED"
+                        // Determine status
+                        const outer = s.outerHTML.toLowerCase();
+                        const innerText = s.textContent?.toUpperCase() || "";
                         const isFailed = s.classList.contains('failed') || 
-                                         s.outerHTML.toLowerCase().includes('status="failed"') ||
-                                         s.outerHTML.toLowerCase().includes('class="failed"') ||
+                                         outer.includes('status="failed"') ||
+                                         outer.includes('class="failed"') ||
                                          s.querySelector('.failed, [class*="failed"]') ||
-                                         Array.from(s.querySelectorAll('span, div, p, td')).some(el => el.textContent?.trim().toUpperCase() === 'FAILED');
+                                         innerText.includes('FAILED') ||
+                                         innerText.includes('FAILURE');
                         
                         const status = isFailed ? 'failed' : 'passed';
-                        
                         scenarioResults.push({ name, status, tags });
                     });
 
-                    const totalCount = scenarioResults.length;
-                    const failedCount = scenarioResults.filter(r => r.status === 'failed').length;
+                    // De-duplicate if strategies overlap
+                    const uniqueResults = scenarioResults.reduce((acc, current) => {
+                        const x = acc.find(item => item.name === current.name);
+                        if (!x) {
+                            return acc.concat([current]);
+                        } else {
+                            return acc;
+                        }
+                    }, [] as typeof scenarioResults);
+
+                    const totalCount = uniqueResults.length;
+                    const failedCount = uniqueResults.filter(r => r.status === 'failed').length;
                     const passedCount = totalCount - failedCount;
 
                     metrics = { total: totalCount, passed: passedCount, failed: failedCount };
-                    addLog(agent.id, `Parsing Complete: Found ${totalCount} scenarios.`);
+                    addLog(agent.id, `Parsing Complete: Extracted ${totalCount} valid test scenarios.`);
                     
-                    // Detailed logging of test cases with tags
-                    scenarioResults.forEach(r => {
+                    // Detailed logging
+                    uniqueResults.forEach(r => {
                         const tagLabel = r.tags.length > 0 ? ` [Tags: ${r.tags.join(', ')}]` : '';
                         addLog(agent.id, `${r.status.toUpperCase()}: ${r.name}${tagLabel}`);
                     });
                 } else {
-                    addLog(agent.id, "Advanced selectors yielded no results. Attempting AI-assisted extraction...");
+                    addLog(agent.id, "DOM analysis unsuccessful. Escalating to GenAI Report Parser...");
                     
                     try {
-                        // Clean HTML to save tokens and avoid noise
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = html;
-                        // Remove large style and script blocks
-                        const scripts = tempDiv.querySelectorAll('script, style');
+                        const scripts = tempDiv.querySelectorAll('script, style, head, nav, footer');
                         scripts.forEach(s => s.remove());
                         
                         const bodyText = tempDiv.innerText || tempDiv.textContent || "";
-                        // Truncate to ensure it fits in model context while still being descriptive
                         const snippet = bodyText.substring(0, 15000); 
                         
+                        addLog(agent.id, "Sending report text snippet to AI model...");
                         const aiResult = await parseReportWithAI(snippet);
                         
-                        metrics = { 
-                            total: aiResult.total, 
-                            passed: aiResult.passed, 
-                            failed: aiResult.failed 
-                        };
-                        
-                        addLog(agent.id, `AI Extraction Successful: Found ${aiResult.total} scenarios.`);
-                        
-                        // Detailed logging of test cases with tags from AI
-                        aiResult.scenarios.forEach((r: any) => {
-                            const tagLabel = r.tags && r.tags.length > 0 ? ` [Tags: ${r.tags.join(', ')}]` : '';
-                            addLog(agent.id, `${r.status.toUpperCase()}: ${r.name}${tagLabel}`);
-                        });
+                        if (aiResult && aiResult.total > 0) {
+                            metrics = { 
+                                total: aiResult.total, 
+                                passed: aiResult.passed, 
+                                failed: aiResult.failed 
+                            };
+                            
+                            addLog(agent.id, `AI Extraction Successful: identified ${aiResult.total} scenarios.`);
+                            
+                            aiResult.scenarios.forEach((r: any) => {
+                                const tagLabel = r.tags && r.tags.length > 0 ? ` [Tags: ${r.tags.join(', ')}]` : '';
+                                addLog(agent.id, `${r.status.toUpperCase()}: ${r.name}${tagLabel}`);
+                            });
+                        } else {
+                            throw new Error("AI returned 0 scenarios.");
+                        }
                     } catch (aiErr: any) {
-                        addLog(agent.id, `AI analysis failed: ${aiErr.message}. Attempting basic pattern matching...`);
+                        addLog(agent.id, `AI/DOM analysis failed: ${aiErr.message}. Checking for global summary footer...`);
                         
                         const textContent = doc.body.innerText || doc.body.textContent || "";
                         const summaryRegex = /(\d+)\s+scenarios?\s*\((\d+)\s+passed,\s*(\d+)\s+failed\)/i;
@@ -361,20 +385,20 @@ export function AIAgentsPage() {
                                 passed: parseInt(match[2], 10), 
                                 failed: parseInt(match[3], 10) 
                             };
-                            addLog(agent.id, `Metrics extracted via regex from summary footer.`);
+                            addLog(agent.id, `Metrics identified via summary regex: ${metrics.passed}P/${metrics.failed}F.`);
                         } else {
-                            addLog(agent.id, "No identifiable test cases found. Using default baseline.");
-                            metrics = { total: 13, passed: 10, failed: 3 };
+                            addLog(agent.id, "Final Fallback: Using baseline simulator defaults (13 scenarios).");
+                            metrics = { total: 13, passed: 8, failed: 5 };
                         }
                     }
                 }
             } else {
-                addLog(agent.id, "No source report available for parsing. Initializing baseline simulation.");
-                metrics = { total: 13, passed: 10, failed: 3 };
+                addLog(agent.id, "Error: No report data found in pipeline reference. Using simulated baseline.");
+                metrics = { total: 13, passed: 8, failed: 5 };
             }
             
             if (metrics) {
-                addLog(agent.id, `Final Analysis: ${metrics.passed} Passed, ${metrics.failed} Failed.`);
+                addLog(agent.id, `Execution Summary: ${metrics.total} Total, ${metrics.passed} Passed, ${metrics.failed} Failed.`);
             }
         } else {
             addLog(agent.id, `Starting unattended task...`);
@@ -417,6 +441,7 @@ export function AIAgentsPage() {
     };
 
     const generateMockHtml = (fileName: string) => {
+        // Create 13 scenarios: 8 Passed, 5 Failed (fails on i % 3 === 0)
         return `
             <!DOCTYPE html>
             <html>
@@ -432,10 +457,13 @@ export function AIAgentsPage() {
                     .summary ul { list-style: none; padding: 0; }
                     .summary li { margin-bottom: 8px; display: flex; justify-content: space-between; }
                     .status-pass { color: #28a745; font-weight: bold; }
-                    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #eee; font-size: 12px; color: #555; }
+                    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #eee; font-size: 12px; color: #555; margin-right: 4px; }
                     .feature { margin-top: 30px; border-left: 4px solid #ddd; padding-left: 15px; }
-                    .scenario { margin-bottom: 15px; padding: 10px; border-radius: 4px; background: #fcfcfc; border: 1px solid #eee; }
-                    .scenario-title { font-weight: 600; color: #d40511; margin-bottom: 5px; }
+                    .scenario { margin-bottom: 15px; padding: 15px; border-radius: 6px; background: #fcfcfc; border: 1px solid #eee; }
+                    .scenario-title { font-weight: 600; color: #d40511; margin-bottom: 8px; font-size: 15px; }
+                    .status-box { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+                    .status-fail { background: #fee2e2; color: #d40511; }
+                    .status-ok { background: #dcfce7; color: #166534; }
                 </style>
             </head>
             <body>
@@ -452,21 +480,30 @@ export function AIAgentsPage() {
                             <li><span>Status:</span> <span class="status-pass">COMPLETED</span></li>
                             <li><span>Environment:</span> <span>Production</span></li>
                             <li><span>Target Solution:</span> <span>OTM v24.1</span></li>
-                            <li><span>Scenarios Parsed:</span> <span style="font-weight: bold;">13 Total</span></li>
+                            <li><span>Scenarios Total:</span> <span style="font-weight: bold;">13</span></li>
+                            <li><span>Total Passed:</span> <span style="font-weight: bold; color: green;">8</span></li>
+                            <li><span>Total Failed:</span> <span style="font-weight: bold; color: red;">5</span></li>
                         </ul>
                     </div>
                     <div class="feature">
                         <h3>Feature: Automated Shipment Invoicing</h3>
-                        ${Array.from({ length: 13 }).map((_, i) => `
-                            <div class="scenario">
-                                <div class="scenario-title">Scenario ${i+1}: Validate Invoice Type ${String.fromCharCode(65 + i)}</div>
-                                <span class="tag">@Regression</span> <span class="tag">@Financials</span> <span class="tag">@TC_${1000 + i}</span>
-                                <p style="font-size: 12px; margin: 5px 0;">Status: <span style="color: ${i % 5 === 0 ? '#d40511' : '#28a745'}; font-weight: bold;">${i % 5 === 0 ? 'FAILED' : 'PASSED'}</span></p>
+                        ${Array.from({ length: 13 }).map((_, i) => {
+                            const isFail = i % 3 === 0;
+                            return `
+                            <div class="scenario ${isFail ? 'failed' : 'passed'}">
+                                <div class="scenario-title">Scenario ${i+1}: Validate Invoice Flow ${String.fromCharCode(65 + i)}</div>
+                                <div style="margin-bottom: 8px;">
+                                    <span class="tag">@Regression</span>
+                                    <span class="tag">@Financials</span>
+                                    <span class="tag">@TC_${1000 + i}</span>
+                                </div>
+                                <p style="font-size: 13px; margin: 5px 0;">Status: <span class="status-box ${isFail ? 'status-fail' : 'status-ok'}">${isFail ? 'FAILED' : 'PASSED'}</span></p>
                             </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
-                    <hr/>
-                    <p style="text-align:center; font-size: 12px; color: #999;">End of automated report (13 Scenarios Analyzed)</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
+                    <p style="text-align:center; font-size: 12px; color: #999;">Generated by TaaS AI Agents • 13 Scenarios Analyzed</p>
                 </div>
             </body>
             </html>
@@ -492,24 +529,6 @@ export function AIAgentsPage() {
             name: fileName,
             content: reportRef.current ? reportRef.current.content : generateMockHtml(fileName)
         });
-    };
-
-    const handleManualUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const content = event.target?.result as string;
-            const newReport = { name: file.name, content };
-            setUploadedReport(newReport);
-            reportRef.current = newReport;
-            toast({
-                title: "Original Report Uploaded",
-                description: `Agent 1 will now use "${file.name}" as the original source file.`
-            });
-        };
-        reader.readAsText(file);
     };
 
     const isAnyAgentRunning = agents.some(a => a.status === 'running');

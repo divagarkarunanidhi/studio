@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to parse test execution metrics from an HTML report.
@@ -29,16 +28,18 @@ const prompt = ai.definePrompt({
     
     Your task is to identify and count the test scenarios.
     
-    1. Scan the input for a summary section (e.g., "13 scenarios (11 passed, 2 failed)").
-    2. Identify individual test cases. They usually start with a scenario name and may have tags above them (e.g., @TC_101, @Regression).
-    3. Determine the status of each scenario. Look for keywords like "PASSED", "FAILED", "PASSED_WITH_ERRORS", or "SUCCESS".
-    4. Provide a total count, passed count, and failed count.
-    5. List all identified scenarios with their names, statuses, and any tags you found.
+    CRITICAL INSTRUCTIONS:
+    1. Scan the input for a summary section (e.g., "13 scenarios (8 passed, 5 failed)" or similar text).
+    2. Identify individual test cases even if no summary exists. They usually start with a scenario name (e.g., "Scenario 1", "Validate Invoice Flow") and often have tags above them (e.g., @TC_101, @Regression).
+    3. Determine the status of each scenario. Look for keywords like "PASSED", "FAILED", "PASSED_WITH_ERRORS", "SUCCESS", or "FAILURE" near the scenario name.
+    4. provide a total count, passed count, and failed count.
+    5. List all identified scenarios with their full names, final statuses, and ALL tags associated with them.
+    6. If the input contains "Status: FAILED" or "Status: PASSED", use that as the primary source of truth for each scenario.
     
     Input Content:
     {{{this}}}
     
-    Provide the output in valid JSON matching the required schema. Ensure the counts match the sum of the scenario list.
+    Return a valid JSON object. Ensure the 'total' count exactly matches the number of items in the 'scenarios' list. Do not return 0 scenarios if test names are present.
     `,
 });
 
