@@ -251,7 +251,7 @@ export function AIAgentsPage() {
                 }
             }
         } else if (agent.id === 2) {
-            addLog(agent.id, "Analyzing report metrics...");
+            addLog(agent.id, "Initializing dynamic HTML parsing engine...");
             await new Promise(resolve => setTimeout(resolve, 800));
             
             const currentReport = reportRef.current;
@@ -261,84 +261,82 @@ export function AIAgentsPage() {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, "text/html");
                 
-                let total = 0, passed = 0, failed = 0;
+                // Identify scenarios using common Cucumber report selectors
+                const scenarios = doc.querySelectorAll('.scenario, .element, [class*="scenario-heading"], tr.scenario');
+                const scenarioResults: { name: string, status: string, tags: string[] }[] = [];
 
-                // 1. Try to find standard Cucumber summary text
-                const textContent = doc.body.innerText || doc.body.textContent || "";
-                const summaryRegex = /(\d+)\s+scenarios?\s*\((\d+)\s+passed,\s*(\d+)\s+failed\)/i;
-                const match = textContent.match(summaryRegex);
-                
-                if (match) {
-                    total = parseInt(match[1], 10);
-                    passed = parseInt(match[2], 10);
-                    failed = parseInt(match[3], 10);
-                    addLog(agent.id, `Metrics extracted from summary text.`);
-                } else {
-                    // 2. Search for summary table
-                    const tables = Array.from(doc.querySelectorAll('table'));
-                    let foundTable = false;
+                if (scenarios.length > 0) {
+                    addLog(agent.id, `Scanning ${scenarios.length} potential scenario blocks...`);
                     
-                    for (const table of tables) {
-                        const headers = Array.from(table.querySelectorAll('th, td')).map(h => h.textContent?.trim().toLowerCase() || "");
-                        if (headers.includes('total') && (headers.includes('passed') || headers.includes('pass')) && (headers.includes('failed') || headers.includes('fail'))) {
-                            const dataRows = Array.from(table.querySelectorAll('tr')).slice(1);
-                            if (dataRows.length > 0) {
-                                // Try last row (often totals)
-                                const lastRow = dataRows[dataRows.length - 1];
-                                const cells = Array.from(lastRow.querySelectorAll('td')).map(c => parseInt(c.textContent?.trim() || "0", 10));
-                                
-                                const totalIdx = headers.indexOf('total');
-                                const passIdx = headers.indexOf('passed') !== -1 ? headers.indexOf('passed') : headers.indexOf('pass');
-                                const failIdx = headers.indexOf('failed') !== -1 ? headers.indexOf('failed') : headers.indexOf('fail');
-                                
-                                if (!isNaN(cells[totalIdx])) total = cells[totalIdx];
-                                if (!isNaN(cells[passIdx])) passed = cells[passIdx];
-                                if (!isNaN(cells[failIdx])) failed = cells[failIdx];
-                                
-                                if (total > 0) {
-                                    foundTable = true;
-                                    addLog(agent.id, `Metrics extracted from summary table.`);
-                                    break;
-                                }
-                            }
+                    scenarios.forEach((s, idx) => {
+                        // Extract name
+                        const nameEl = s.querySelector('.scenario-name, .name, [class*="title"]');
+                        const name = nameEl?.textContent?.trim() || `Scenario ${idx + 1}`;
+                        
+                        // Extract tags (Test Case Name Tags)
+                        const tags: string[] = [];
+                        const tagEls = s.querySelectorAll('.tag, .tags, [class*="tag"]');
+                        tagEls.forEach(t => {
+                            const txt = t.textContent?.trim();
+                            if (txt && txt.startsWith('@')) tags.push(txt);
+                        });
+                        
+                        // Fallback: search text content for tags if no elements found
+                        if (tags.length === 0) {
+                            const text = s.textContent || "";
+                            const tagMatches = text.match(/@[a-zA-Z0-9_\-]+/g);
+                            if (tagMatches) tags.push(...tagMatches);
                         }
-                    }
 
-                    if (!foundTable) {
-                        // 3. Fallback: Count elements by class
-                        const scenarios = doc.querySelectorAll('.scenario, .element, [class*="scenario-heading"]');
-                        if (scenarios.length > 0) {
-                            total = scenarios.length;
-                            // Search for failure indicators within scenarios or classes
-                            failed = Array.from(scenarios).filter(s => 
-                                s.classList.contains('failed') || 
-                                s.outerHTML.toLowerCase().includes('status="failed"') ||
-                                s.outerHTML.toLowerCase().includes('class="failed"')
-                            ).length;
-                            passed = Math.max(0, total - failed);
-                            addLog(agent.id, `Metrics estimated by scenario element count.`);
-                        } else {
-                            // 4. Global Regex fallback
-                            const totalM = html.match(/Total\s*(?:Scenarios|Tests)?\s*[:\-\s]*(\d+)/i);
-                            const passM = html.match(/Passed\s*[:\-\s]*(\d+)/i);
-                            const failM = html.match(/Failed\s*[:\-\s]*(\d+)/i);
-                            
-                            total = totalM ? parseInt(totalM[1], 10) : 13;
-                            passed = passM ? parseInt(passM[1], 10) : (totalM ? total - (failM ? parseInt(failM[1], 10) : 2) : 11);
-                            failed = failM ? parseInt(failM[1], 10) : (total - passed);
-                            addLog(agent.id, `Metrics identified via pattern matching.`);
-                        }
+                        // Determine status
+                        const isFailed = s.classList.contains('failed') || 
+                                         s.outerHTML.toLowerCase().includes('status="failed"') ||
+                                         s.outerHTML.toLowerCase().includes('class="failed"') ||
+                                         s.querySelector('.failed, [class*="failed"]');
+                        
+                        const status = isFailed ? 'failed' : 'passed';
+                        
+                        scenarioResults.push({ name, status, tags });
+                    });
+
+                    const totalCount = scenarioResults.length;
+                    const failedCount = scenarioResults.filter(r => r.status === 'failed').length;
+                    const passedCount = totalCount - failedCount;
+
+                    metrics = { total: totalCount, passed: passedCount, failed: failedCount };
+                    addLog(agent.id, `Parsing Complete: Found ${totalCount} scenarios.`);
+                    
+                    // Detailed logging of test cases with tags
+                    scenarioResults.forEach(r => {
+                        const tagLabel = r.tags.length > 0 ? ` [Tags: ${r.tags.join(', ')}]` : '';
+                        addLog(agent.id, `${r.status.toUpperCase()}: ${r.name}${tagLabel}`);
+                    });
+                } else {
+                    // Fallback to text-based pattern matching if DOM selectors fail
+                    addLog(agent.id, "Advanced selectors yielded no results. Attempting pattern matching...");
+                    
+                    const textContent = doc.body.innerText || doc.body.textContent || "";
+                    const summaryRegex = /(\d+)\s+scenarios?\s*\((\d+)\s+passed,\s*(\d+)\s+failed\)/i;
+                    const match = textContent.match(summaryRegex);
+                    
+                    if (match) {
+                        metrics = { 
+                            total: parseInt(match[1], 10), 
+                            passed: parseInt(match[2], 10), 
+                            failed: parseInt(match[3], 10) 
+                        };
+                        addLog(agent.id, `Metrics extracted via regex from summary footer.`);
+                    } else {
+                        addLog(agent.id, "No identifiable test cases found in HTML. Using default baseline.");
+                        metrics = { total: 13, passed: 11, failed: 2 };
                     }
                 }
-                
-                metrics = { total, passed, failed };
             } else {
-                addLog(agent.id, "No live report found. Using simulation baseline.");
+                addLog(agent.id, "No source report available for parsing. Initializing baseline simulation.");
                 metrics = { total: 13, passed: 11, failed: 2 };
             }
             
-            addLog(agent.id, `Analysis Complete: ${metrics.total} total scenarios identified.`);
-            addLog(agent.id, `Final Tally: ${metrics.passed} Passed, ${metrics.failed} Failed.`);
+            addLog(agent.id, `Final Analysis: ${metrics.passed} Passed, ${metrics.failed} Failed.`);
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
@@ -423,7 +421,7 @@ export function AIAgentsPage() {
                         ${Array.from({ length: 13 }).map((_, i) => `
                             <div class="scenario">
                                 <div class="scenario-title">Scenario ${i+1}: Validate Invoice Type ${String.fromCharCode(65 + i)}</div>
-                                <span class="tag">@Regression</span> <span class="tag">@Financials</span>
+                                <span class="tag">@Regression</span> <span class="tag">@Financials</span> <span class="tag">@TC_${1000 + i}</span>
                                 <p style="font-size: 12px; margin: 5px 0;">Status: <span style="color: ${i % 5 === 0 ? '#d40511' : '#28a745'}; font-weight: bold;">${i % 5 === 0 ? 'FAILED' : 'PASSED'}</span></p>
                             </div>
                         `).join('')}
