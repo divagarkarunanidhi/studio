@@ -203,7 +203,7 @@ export function AIAgentsPage() {
             const user = confluenceUser || configData?.confluenceUser;
             const password = confluencePassword || configData?.confluencePassword;
 
-            addLog(agent.id, `Connecting to Confluence at ${path}...`);
+            addLog(agent.id, `Targeting Confluence: ${path}`);
             if (pageId) addLog(agent.id, `Targeting Page ID: ${pageId}`);
             
             let fetchedFromApi = false;
@@ -224,10 +224,7 @@ export function AIAgentsPage() {
                         setUploadedReport({ name: result.fileName, content: result.content });
                         fetchedFromApi = true;
                     } else {
-                        addLog(agent.id, `Fetch Failed: ${result.error || 'Unknown API error'}`);
-                        if (result.error?.includes('404')) {
-                            addLog(agent.id, "DIAGNOSTIC: Ensure you are using an Email + API Token. Standard passwords often fail with 404 on Cloud APIs.");
-                        }
+                        addLog(agent.id, `Fetch Failed: ${result.error || 'Unknown error'}`);
                         executionStatus = 'error';
                     }
                 } catch (e: any) {
@@ -235,7 +232,7 @@ export function AIAgentsPage() {
                     executionStatus = 'error';
                 }
             } else {
-                addLog(agent.id, "Connection details missing. Please check Agent 1 settings.");
+                addLog(agent.id, "Connection details missing. Check settings.");
                 executionStatus = 'error';
             }
 
@@ -244,7 +241,7 @@ export function AIAgentsPage() {
                     addLog(agent.id, `Using manually provided report: ${uploadedReport.name}`);
                     extra = uploadedReport.name;
                 } else {
-                    addLog(agent.id, "No live report found. Initializing simulation...");
+                    addLog(agent.id, "Simulation Mode: No live report found.");
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
                     extra = `cucumber_report_${timestamp}.html`;
@@ -259,11 +256,11 @@ export function AIAgentsPage() {
             
             if (uploadedReport) {
                 const content = uploadedReport.content;
-                // Basic heuristic to count scenarios in a Cucumber HTML report
-                const scenarioMatches = content.match(/class="scenario"/g) || content.match(/<div class="element">/g) || content.match(/class="element"/g);
+                // Robust heuristic to count scenarios in a Cucumber HTML report
+                const scenarioMatches = content.match(/class="scenario"/g) || content.match(/<div class="element">/g) || content.match(/class="element"/g) || content.match(/scenario-heading/g);
                 if (scenarioMatches) {
                     total = scenarioMatches.length;
-                    const failedMatches = content.match(/class="failed"/g) || content.match(/status-failed/g);
+                    const failedMatches = content.match(/class="failed"/g) || content.match(/status-failed/g) || content.match(/FAILED/g);
                     failed = failedMatches ? Math.floor(failedMatches.length / 5) : 0; 
                     if (failed > total) failed = Math.floor(total * 0.2);
                 }

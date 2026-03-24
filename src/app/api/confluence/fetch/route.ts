@@ -4,14 +4,14 @@ import { NextResponse } from 'next/server';
 /**
  * POST /api/confluence/fetch
  * Attempts to fetch the latest HTML report from a Confluence instance.
- * Handles both direct attachment links and page URLs with specific v2 Cloud API support.
+ * Optimized for Cloud v2 APIs with robust path normalization.
  */
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { path, pageId: providedPageId, user, password } = body;
+        const { path: rawPath, pageId: providedPageId, user, password } = body;
 
-        if (!path || !user || !password) {
+        if (!rawPath || !user || !password) {
             return NextResponse.json({ error: "Configuration missing. Please check URL, Username, and Password/Token." }, { status: 400 });
         }
 
@@ -22,6 +22,12 @@ export async function POST(request: Request) {
             'X-Atlassian-Token': 'no-check' 
         };
 
+        // Normalize the path
+        let path = rawPath.trim();
+        if (!path.startsWith('http')) {
+            path = `https://${path}`;
+        }
+
         let urlObj: URL;
         try {
             urlObj = new URL(path);
@@ -29,20 +35,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Invalid URL format. Please provide a full URL including https://" }, { status: 400 });
         }
 
-        const baseUrl = urlObj.origin;
+        const origin = urlObj.origin;
+        // Determine if we are likely using a /wiki context (Standard for Cloud)
+        const hasWikiPrefix = urlObj.pathname.startsWith('/wiki') || path.includes('.atlassian.net/wiki');
+        const baseUrl = hasWikiPrefix ? `${origin}/wiki` : origin;
 
-        // 1. Check if path is a direct link to an HTML file
-        if (urlObj.pathname.toLowerCase().endsWith('.html')) {
-            const res = await fetch(path, { headers, signal: AbortSignal.timeout(15000) });
-            if (res.ok) {
-                const content = await res.text();
-                const fileName = urlObj.pathname.split('/').pop() || 'latest_report.html';
-                return NextResponse.json({ success: true, fileName, content });
-            }
-        }
-
-        // 2. Identify Page ID
-        // Priority: 1. Provided Page ID, 2. Extracted from URL
+        // 1. Identify Page ID
         let pageId: string | null = providedPageId || null;
         
         if (!pageId) {
@@ -59,43 +57,39 @@ export async function POST(request: Request) {
         }
 
         /**
-         * Define API endpoints to try in order of preference.
-         * We include variants for both Cloud (with /wiki) and Server/DC.
+         * Define API endpoints to try. 
+         * We construct them carefully to avoid double /wiki or missing /wiki.
          */
         const apiPaths = [
-            `${baseUrl}/wiki/api/v2/pages/${pageId}/attachments?sort=-modified-date&limit=10`,
+            // Cloud v2 (Preferred)
             `${baseUrl}/api/v2/pages/${pageId}/attachments?sort=-modified-date&limit=10`,
-            `${baseUrl}/wiki/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`,
-            `${baseUrl}/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`
+            // Cloud v1
+            `${baseUrl}/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`,
+            // Fallback: No /wiki prefix (Sometimes used in custom domains)
+            `${origin}/api/v2/pages/${pageId}/attachments?sort=-modified-date&limit=10`,
+            `${origin}/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`
         ];
+
+        // Filter out duplicate paths if origin === baseUrl
+        const uniquePaths = Array.from(new Set(apiPaths));
 
         let lastStatus = 0;
         let lastError = "No connection established";
 
-        for (const apiPath of apiPaths) {
+        for (const apiPath of uniquePaths) {
             try {
-                const listRes = await fetch(apiPath, { headers, signal: AbortSignal.timeout(10000) });
+                const listRes = await fetch(apiPath, { headers, signal: AbortSignal.timeout(15000) });
                 lastStatus = listRes.status;
                 
                 const contentType = listRes.headers.get('content-type') || "";
                 
                 if (listRes.ok && contentType.includes('application/json')) {
                     const data = await listRes.json();
-                    return await processAttachments(data, baseUrl, headers);
+                    return await processAttachments(data, origin, baseUrl, headers);
                 } 
                 
                 if (listRes.status === 401) {
                     return NextResponse.json({ error: "Unauthorized (401): Please verify your Email and API Token. Note: Confluence Cloud requires an API Token, not your password." }, { status: 401 });
-                }
-
-                if (listRes.status === 404) {
-                    const errorBody = await listRes.text();
-                    lastError = errorBody || "Page Not Found";
-                    continue;
-                }
-
-                if (listRes.status === 403) {
-                    return NextResponse.json({ error: "Forbidden (403): Your account does not have permission to access attachments on this page." }, { status: 403 });
                 }
 
                 const errorBody = await listRes.text();
@@ -107,7 +101,7 @@ export async function POST(request: Request) {
         }
 
         const detailedMsg = lastStatus === 404 
-            ? `Page ID ${pageId} was not found (404). This often means the ID is incorrect or your API Token lacks permissions for this specific page. Try finding the ID via 'Page Information' or ensure the domain URL is correct.`
+            ? `Page ID ${pageId} was not found (404) at the expected API endpoints. Check if your Domain URL includes '/wiki' correctly or if your account has 'View' permissions for this page.`
             : `Failed to fetch from Confluence API. (Status: ${lastStatus}). Details: ${lastError}`;
 
         return NextResponse.json({ error: detailedMsg }, { status: 502 });
@@ -120,9 +114,8 @@ export async function POST(request: Request) {
 
 /**
  * Helper to process the list of attachments and download the latest HTML file.
- * Handles both v1 and v2 API response formats.
  */
-async function processAttachments(data: any, baseUrl: string, headers: any) {
+async function processAttachments(data: any, origin: string, baseUrl: string, headers: any) {
     const attachments = data.results || [];
 
     if (attachments.length === 0) {
@@ -152,17 +145,20 @@ async function processAttachments(data: any, baseUrl: string, headers: any) {
         throw new Error("Could not find a valid download link for the identified attachment.");
     }
 
-    // Build the full download URL
-    let finalBaseUrl = baseUrl;
-    if (downloadRelativeUrl.startsWith('/wiki') && baseUrl.endsWith('/wiki')) {
-        finalBaseUrl = baseUrl.substring(0, baseUrl.length - 5);
+    // Build the full download URL carefully
+    let downloadUrl = downloadRelativeUrl;
+    if (!downloadUrl.startsWith('http')) {
+        // If the link starts with /wiki but our baseUrl already ends with /wiki, don't double it
+        if (downloadUrl.startsWith('/wiki') && baseUrl.endsWith('/wiki')) {
+            downloadUrl = `${origin}${downloadUrl}`;
+        } else {
+            downloadUrl = `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${downloadUrl.startsWith('/') ? downloadUrl : '/' + downloadUrl}`;
+        }
     }
-
-    const downloadUrl = downloadRelativeUrl.startsWith('http') ? downloadRelativeUrl : `${finalBaseUrl}${downloadRelativeUrl}`;
     
     const contentRes = await fetch(downloadUrl, { 
         headers: { ...headers, 'Accept': '*/*' }, 
-        signal: AbortSignal.timeout(15000) 
+        signal: AbortSignal.timeout(20000) 
     });
     
     if (!contentRes.ok) {
