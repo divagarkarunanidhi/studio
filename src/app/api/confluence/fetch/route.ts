@@ -53,8 +53,10 @@ export async function POST(request: Request) {
 
         const baseUrl = urlObj.origin;
         
-        // Try standard Cloud path first
+        // Define endpoints to try. We prioritize the user-requested v2 API for Cloud instances.
         const apiPaths = [
+            `${baseUrl}/wiki/api/v2/pages/${pageId}/attachments?sort=-modified-date&limit=10`,
+            `${baseUrl}/api/v2/pages/${pageId}/attachments?sort=-modified-date&limit=10`,
             `${baseUrl}/wiki/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`,
             `${baseUrl}/rest/api/content/${pageId}/child/attachment?limit=20&sort=created`
         ];
@@ -91,16 +93,21 @@ export async function POST(request: Request) {
 
 /**
  * Helper to process the list of attachments and download the latest HTML file.
+ * Handles both v1 and v2 API response formats.
  */
 async function processAttachments(data: any, baseUrl: string, headers: any) {
     const attachments = data.results || [];
 
     // Find the latest attachment ending in .html
     const latestHtml = attachments
-        .filter((a: any) => a.title.toLowerCase().endsWith('.html'))
+        .filter((a: any) => {
+            const title = a.title || a.name || "";
+            return title.toLowerCase().endsWith('.html');
+        })
         .sort((a: any, b: any) => {
-            const dateA = new Date(a.history?.createdDate || 0).getTime();
-            const dateB = new Date(b.history?.createdDate || 0).getTime();
+            // Handle both v1 (history.createdDate) and v2 (createdAt/modifiedAt) timestamps
+            const dateA = new Date(a.history?.createdDate || a.createdAt || a.modifiedAt || 0).getTime();
+            const dateB = new Date(b.history?.createdDate || b.createdAt || b.modifiedAt || 0).getTime();
             return dateB - dateA;
         })[0];
 
@@ -108,8 +115,10 @@ async function processAttachments(data: any, baseUrl: string, headers: any) {
         throw new Error("No HTML attachments found on the specified Confluence page. Please upload a .html report to the page first.");
     }
 
-    // Download the content of the identified attachment
-    const downloadRelativeUrl = latestHtml._links?.download || latestHtml._links?.content;
+    // Determine the download link based on API version
+    // V1 uses _links.download, V2 uses downloadLink
+    const downloadRelativeUrl = latestHtml.downloadLink || latestHtml._links?.download || latestHtml._links?.content;
+    
     if (!downloadRelativeUrl) {
         throw new Error("Could not find a valid download link for the attachment.");
     }
@@ -128,7 +137,7 @@ async function processAttachments(data: any, baseUrl: string, headers: any) {
 
     return NextResponse.json({ 
         success: true, 
-        fileName: latestHtml.title, 
+        fileName: latestHtml.title || latestHtml.name, 
         content 
     });
 }
