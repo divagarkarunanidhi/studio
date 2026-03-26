@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -47,7 +46,8 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    DialogFooter
+    DialogFooter,
+    DialogTrigger
 } from "@/components/ui/dialog";
 import { parseReportWithAI } from '@/ai/flows/report-parser-flow';
 import { classifyFailures } from '@/ai/flows/failure-classification-flow';
