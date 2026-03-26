@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -34,7 +33,8 @@ import {
     Upload,
     HelpCircle,
     Hash,
-    Sparkles
+    Sparkles,
+    FileText
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -74,9 +74,9 @@ interface AgentStatus {
 }
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
-    { id: 1, name: "Confluence Fetcher", description: "Fetches latest execution JSON from MongoDB Store (fallback to Confluence)." },
-    { id: 2, name: "Report Parser", description: "Analyzes Agent 1 HTML/JSON report to identify pass and failure counts." },
-    { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using AI." },
+    { id: 1, name: "Execution Fetcher", description: "Fetches latest execution JSON from Selenium Data Store (fallback to Confluence)." },
+    { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
+    { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using AI logic." },
     { id: 4, name: "Jira Defect Scout", description: "Checks Jira API for existing bugs related to functional failures." },
     { id: 5, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
     { id: 6, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
@@ -93,8 +93,7 @@ export function AIAgentsPage() {
     const [progress, setProgress] = useState(0);
     const [autoMode, setAutoMode] = useState(false);
     const [previewReport, setPreviewReport] = useState<{ name: string, content: string } | null>(null);
-    const [uploadedReport, setUploadedReport] = useState<{ name: string, content: string } | null>(null);
-    const reportRef = useRef<{ name: string, content: string } | null>(null);
+    const reportRef = useRef<{ name: string, data: any } | null>(null);
     
     const { toast } = useToast();
     const firestore = useFirestore();
@@ -189,56 +188,6 @@ export function AIAgentsPage() {
         scrollToBottom();
     }, [agents]);
 
-    const generateReportHtml = (report: any) => {
-        const results = report.test_results || [];
-        let total = 0;
-        let passed = 0;
-        let failed = 0;
-
-        results.forEach((feature: any) => {
-            feature.elements?.forEach((scenario: any) => {
-                total++;
-                const isFailed = scenario.steps?.some((step: any) => step.result?.status === 'failed');
-                if (isFailed) failed++;
-                else passed++;
-            });
-        });
-
-        return `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { font-family: sans-serif; }
-                    .dashboard { display: flex; gap: 10px; margin-bottom: 20px; }
-                    .card { border: 1px solid #ccc; padding: 10px; border-radius: 4px; }
-                    .value { font-size: 20px; font-weight: bold; }
-                    .scenario { padding: 5px; margin-bottom: 2px; }
-                    .passed { color: green; }
-                    .failed { color: red; }
-                </style>
-            </head>
-            <body>
-                <h1>Automated Execution Summary</h1>
-                <div class="dashboard">
-                    <div class="card"><span class="label">Features</span><div class="value">${results.length}</div></div>
-                    <div class="card"><span class="label">Scenarios</span><div class="value">${total}</div></div>
-                    <div class="card"><span class="label">Passed Scenarios</span><div class="value">${passed}</div></div>
-                    <div class="card"><span class="label">Failed Scenarios</span><div class="value">${failed}</div></div>
-                </div>
-                <div class="scenarios">
-                    ${results.map((f: any) => f.elements?.map((s: any) => `
-                        <div class="scenario ${s.steps?.some((st: any) => st.result?.status === 'failed') ? 'failed' : 'passed'}">
-                            Scenario: ${s.name} [${s.steps?.some((st: any) => st.result?.status === 'failed') ? 'FAILED' : 'PASSED'}]
-                            ${s.tags?.map((t: any) => t.name).join(' ')}
-                        </div>
-                    `).join('')).join('')}
-                </div>
-            </body>
-            </html>
-        `;
-    };
-
     const runAgent = async (index: number) => {
         const agent = AGENTS_CONFIG[index];
         setCurrentAgentIndex(index);
@@ -250,7 +199,7 @@ export function AIAgentsPage() {
         let executionStatus: 'success' | 'error' = 'success';
 
         if (agent.id === 1) {
-            addLog(agent.id, "Querying Selenium Data Store (MongoDB) for latest execution...");
+            addLog(agent.id, "Querying Selenium Data Store (MongoDB) for latest JSON execution...");
             
             let fetchedFromStore = false;
             try {
@@ -258,11 +207,8 @@ export function AIAgentsPage() {
                 const storeResult = await storeResponse.json();
 
                 if (storeResponse.ok && storeResult) {
-                    addLog(agent.id, `Data found in store: ${storeResult.fileName || 'execution.json'}`);
-                    const html = generateReportHtml(storeResult);
-                    const newReport = { name: storeResult.fileName || 'latest_execution.html', content: html };
-                    reportRef.current = newReport;
-                    setUploadedReport(newReport);
+                    addLog(agent.id, `JSON Data found in store: ${storeResult.fileName || 'execution.json'}`);
+                    reportRef.current = { name: storeResult.fileName || 'latest_execution.json', data: storeResult };
                     extra = storeResult.fileName || 'execution.json';
                     fetchedFromStore = true;
                 }
@@ -271,7 +217,7 @@ export function AIAgentsPage() {
             }
 
             if (!fetchedFromStore) {
-                addLog(agent.id, "No data in Store. Checking Confluence connection as fallback...");
+                addLog(agent.id, "No data in Store. Checking Confluence for JSON report fallback...");
                 const path = confluencePath || configData?.confluencePath;
                 const pageId = confluencePageId || configData?.confluencePageId;
                 const user = confluenceUser || configData?.confluenceUser;
@@ -288,13 +234,19 @@ export function AIAgentsPage() {
                         const result = await response.json();
 
                         if (response.ok && result.success) {
-                            addLog(agent.id, `Successfully fetched live report from Confluence: ${result.fileName}`);
+                            addLog(agent.id, `Fetched report: ${result.fileName}`);
                             extra = result.fileName;
-                            const newReport = { name: result.fileName, content: result.content };
-                            setUploadedReport(newReport);
-                            reportRef.current = newReport;
+                            let parsedData = null;
+                            try {
+                                parsedData = JSON.parse(result.content);
+                                addLog(agent.id, "Successfully identified valid JSON structure from source.");
+                            } catch (e) {
+                                addLog(agent.id, "Fetched file is not native JSON. Preparing for secondary conversion...");
+                                parsedData = { raw: result.content };
+                            }
+                            reportRef.current = { name: result.fileName, data: parsedData };
                         } else {
-                            addLog(agent.id, `Confluence Fetch Failed: ${result.error || 'Unknown error'}`);
+                            addLog(agent.id, `Fetch Failed: ${result.error || 'Unknown error'}`);
                             executionStatus = 'error';
                         }
                     } catch (e: any) {
@@ -308,113 +260,83 @@ export function AIAgentsPage() {
             }
 
             if (executionStatus === 'success' && !reportRef.current) {
-                addLog(agent.id, "Simulation Mode: Generating mock dashboard report.");
+                addLog(agent.id, "Simulation Mode: Using baseline JSON results.");
                 await new Promise(resolve => setTimeout(resolve, 800));
-                const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
-                const fileName = `automation_report_${timestamp}.html`;
-                const mockHtml = generateMockHtml(fileName);
-                const newReport = { name: fileName, content: mockHtml };
-                reportRef.current = newReport;
-                setUploadedReport(newReport);
-                extra = fileName;
+                const mockData = {
+                    test_results: [{
+                        elements: [
+                            { name: "Scenario 1: Login", steps: [{ result: { status: "passed" } }], tags: [{ name: "@TC_1" }] },
+                            { name: "Scenario 2: Data Entry", steps: [{ result: { status: "passed" } }], tags: [{ name: "@TC_2" }] },
+                            { name: "Scenario 3: Validation", steps: [{ result: { status: "failed" } }], tags: [{ name: "@TC_3" }] }
+                        ]
+                    }]
+                };
+                reportRef.current = { name: 'mock_execution.json', data: mockData };
+                extra = 'mock_execution.json';
             }
         } else if (agent.id === 2) {
-            addLog(agent.id, "Initializing Report Parser engine...");
+            addLog(agent.id, "Initializing JSON Report Parser...");
             await new Promise(resolve => setTimeout(resolve, 800));
             
             const currentReport = reportRef.current;
             
-            if (currentReport) {
-                const html = currentReport.content;
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, "text/html");
+            if (currentReport && currentReport.data) {
+                const reportData = currentReport.data;
                 
-                addLog(agent.id, "Searching for Dashboard Summary elements...");
+                addLog(agent.id, "Analyzing JSON schema for test metadata...");
                 
-                const findValueByLabel = (labelPattern: RegExp): number | null => {
-                    const elements = Array.from(doc.querySelectorAll('div, span, td, th, p, h1, h2, h3, h4'));
-                    for (const el of elements) {
-                        const text = el.textContent?.trim() || "";
-                        if (labelPattern.test(text)) {
-                            const parentText = el.parentElement?.textContent || "";
-                            const matches = parentText.match(/\d+/g);
-                            if (matches && matches.length > 0) {
-                                const val = matches.find(m => !text.includes(m));
-                                if (val) return parseInt(val, 10);
-                                return parseInt(matches[0], 10);
-                            }
+                // Logic 1: Direct JSON traversal (fast)
+                let total = 0;
+                let passed = 0;
+                let failed = 0;
+                const identifiedScenarios: any[] = [];
+
+                if (reportData.test_results && Array.isArray(reportData.test_results)) {
+                    reportData.test_results.forEach((feature: any) => {
+                        feature.elements?.forEach((scenario: any) => {
+                            total++;
+                            const isFailed = scenario.steps?.some((step: any) => step.result?.status === 'failed');
+                            const tags = scenario.tags?.map((t: any) => t.name).join(' ') || '';
                             
-                            let next = el.nextElementSibling;
-                            while(next) {
-                                if (/\d+/.test(next.textContent || "")) {
-                                    const m = next.textContent?.match(/\d+/);
-                                    if (m) return parseInt(m[0], 10);
-                                }
-                                next = next.nextElementSibling;
-                            }
-                        }
-                    }
-                    return null;
-                };
+                            identifiedScenarios.push({
+                                name: scenario.name,
+                                status: isFailed ? 'failed' : 'passed',
+                                tags
+                            });
 
-                const dashboardScenarios = findValueByLabel(/^Scenarios$/i);
-                const dashboardPassed = findValueByLabel(/^Passed Scenarios$/i);
-                const dashboardFailed = findValueByLabel(/^Failed Scenarios$/i);
+                            if (isFailed) failed++;
+                            else passed++;
+                        });
+                    });
+                }
 
-                if (dashboardScenarios !== null && dashboardPassed !== null && dashboardFailed !== null) {
-                    addLog(agent.id, "Dashboard metrics identified successfully from summary cards.");
-                    metrics = { 
-                        total: dashboardScenarios, 
-                        passed: dashboardPassed, 
-                        failed: dashboardFailed 
-                    };
+                if (total > 0) {
+                    addLog(agent.id, `Direct traversal identified ${total} scenarios.`);
+                    metrics = { total, passed, failed };
+                    
+                    identifiedScenarios.forEach(s => {
+                        addLog(agent.id, `Identified: ${s.name} [${s.status.toUpperCase()}] ${s.tags}`);
+                    });
                 } else {
-                    addLog(agent.id, "Summary boxes not found. Scanning individual scenario blocks...");
-                    
-                    let scenarios = Array.from(doc.querySelectorAll('.scenario, .element, [class*="scenario-heading"], tr.scenario'));
-                    
-                    if (scenarios.length === 0) {
-                        const allElements = Array.from(doc.querySelectorAll('div, tr, p'));
-                        scenarios = allElements.filter(el => {
-                            const text = el.textContent?.trim() || "";
-                            return /^Scenario \d+/i.test(text) || el.classList.contains('scenario') || text.includes('Scenario:');
-                        });
-                    }
-
-                    if (scenarios.length > 0) {
-                        const scenarioResults: { name: string, status: string }[] = [];
-                        scenarios.forEach((s, idx) => {
-                            const name = s.querySelector('.scenario-name, .name')?.textContent?.trim() || s.textContent?.trim().substring(0, 100) || `Scenario ${idx + 1}`;
-                            const isFailed = s.textContent?.toUpperCase().includes('FAILED') || 
-                                             s.classList.contains('failed') || 
-                                             s.outerHTML.toLowerCase().includes('status="failed"');
-                            
-                            scenarioResults.push({ name, status: isFailed ? 'failed' : 'passed' });
-                        });
-
-                        const uniqueResults = Array.from(new Set(scenarioResults.map(r => JSON.stringify(r)))).map(s => JSON.parse(s));
-                        const total = uniqueResults.length;
-                        const failed = uniqueResults.filter(r => r.status === 'failed').length;
-                        metrics = { total, passed: total - failed, failed };
-                        addLog(agent.id, `Parsed ${total} scenarios from detailed scenario list.`);
-                    } else {
-                        addLog(agent.id, "Structured parsing unsuccessful. Escalating to GenAI...");
-                        try {
-                            const snippet = doc.body.innerText.substring(0, 10000);
-                            const aiResult = await parseReportWithAI(snippet);
-                            if (aiResult && aiResult.total > 0) {
-                                metrics = { total: aiResult.total, passed: aiResult.passed, failed: aiResult.failed };
-                                addLog(agent.id, `AI identified metrics: ${aiResult.total} Total, ${aiResult.passed} Passed.`);
-                            }
-                        } catch (e: any) {
-                            addLog(agent.id, "AI Analysis failed. Using fallback baseline (13 scenarios).");
-                            metrics = { total: 13, passed: 8, failed: 5 };
+                    addLog(agent.id, "Standard schema not found. Invoking GenAI for structural analysis...");
+                    try {
+                        const jsonSnippet = JSON.stringify(reportData).substring(0, 15000);
+                        const aiResult = await parseReportWithAI(jsonSnippet);
+                        if (aiResult && aiResult.total > 0) {
+                            metrics = { total: aiResult.total, passed: aiResult.passed, failed: aiResult.failed };
+                            addLog(agent.id, `AI identified metrics: ${aiResult.total} Total, ${aiResult.passed} Passed.`);
+                            aiResult.scenarios.forEach(s => {
+                                addLog(agent.id, `AI Found: ${s.name} [${s.status.toUpperCase()}] ${s.tags.join(' ')}`);
+                            });
                         }
+                    } catch (e: any) {
+                        addLog(agent.id, `AI Error: ${e.message}. Using safest baseline.`);
+                        metrics = { total: 1, passed: 0, failed: 1 };
                     }
                 }
             } else {
-                addLog(agent.id, "Error: No report data found. Using fallback simulator.");
-                metrics = { total: 4, passed: 3, failed: 1 };
+                addLog(agent.id, "Error: No JSON data reference available.");
+                executionStatus = 'error';
             }
             
             if (metrics) {
@@ -460,65 +382,24 @@ export function AIAgentsPage() {
         });
     };
 
-    const generateMockHtml = (fileName: string) => {
-        return `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Automation Report - ${fileName}</title>
-                <style>
-                    body { font-family: sans-serif; background: #2c3e50; color: white; padding: 20px; }
-                    .dashboard { display: flex; gap: 15px; margin-bottom: 30px; }
-                    .card { flex: 1; padding: 20px; border-radius: 8px; font-weight: bold; }
-                    .blue { background: #007bff; }
-                    .cyan { background: #17a2b8; }
-                    .green { background: #28a745; }
-                    .red { background: #dc3545; }
-                    .yellow { background: #ffc107; color: #333; }
-                    .label { font-size: 18px; margin-bottom: 10px; display: block; }
-                    .value { font-size: 24px; }
-                    .scenario { background: rgba(255,255,255,0.1); padding: 15px; margin-bottom: 10px; border-radius: 4px; }
-                    .passed { border-left: 5px solid #28a745; }
-                    .failed { border-left: 5px solid #dc3545; }
-                </style>
-            </head>
-            <body>
-                <h1>AutomationTestReport</h1>
-                <div class="dashboard">
-                    <div class="card blue"><span class="label">Features</span><div class="value">1</div></div>
-                    <div class="card cyan"><span class="label">Scenarios</span><div class="value">13</div></div>
-                    <div class="card green"><span class="label">Passed Scenarios</span><div class="value">8</div></div>
-                    <div class="card red"><span class="label">Failed Scenarios</span><div class="value">5</div></div>
-                    <div class="card yellow"><span class="label">Rerun Scenarios</span><div class="value">0</div></div>
-                </div>
-                <div class="scenarios">
-                    <div class="scenario passed">Scenario 1: Login @TC_1 [PASSED]</div>
-                    <div class="scenario passed">Scenario 2: Create @TC_2 [PASSED]</div>
-                    <div class="scenario failed">Scenario 3: Error @TC_3 [FAILED]</div>
-                </div>
-            </body>
-            </html>
-        `;
-    };
-
     const handleDownloadReport = (fileName: string) => {
-        const content = reportRef.current ? reportRef.current.content : generateMockHtml(fileName);
-        const blob = new Blob([content], { type: 'text/html' });
+        const content = reportRef.current ? JSON.stringify(reportRef.current.data, null, 2) : "{}";
+        const blob = new Blob([content], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = fileName;
+        a.download = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast({ title: "Report Downloaded", description: `Saved ${fileName} to your device.` });
+        toast({ title: "Data Downloaded", description: `Saved ${fileName} to your device.` });
     };
 
     const handleViewReport = (fileName: string) => {
         setPreviewReport({
             name: fileName,
-            content: reportRef.current ? reportRef.current.content : generateMockHtml(fileName)
+            content: reportRef.current ? JSON.stringify(reportRef.current.data, null, 2) : "{}"
         });
     };
 
@@ -543,7 +424,7 @@ export function AIAgentsPage() {
                         AI Agent Orchestrator
                     </h2>
                     <p className="text-muted-foreground text-sm">
-                        Unattended multi-agent pipeline for automated test failure resolution and reporting.
+                        Unattended JSON-first pipeline for automated test failure resolution.
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -591,11 +472,11 @@ export function AIAgentsPage() {
                         <CardHeader className="p-4 pb-2">
                             <div className="flex justify-between items-start">
                                 <div className="bg-primary/10 p-2 rounded-lg">
-                                    {idx === 0 && <Network className="h-4 w-4 text-primary" />}
+                                    {idx === 0 && <Database className="h-4 w-4 text-primary" />}
                                     {idx === 1 && <FileJson className="h-4 w-4 text-primary" />}
                                     {idx === 2 && <Cpu className="h-4 w-4 text-primary" />}
                                     {idx === 3 && <ExternalLink className="h-4 w-4 text-primary" />}
-                                    {idx === 4 && <Database className="h-4 w-4 text-primary" />}
+                                    {idx === 4 && <Network className="h-4 w-4 text-primary" />}
                                     {idx === 5 && <RefreshCcw className="h-4 w-4 text-primary" />}
                                     {idx >= 6 && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                 </div>
@@ -608,7 +489,7 @@ export function AIAgentsPage() {
                                                     size="icon" 
                                                     className="h-6 w-6 text-primary"
                                                     onClick={() => handleViewReport(reportRef.current?.name || agent.extraInfo!)}
-                                                    title="View fetched report"
+                                                    title="View fetched JSON"
                                                 >
                                                     <Eye className="h-3.5 w-3.5" />
                                                 </Button>
@@ -721,18 +602,18 @@ export function AIAgentsPage() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <Database className="h-2.5 w-2.5" /> Source:
+                                            <Database className="h-2.5 w-2.5" /> Data Source:
                                         </span>
                                         <Badge variant="outline" className={cn(
                                             "text-[9px] px-1.5 h-4",
                                             "text-blue-600 border-blue-200 bg-blue-50"
                                         )}>
-                                            SELENIUM STORE
+                                            JSON STORE
                                         </Badge>
                                     </div>
                                     {(reportRef.current || agent.extraInfo) && (
                                         <div className="space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                                            <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Latest Resource:</span>
+                                            <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Active Resource:</span>
                                             <div className="p-1.5 bg-primary/5 border border-primary/10 rounded text-[9px] font-mono flex items-center gap-1.5">
                                                 <FileCode className="h-3 w-3 text-primary shrink-0" />
                                                 <span className="truncate" title={reportRef.current?.name || agent.extraInfo}>{reportRef.current?.name || agent.extraInfo}</span>
@@ -745,10 +626,10 @@ export function AIAgentsPage() {
                                 <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-500">
                                     <div className="flex items-center justify-between text-[10px]">
                                         <span className="text-muted-foreground flex items-center gap-1">
-                                            <Activity className="h-2.5 w-2.5" /> Execution Summary:
+                                            <Activity className="h-2.5 w-2.5" /> Execution Metrics:
                                         </span>
                                         <span className="font-bold flex items-center gap-1">
-                                            {agent.metrics.total} Total
+                                            {agent.metrics.total} Scenarios
                                             <Sparkles className="h-2.5 w-2.5 text-primary" title="Analyzed with AI" />
                                         </span>
                                     </div>
@@ -780,7 +661,7 @@ export function AIAgentsPage() {
                 <CardHeader className="pb-2 border-b">
                     <CardTitle className="text-sm flex items-center gap-2">
                         <Terminal className="h-4 w-4" />
-                        Agent Console Output
+                        Agent Pipeline Console
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 overflow-hidden">
@@ -809,50 +690,43 @@ export function AIAgentsPage() {
                 <CardHeader>
                     <CardTitle className="text-sm flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 text-primary" />
-                        Agent Architecture Information
+                        JSON-Based Pipeline Architecture
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="text-xs text-muted-foreground grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <p className="font-semibold text-foreground">Operational Logic</p>
-                        <p>These agents operate asynchronously using serverless triggers. Agent 1 initiates the flow by monitoring the Selenium Data Store (MongoDB) or Confluence exports. Successive agents are triggered by state changes in the Agent Task collection.</p>
+                        <p>The pipeline has been upgraded to use **JSON as the primary data carrier**. Agent 1 retrieves structured test execution documents directly from the Selenium Store (MongoDB). Agent 2 processes this structured data using direct object traversal and Generative AI for schema recognition.</p>
                     </div>
                     <div className="space-y-2">
-                        <p className="font-semibold text-foreground">API Integrations</p>
-                        <ul className="list-disc pl-4 space-y-1">
-                            <li><strong>Selenium Store (MongoDB):</strong> Primary source for structured execution JSON documents.</li>
-                            <li><strong>Jira:</strong> REST API v3 for issue searching and cross-referencing.</li>
-                            <li><strong>GitLab:</strong> Repository API for file updates and Pipeline API for triggering reruns.</li>
-                            <li><strong>Confluence:</strong> Content API for report discovery and legacy data retrieval.</li>
-                        </ul>
+                        <p className="font-semibold text-foreground">Data Integrity</p>
+                        <p>By eliminating HTML parsing where possible, the agents achieve higher accuracy in failure detection. The "JSON Parser" agent specifically scans for scenario-level failure bits within the Cucumber JSON specification.</p>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Report Preview Dialog */}
+            {/* JSON Data Dialog */}
             <Dialog open={!!previewReport} onOpenChange={(open) => !open && setPreviewReport(null)}>
                 <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-4 border-b">
                         <DialogTitle className="flex items-center gap-2">
-                            <FileCode className="h-5 w-5 text-primary" />
-                            Report Preview: {previewReport?.name}
+                            <FileJson className="h-5 w-5 text-primary" />
+                            Active JSON Payload: {previewReport?.name}
                         </DialogTitle>
                         <DialogDescription>
-                            Rendered view of the identifying report content.
+                            Raw data currently being processed by the AI Agent pipeline.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 bg-muted/20 p-4">
-                        <div className="w-full h-full bg-white border rounded-lg shadow-inner overflow-hidden">
-                            <iframe 
-                                srcDoc={previewReport?.content} 
-                                className="w-full h-full border-none"
-                                title="Report Preview"
-                            />
-                        </div>
+                    <div className="flex-1 bg-slate-950 p-4 font-mono text-xs overflow-hidden">
+                        <ScrollArea className="h-full w-full">
+                            <pre className="text-slate-300 leading-relaxed">
+                                {previewReport?.content}
+                            </pre>
+                        </ScrollArea>
                     </div>
                     <DialogFooter className="p-4 border-t bg-muted/5">
                         <Button variant="outline" onClick={() => handleDownloadReport(previewReport!.name)} className="gap-2">
-                            <Download className="h-4 w-4" /> Download HTML
+                            <Download className="h-4 w-4" /> Download JSON
                         </Button>
                         <Button onClick={() => setPreviewReport(null)}>Close Viewer</Button>
                     </DialogFooter>
