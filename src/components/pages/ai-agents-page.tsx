@@ -10,7 +10,6 @@ import {
     Bot, 
     Play, 
     CheckCircle2, 
-    XCircle, 
     Loader2, 
     Cpu, 
     Network, 
@@ -20,21 +19,13 @@ import {
     FileJson,
     Terminal,
     AlertCircle,
-    Settings,
     ShieldCheck,
-    Save,
-    FlaskConical,
     PlayCircle,
-    Link2,
     FileCode,
     Activity,
     Download,
     Eye,
-    Upload,
-    HelpCircle,
-    Hash,
-    Sparkles,
-    FileText
+    Sparkles
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -47,13 +38,9 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
     DialogDescription,
     DialogFooter
 } from "@/components/ui/dialog";
-import { Label } from '../ui/label';
-import { Input } from '../ui/input';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { parseReportWithAI } from '@/ai/flows/report-parser-flow';
 
 interface AgentMetrics {
@@ -142,9 +129,10 @@ export function AIAgentsPage() {
                 const storeResult = await storeResponse.json();
 
                 if (storeResponse.ok && storeResult) {
-                    addLog(agent.id, `JSON Data found in store: ${storeResult.fileName || 'execution.json'}`);
-                    reportRef.current = { name: storeResult.fileName || 'latest_execution.json', data: storeResult };
-                    extra = storeResult.fileName || 'execution.json';
+                    const fileName = storeResult.fileName || 'execution.json';
+                    addLog(agent.id, `JSON Data found in store: ${fileName}`);
+                    reportRef.current = { name: fileName, data: storeResult };
+                    extra = fileName; // Display actual filename on card
                     fetchedFromStore = true;
                 }
             } catch (e: any) {
@@ -169,8 +157,9 @@ export function AIAgentsPage() {
                         const result = await response.json();
 
                         if (response.ok && result.success) {
-                            addLog(agent.id, `Fetched report: ${result.fileName}`);
-                            extra = result.fileName;
+                            const fileName = result.fileName || 'confluence_report.json';
+                            addLog(agent.id, `Fetched report: ${fileName}`);
+                            extra = fileName;
                             let parsedData = null;
                             try {
                                 parsedData = JSON.parse(result.content);
@@ -179,7 +168,7 @@ export function AIAgentsPage() {
                                 addLog(agent.id, "Fetched file is not native JSON. Preparing for secondary conversion...");
                                 parsedData = { raw: result.content };
                             }
-                            reportRef.current = { name: result.fileName, data: parsedData };
+                            reportRef.current = { name: fileName, data: parsedData };
                         } else {
                             addLog(agent.id, `Fetch Failed: ${result.error || 'Unknown error'}`);
                             executionStatus = 'error';
@@ -206,8 +195,9 @@ export function AIAgentsPage() {
                         ]
                     }]
                 };
-                reportRef.current = { name: 'mock_execution.json', data: mockData };
-                extra = 'mock_execution.json';
+                const mockName = 'mock_execution.json';
+                reportRef.current = { name: mockName, data: mockData };
+                extra = mockName;
             }
         } else if (agent.id === 2) {
             addLog(agent.id, "Initializing JSON Report Parser...");
@@ -472,13 +462,13 @@ export function AIAgentsPage() {
                                             JSON STORE
                                         </Badge>
                                     </div>
-                                    {(reportRef.current || agent.extraInfo) && (
+                                    {agent.extraInfo && (
                                         <div className="space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
                                             <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Fetched JSON File:</span>
                                             <div className="p-1.5 bg-primary/5 border border-primary/10 rounded text-[9px] font-mono flex items-center gap-1.5">
                                                 <FileCode className="h-3 w-3 text-primary shrink-0" />
-                                                <span className="truncate text-primary font-bold" title={reportRef.current?.name || agent.extraInfo}>
-                                                    {reportRef.current?.name || agent.extraInfo}
+                                                <span className="truncate text-primary font-bold" title={agent.extraInfo}>
+                                                    {agent.extraInfo}
                                                 </span>
                                             </div>
                                         </div>
