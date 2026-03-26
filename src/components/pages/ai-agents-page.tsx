@@ -115,6 +115,7 @@ export function AIAgentsPage() {
     
     const reportRef = useRef<{ name: string, data: any } | null>(null);
     const scenariosRef = useRef<AgentMetrics['scenarios']>([]);
+    const classificationsRef = useRef<FailureClassificationOutput['classifications']>([]);
     
     const { toast } = useToast();
     const firestore = useFirestore();
@@ -343,17 +344,19 @@ export function AIAgentsPage() {
                     environmentCount: eCount 
                 };
                 classifications = results;
+                classificationsRef.current = results; // Update ref for immediate visibility to Agent 4
                 
                 addLog(agent.id, `Classification Summary: ${fCount} Functional, ${dCount} Data, ${eCount} Environment.`);
             } else {
                 addLog(agent.id, "No failures found by JSON Parser to classify. Skipping analysis.");
                 classificationSummary = { functionalCount: 0, dataCount: 0, environmentCount: 0 };
                 classifications = [];
+                classificationsRef.current = [];
             }
         } else if (agent.id === 4) {
             addLog(agent.id, "Initializing Jira Defect Scout...");
-            const currentClassifier = agents.find(a => a.id === 3);
-            const functionalFailures = currentClassifier?.classifications?.filter(c => c.classification === 'Functional Issue') || [];
+            // Use classificationsRef instead of agents state to avoid stale closure issues in the loop
+            const functionalFailures = classificationsRef.current?.filter(c => c.classification === 'Functional Issue') || [];
 
             if (functionalFailures.length > 0) {
                 // Deduplicate by scenario name
@@ -398,7 +401,7 @@ export function AIAgentsPage() {
                                             const blob = new Blob([byteArray], {type: embeds[0].mime_type});
                                             screenshotFile = new File([blob], `failure_${scenarioName.replace(/\s+/g, '_')}.png`, {type: embeds[0].mime_type});
                                         } catch (err) {
-                                            addLog(agent.id, `Screenshot Processing Error: Failed to convert base64 payload.`);
+                                            // Silently fail screenshot processing to ensure ticket creation continues
                                         }
                                     }
                                 }
@@ -435,7 +438,7 @@ export function AIAgentsPage() {
                         } else {
                             addLog(agent.id, `Jira Error: ${jiraResult.error || 'Check configuration'}`);
                             if (jiraResult.details) {
-                                addLog(agent.id, `Jira Trace: ${jiraResult.details}`);
+                                addLog(agent.id, `Jira Details: ${jiraResult.details}`);
                             }
                         }
                     } catch (e: any) {
@@ -478,6 +481,7 @@ export function AIAgentsPage() {
         setProgress(0);
         setAgents(prev => prev.map(a => ({ ...a, status: 'idle' })));
         scenariosRef.current = []; 
+        classificationsRef.current = [];
         
         for (let i = 0; i < AGENTS_CONFIG.length; i++) {
             await runAgent(i);
