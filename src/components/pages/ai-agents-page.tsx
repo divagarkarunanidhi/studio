@@ -244,10 +244,10 @@ export function AIAgentsPage() {
                     addLog(agent.id, `Using existing report reference: ${reportRef.current.name}`);
                     extra = reportRef.current.name;
                 } else {
-                    addLog(agent.id, "Simulation Mode: Generating mock HTML report.");
+                    addLog(agent.id, "Simulation Mode: Generating mock dashboard report.");
                     await new Promise(resolve => setTimeout(resolve, 800));
                     const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
-                    const fileName = `cucumber_report_${timestamp}.html`;
+                    const fileName = `automation_report_${timestamp}.html`;
                     const mockHtml = generateMockHtml(fileName);
                     const newReport = { name: fileName, content: mockHtml };
                     reportRef.current = newReport;
@@ -256,7 +256,7 @@ export function AIAgentsPage() {
                 }
             }
         } else if (agent.id === 2) {
-            addLog(agent.id, "Initializing enhanced HTML parsing engine...");
+            addLog(agent.id, "Initializing Report Parser engine...");
             await new Promise(resolve => setTimeout(resolve, 800));
             
             const currentReport = reportRef.current;
@@ -266,139 +266,102 @@ export function AIAgentsPage() {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, "text/html");
                 
-                // 1. Primary Strategy: Look for scenario containers
-                let scenarios = Array.from(doc.querySelectorAll('.scenario, .element, [class*="scenario-heading"], tr.scenario'));
+                // --- STRATEGY 1: Search for Summary Dashboard Cards (from User Sample) ---
+                addLog(agent.id, "Searching for Dashboard Summary elements...");
                 
-                // 2. Secondary Strategy: If no structured elements, search for "Scenario:" text patterns
-                if (scenarios.length === 0) {
-                    addLog(agent.id, "Standard selectors yielded 0 results. Scanning for text patterns...");
-                    const allElements = Array.from(doc.querySelectorAll('div, tr, p, h1, h2, h3, h4, h5, span'));
-                    scenarios = allElements.filter(el => {
+                const findValueByLabel = (labelPattern: RegExp): number | null => {
+                    const elements = Array.from(doc.querySelectorAll('div, span, td, th, p, h1, h2, h3, h4'));
+                    for (const el of elements) {
                         const text = el.textContent?.trim() || "";
-                        return (el.classList.contains('scenario') || /^Scenario \d+/i.test(text)) && el.children.length > 0;
-                    });
-                }
-
-                const scenarioResults: { name: string, status: string, tags: string[] }[] = [];
-
-                if (scenarios.length > 0) {
-                    addLog(agent.id, `Scanning ${scenarios.length} identified scenario blocks...`);
-                    
-                    scenarios.forEach((s, idx) => {
-                        // Extract name
-                        const nameEl = s.querySelector('.scenario-name, .name, [class*="title"]') || s;
-                        let name = nameEl?.textContent?.split('\n')[0].trim() || `Scenario ${idx + 1}`;
-                        if (name.length > 100) name = name.substring(0, 100) + "...";
-                        
-                        // Extract tags (Test Case Name Tags)
-                        const tags: string[] = [];
-                        const tagEls = s.querySelectorAll('.tag, .tags, [class*="tag"]');
-                        tagEls.forEach(t => {
-                            const txt = t.textContent?.trim();
-                            if (txt && txt.startsWith('@')) tags.push(txt);
-                        });
-                        
-                        // Fallback: search text content for tags if no elements found
-                        if (tags.length === 0) {
-                            const text = s.textContent || "";
-                            const tagMatches = text.match(/@[a-zA-Z0-9_\-]+/g);
-                            if (tagMatches) tags.push(...Array.from(new Set(tagMatches)));
+                        if (labelPattern.test(text)) {
+                            // If label found, look for number in same container or next sibling
+                            const parentText = el.parentElement?.textContent || "";
+                            const matches = parentText.match(/\d+/g);
+                            if (matches && matches.length > 0) {
+                                // Find the match that isn't the label text itself
+                                const val = matches.find(m => !text.includes(m));
+                                if (val) return parseInt(val, 10);
+                                return parseInt(matches[0], 10);
+                            }
+                            
+                            // Check next sibling
+                            let next = el.nextElementSibling;
+                            while(next) {
+                                if (/\d+/.test(next.textContent || "")) {
+                                    const m = next.textContent?.match(/\d+/);
+                                    if (m) return parseInt(m[0], 10);
+                                }
+                                next = next.nextElementSibling;
+                            }
                         }
+                    }
+                    return null;
+                };
 
-                        // Determine status
-                        const outer = s.outerHTML.toLowerCase();
-                        const innerText = s.textContent?.toUpperCase() || "";
-                        const isFailed = s.classList.contains('failed') || 
-                                         outer.includes('status="failed"') ||
-                                         outer.includes('class="failed"') ||
-                                         s.querySelector('.failed, [class*="failed"]') ||
-                                         innerText.includes('FAILED') ||
-                                         innerText.includes('FAILURE');
-                        
-                        const status = isFailed ? 'failed' : 'passed';
-                        scenarioResults.push({ name, status, tags });
-                    });
+                const dashboardScenarios = findValueByLabel(/^Scenarios$/i);
+                const dashboardPassed = findValueByLabel(/^Passed Scenarios$/i);
+                const dashboardFailed = findValueByLabel(/^Failed Scenarios$/i);
 
-                    // De-duplicate if strategies overlap
-                    const uniqueResults = scenarioResults.reduce((acc, current) => {
-                        const x = acc.find(item => item.name === current.name);
-                        if (!x) {
-                            return acc.concat([current]);
-                        } else {
-                            return acc;
-                        }
-                    }, [] as typeof scenarioResults);
-
-                    const totalCount = uniqueResults.length;
-                    const failedCount = uniqueResults.filter(r => r.status === 'failed').length;
-                    const passedCount = totalCount - failedCount;
-
-                    metrics = { total: totalCount, passed: passedCount, failed: failedCount };
-                    addLog(agent.id, `Parsing Complete: Extracted ${totalCount} valid test scenarios.`);
-                    
-                    // Detailed logging
-                    uniqueResults.forEach(r => {
-                        const tagLabel = r.tags.length > 0 ? ` [Tags: ${r.tags.join(', ')}]` : '';
-                        addLog(agent.id, `${r.status.toUpperCase()}: ${r.name}${tagLabel}`);
-                    });
+                if (dashboardScenarios !== null && dashboardPassed !== null && dashboardFailed !== null) {
+                    addLog(agent.id, "Dashboard metrics identified successfully from summary cards.");
+                    metrics = { 
+                        total: dashboardScenarios, 
+                        passed: dashboardPassed, 
+                        failed: dashboardFailed 
+                    };
                 } else {
-                    addLog(agent.id, "DOM analysis unsuccessful. Escalating to GenAI Report Parser...");
+                    // --- STRATEGY 2: Individual Scenario Block Scanning ---
+                    addLog(agent.id, "Summary boxes not found. Scanning individual scenario blocks...");
                     
-                    try {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = html;
-                        const scripts = tempDiv.querySelectorAll('script, style, head, nav, footer');
-                        scripts.forEach(s => s.remove());
-                        
-                        const bodyText = tempDiv.innerText || tempDiv.textContent || "";
-                        const snippet = bodyText.substring(0, 15000); 
-                        
-                        addLog(agent.id, "Sending report text snippet to AI model...");
-                        const aiResult = await parseReportWithAI(snippet);
-                        
-                        if (aiResult && aiResult.total > 0) {
-                            metrics = { 
-                                total: aiResult.total, 
-                                passed: aiResult.passed, 
-                                failed: aiResult.failed 
-                            };
+                    let scenarios = Array.from(doc.querySelectorAll('.scenario, .element, [class*="scenario-heading"], tr.scenario'));
+                    
+                    if (scenarios.length === 0) {
+                        const allElements = Array.from(doc.querySelectorAll('div, tr, p'));
+                        scenarios = allElements.filter(el => {
+                            const text = el.textContent?.trim() || "";
+                            return /^Scenario \d+/i.test(text) || el.classList.contains('scenario');
+                        });
+                    }
+
+                    if (scenarios.length > 0) {
+                        const scenarioResults: { name: string, status: string }[] = [];
+                        scenarios.forEach((s, idx) => {
+                            const name = s.querySelector('.scenario-name, .name')?.textContent?.trim() || `Scenario ${idx + 1}`;
+                            const isFailed = s.textContent?.toUpperCase().includes('FAILED') || 
+                                             s.classList.contains('failed') || 
+                                             s.outerHTML.toLowerCase().includes('status="failed"');
                             
-                            addLog(agent.id, `AI Extraction Successful: identified ${aiResult.total} scenarios.`);
-                            
-                            aiResult.scenarios.forEach((r: any) => {
-                                const tagLabel = r.tags && r.tags.length > 0 ? ` [Tags: ${r.tags.join(', ')}]` : '';
-                                addLog(agent.id, `${r.status.toUpperCase()}: ${r.name}${tagLabel}`);
-                            });
-                        } else {
-                            throw new Error("AI returned 0 scenarios.");
-                        }
-                    } catch (aiErr: any) {
-                        addLog(agent.id, `AI/DOM analysis failed: ${aiErr.message}. Checking for global summary footer...`);
-                        
-                        const textContent = doc.body.innerText || doc.body.textContent || "";
-                        const summaryRegex = /(\d+)\s+scenarios?\s*\((\d+)\s+passed,\s*(\d+)\s+failed\)/i;
-                        const match = textContent.match(summaryRegex);
-                        
-                        if (match) {
-                            metrics = { 
-                                total: parseInt(match[1], 10), 
-                                passed: parseInt(match[2], 10), 
-                                failed: parseInt(match[3], 10) 
-                            };
-                            addLog(agent.id, `Metrics identified via summary regex: ${metrics.passed}P/${metrics.failed}F.`);
-                        } else {
-                            addLog(agent.id, "Final Fallback: Using baseline simulator defaults (13 scenarios).");
+                            scenarioResults.push({ name, status: isFailed ? 'failed' : 'passed' });
+                        });
+
+                        const uniqueResults = Array.from(new Set(scenarioResults.map(r => JSON.stringify(r)))).map(s => JSON.parse(s));
+                        const total = uniqueResults.length;
+                        const failed = uniqueResults.filter(r => r.status === 'failed').length;
+                        metrics = { total, passed: total - failed, failed };
+                        addLog(agent.id, `Parsed ${total} scenarios from detailed scenario list.`);
+                    } else {
+                        // --- STRATEGY 3: AI Escalation ---
+                        addLog(agent.id, "Structured parsing unsuccessful. Escalating to GenAI...");
+                        try {
+                            const snippet = doc.body.innerText.substring(0, 10000);
+                            const aiResult = await parseReportWithAI(snippet);
+                            if (aiResult && aiResult.total > 0) {
+                                metrics = { total: aiResult.total, passed: aiResult.passed, failed: aiResult.failed };
+                                addLog(agent.id, `AI identified metrics: ${aiResult.total} Total, ${aiResult.passed} Passed.`);
+                            }
+                        } catch (e: any) {
+                            addLog(agent.id, "AI Analysis failed. Using fallback baseline (13 scenarios).");
                             metrics = { total: 13, passed: 8, failed: 5 };
                         }
                     }
                 }
             } else {
-                addLog(agent.id, "Error: No report data found in pipeline reference. Using simulated baseline.");
-                metrics = { total: 13, passed: 8, failed: 5 };
+                addLog(agent.id, "Error: No report data found. Using fallback simulator.");
+                metrics = { total: 4, passed: 3, failed: 1 };
             }
             
             if (metrics) {
-                addLog(agent.id, `Execution Summary: ${metrics.total} Total, ${metrics.passed} Passed, ${metrics.failed} Failed.`);
+                addLog(agent.id, `Final Analysis: ${metrics.total} Total, ${metrics.passed} Passed, ${metrics.failed} Failed.`);
             }
         } else {
             addLog(agent.id, `Starting unattended task...`);
@@ -441,69 +404,42 @@ export function AIAgentsPage() {
     };
 
     const generateMockHtml = (fileName: string) => {
-        // Create 13 scenarios: 8 Passed, 5 Failed (fails on i % 3 === 0)
+        // Create 4 scenarios to match user example logic (3 passed, 1 failed)
         return `
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Cucumber Report - ${fileName}</title>
+                <title>Automation Report - ${fileName}</title>
                 <style>
-                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #f9f9f9; color: #333; line-height: 1.6; }
-                    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-top: 8px solid #d40511; }
-                    h1 { color: #d40511; font-size: 24px; margin-top: 0; }
-                    .meta { color: #666; font-size: 14px; margin-bottom: 20px; }
-                    .summary { background: #f4f4f4; padding: 20px; border-radius: 8px; margin: 20px 0; }
-                    .summary h2 { margin-top: 0; font-size: 18px; }
-                    .summary ul { list-style: none; padding: 0; }
-                    .summary li { margin-bottom: 8px; display: flex; justify-content: space-between; }
-                    .status-pass { color: #28a745; font-weight: bold; }
-                    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #eee; font-size: 12px; color: #555; margin-right: 4px; }
-                    .feature { margin-top: 30px; border-left: 4px solid #ddd; padding-left: 15px; }
-                    .scenario { margin-bottom: 15px; padding: 15px; border-radius: 6px; background: #fcfcfc; border: 1px solid #eee; }
-                    .scenario-title { font-weight: 600; color: #d40511; margin-bottom: 8px; font-size: 15px; }
-                    .status-box { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-                    .status-fail { background: #fee2e2; color: #d40511; }
-                    .status-ok { background: #dcfce7; color: #166534; }
+                    body { font-family: sans-serif; background: #2c3e50; color: white; padding: 20px; }
+                    .dashboard { display: flex; gap: 15px; margin-bottom: 30px; }
+                    .card { flex: 1; padding: 20px; border-radius: 8px; font-weight: bold; }
+                    .blue { background: #007bff; }
+                    .cyan { background: #17a2b8; }
+                    .green { background: #28a745; }
+                    .red { background: #dc3545; }
+                    .yellow { background: #ffc107; color: #333; }
+                    .label { font-size: 18px; margin-bottom: 10px; display: block; }
+                    .value { font-size: 24px; }
+                    .scenario { background: rgba(255,255,255,0.1); padding: 15px; margin-bottom: 10px; border-radius: 4px; }
+                    .passed { border-left: 5px solid #28a745; }
+                    .failed { border-left: 5px solid #dc3545; }
                 </style>
             </head>
             <body>
-                <div class="container">
-                    <h1>Cucumber Execution Report</h1>
-                    <div class="meta">
-                        <p><strong>File:</strong> ${fileName}</p>
-                        <p><strong>Generated By:</strong> TaaS BugSense AI Agent 1</p>
-                        <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
-                    </div>
-                    <div class="summary">
-                        <h2>Execution Summary</h2>
-                        <ul>
-                            <li><span>Status:</span> <span class="status-pass">COMPLETED</span></li>
-                            <li><span>Environment:</span> <span>Production</span></li>
-                            <li><span>Target Solution:</span> <span>OTM v24.1</span></li>
-                            <li><span>Scenarios Total:</span> <span style="font-weight: bold;">13</span></li>
-                            <li><span>Total Passed:</span> <span style="font-weight: bold; color: green;">8</span></li>
-                            <li><span>Total Failed:</span> <span style="font-weight: bold; color: red;">5</span></li>
-                        </ul>
-                    </div>
-                    <div class="feature">
-                        <h3>Feature: Automated Shipment Invoicing</h3>
-                        ${Array.from({ length: 13 }).map((_, i) => {
-                            const isFail = i % 3 === 0;
-                            return `
-                            <div class="scenario ${isFail ? 'failed' : 'passed'}">
-                                <div class="scenario-title">Scenario ${i+1}: Validate Invoice Flow ${String.fromCharCode(65 + i)}</div>
-                                <div style="margin-bottom: 8px;">
-                                    <span class="tag">@Regression</span>
-                                    <span class="tag">@Financials</span>
-                                    <span class="tag">@TC_${1000 + i}</span>
-                                </div>
-                                <p style="font-size: 13px; margin: 5px 0;">Status: <span class="status-box ${isFail ? 'status-fail' : 'status-ok'}">${isFail ? 'FAILED' : 'PASSED'}</span></p>
-                            </div>
-                            `;
-                        }).join('')}
-                    </div>
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;"/>
-                    <p style="text-align:center; font-size: 12px; color: #999;">Generated by TaaS AI Agents • 13 Scenarios Analyzed</p>
+                <h1>AutomationTestReport</h1>
+                <div class="dashboard">
+                    <div class="card blue"><span class="label">Features</span><div class="value">1</div></div>
+                    <div class="card cyan"><span class="label">Scenarios</span><div class="value">4</div></div>
+                    <div class="card green"><span class="label">Passed Scenarios</span><div class="value">3</div></div>
+                    <div class="card red"><span class="label">Failed Scenarios</span><div class="value">1</div></div>
+                    <div class="card yellow"><span class="label">Rerun Scenarios</span><div class="value">0</div></div>
+                </div>
+                <div class="scenarios">
+                    <div class="scenario passed">Scenario 1: Validate Login Flow @TC_101 [PASSED]</div>
+                    <div class="scenario passed">Scenario 2: Create Shipment @TC_102 [PASSED]</div>
+                    <div class="scenario passed">Scenario 3: Update Order @TC_103 [PASSED]</div>
+                    <div class="scenario failed">Scenario 4: Invoice Generation @TC_104 [FAILED] - Null pointer exception in calc engine.</div>
                 </div>
             </body>
             </html>
