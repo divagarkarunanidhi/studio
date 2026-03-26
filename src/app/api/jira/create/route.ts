@@ -34,11 +34,19 @@ export async function POST(request: Request) {
         };
 
         // 1. Create the Issue
-        const createUrl = `${jiraLink.replace(/\/+$/, '')}/rest/api/2/issue`;
+        const baseUrl = jiraLink.replace(/\/+$/, '');
+        const createUrl = `${baseUrl}/rest/api/2/issue`;
+        
+        // Sanitize Summary: Must be single line and max ~255 chars
+        const safeSummary = (issue.summary || 'Selenium Test Failure')
+            .replace(/\n/g, ' ')
+            .replace(/\r/g, ' ')
+            .substring(0, 250);
+
         const payload = {
             fields: {
-                project: { key: jiraProjectKey },
-                summary: issue.summary || 'Selenium Test Failure',
+                project: { key: jiraProjectKey.trim().toUpperCase() },
+                summary: safeSummary,
                 description: issue.description || 'No description provided.',
                 issuetype: { name: jiraIssueType || 'Bug' }
             }
@@ -52,8 +60,23 @@ export async function POST(request: Request) {
 
         if (!createRes.ok) {
             const errBody = await createRes.text();
+            let errorMessage = `Jira API Error: ${createRes.status} ${createRes.statusText}`;
+            
+            try {
+                const parsedError = JSON.parse(errBody);
+                if (parsedError.errors) {
+                    errorMessage = Object.entries(parsedError.errors)
+                        .map(([key, val]) => `${key}: ${val}`)
+                        .join(', ');
+                } else if (parsedError.errorMessages) {
+                    errorMessage = parsedError.errorMessages.join(', ');
+                }
+            } catch (e) {
+                // Not JSON, use raw body
+            }
+
             console.error("Jira Create Issue Error:", errBody);
-            return NextResponse.json({ error: `Jira API Error: ${createRes.status} ${createRes.statusText}`, details: errBody }, { status: createRes.status });
+            return NextResponse.json({ error: errorMessage, details: errBody }, { status: createRes.status });
         }
 
         const issueResult = await createRes.json();
@@ -61,7 +84,7 @@ export async function POST(request: Request) {
 
         // 2. Attach Screenshot if present
         if (screenshot && issueKey) {
-            const attachUrl = `${jiraLink.replace(/\/+$/, '')}/rest/api/2/issue/${issueKey}/attachments`;
+            const attachUrl = `${baseUrl}/rest/api/2/issue/${issueKey}/attachments`;
             
             const attachFormData = new FormData();
             attachFormData.append('file', screenshot);
@@ -76,7 +99,8 @@ export async function POST(request: Request) {
             });
 
             if (!attachRes.ok) {
-                console.warn(`Jira attachment failed for ${issueKey}:`, await attachRes.text());
+                const attachErr = await attachRes.text();
+                console.warn(`Jira attachment failed for ${issueKey}:`, attachErr);
             }
         }
 

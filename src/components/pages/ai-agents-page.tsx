@@ -412,7 +412,7 @@ export function AIAgentsPage() {
                             jiraIssueType: configData?.jiraIssueType || 'Bug'
                         }));
                         formData.append('issue', JSON.stringify({
-                            summary: `FAILURE: ${errorLogs.substring(0, 200)}...`,
+                            summary: `FAILURE: ${errorLogs}`,
                             description: `FAILED SCENARIO: ${scenarioName}\n\n${stepsDescription}`
                         }));
                         if (screenshotFile) {
@@ -430,6 +430,9 @@ export function AIAgentsPage() {
                             successCount++;
                         } else {
                             addLog(agent.id, `Jira Error: ${jiraResult.error || 'Check configuration'}`);
+                            if (jiraResult.details) {
+                                console.error("Detailed Jira Error:", jiraResult.details);
+                            }
                         }
                     } catch (e: any) {
                         addLog(agent.id, `API Error: ${e.message}`);
