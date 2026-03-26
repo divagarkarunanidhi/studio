@@ -36,7 +36,8 @@ import {
     Clock,
     HelpCircle,
     Bug,
-    Settings
+    Settings,
+    FlaskConical
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -109,6 +110,7 @@ export function AIAgentsPage() {
     const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(-1);
     const [progress, setProgress] = useState(0);
     const [autoMode, setAutoMode] = useState(false);
+    const [isTestingJira, setIsTestingJira] = useState(false);
     
     // View States
     const [previewReport, setPreviewReport] = useState<{ name: string, content: string } | null>(null);
@@ -156,6 +158,46 @@ export function AIAgentsPage() {
             title: "Settings Updated",
             description: `Jira ${key} has been saved.`
         });
+    };
+
+    const handleTestJira = async () => {
+        if (!configData?.jiraLink || !configData?.jiraUser || !configData?.jiraApiToken || !configData?.jiraProjectKey) {
+            toast({
+                variant: "destructive",
+                title: "Incomplete Config",
+                description: "Please fill in all Jira configuration fields before testing."
+            });
+            return;
+        }
+
+        setIsTestingJira(true);
+        try {
+            const response = await fetch('/api/jira/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jiraLink: configData.jiraLink,
+                    jiraUser: configData.jiraUser,
+                    jiraApiToken: configData.jiraApiToken,
+                    jiraProjectKey: configData.jiraProjectKey
+                })
+            });
+            
+            const result = await response.json();
+            if (response.ok) {
+                toast({ title: "Test Successful", description: result.message });
+            } else {
+                toast({ 
+                    variant: "destructive", 
+                    title: "Test Failed", 
+                    description: result.error || "Could not connect to Jira." 
+                });
+            }
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Network Error", description: e.message });
+        } finally {
+            setIsTestingJira(false);
+        }
     };
 
     const runAgent = async (index: number) => {
@@ -663,10 +705,24 @@ export function AIAgentsPage() {
                                             </DialogTrigger>
                                             <DialogContent className="sm:max-w-[425px]">
                                                 <DialogHeader>
-                                                    <DialogTitle>Jira Configuration</DialogTitle>
-                                                    <DialogDescription>
-                                                        Set up your Jira credentials and project details for automated bug creation.
-                                                    </DialogDescription>
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <DialogTitle>Jira Configuration</DialogTitle>
+                                                            <DialogDescription>
+                                                                Set up your Jira credentials and project details for automated bug creation.
+                                                            </DialogDescription>
+                                                        </div>
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            onClick={handleTestJira} 
+                                                            disabled={isTestingJira}
+                                                            className="h-8 text-xs"
+                                                        >
+                                                            {isTestingJira ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <FlaskConical className="h-3 w-3 mr-2" />}
+                                                            Test Connection
+                                                        </Button>
+                                                    </div>
                                                 </DialogHeader>
                                                 <div className="grid gap-4 py-4">
                                                     <div className="grid gap-2">

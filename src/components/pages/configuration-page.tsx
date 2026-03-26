@@ -26,6 +26,7 @@ export function ConfigurationPage() {
   const firestore = useFirestore();
   const [isTestingMongo, setIsTestingMongo] = useState(false);
   const [isTestingConfluence, setIsTestingConfluence] = useState(false);
+  const [isTestingJira, setIsTestingJira] = useState(false);
 
   const configRef = useMemoFirebase(() => doc(firestore, 'appConfiguration', 'global'), [firestore]);
   const { data: configData, isLoading: isConfigLoading, error: configError } = useDoc<AppConfiguration>(configRef);
@@ -143,6 +144,47 @@ export function ConfigurationPage() {
     }
   };
 
+  const handleTestJira = async () => {
+    const values = form.getValues();
+    if (!values.jiraLink || !values.jiraUser || !values.jiraApiToken || !values.jiraProjectKey) {
+        toast({
+            variant: 'destructive',
+            title: 'Missing Details',
+            description: 'Please provide all Jira settings before testing.'
+        });
+        return;
+    }
+
+    setIsTestingJira(true);
+    try {
+        const response = await fetch('/api/jira/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jiraLink: values.jiraLink,
+                jiraUser: values.jiraUser,
+                jiraApiToken: values.jiraApiToken,
+                jiraProjectKey: values.jiraProjectKey
+            })
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+            toast({ title: 'Connection Successful', description: result.message });
+        } else {
+            throw new Error(result.error || 'Failed to connect.');
+        }
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Test Failed',
+            description: error.message
+        });
+    } finally {
+        setIsTestingJira(false);
+    }
+  };
+
   if (isConfigLoading) {
     return (
         <div className="space-y-6">
@@ -257,10 +299,16 @@ export function ConfigurationPage() {
             <Separator />
 
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Bug className="h-5 w-5 text-primary" />
-                    JIRA Agent Configuration
-                </h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Bug className="h-5 w-5 text-primary" />
+                        JIRA Agent Configuration
+                    </h3>
+                    <Button type="button" variant="ghost" size="sm" onClick={handleTestJira} disabled={isTestingJira}>
+                        {isTestingJira ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <FlaskConical className="h-3 w-3 mr-2" />}
+                        Test Jira Connection
+                    </Button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                     control={form.control}
