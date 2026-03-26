@@ -63,8 +63,10 @@ export async function POST(request: Request) {
                 // Iterative search
                 for (const key in jsonContent) {
                     if (key === scenarioName || scenarioName.includes(key) && key.length > 5) {
-                        jsonContent[key].Agent = "found";
-                        updated = true;
+                        if (typeof jsonContent[key] === 'object' && jsonContent[key] !== null) {
+                            jsonContent[key].Agent = "found";
+                            updated = true;
+                        }
                         break;
                     }
                 }
@@ -77,6 +79,7 @@ export async function POST(request: Request) {
 
         // 3. Commit the change back to GitLab
         const commitUrl = `${baseUrl}/repository/commits`;
+        const updatedContentString = JSON.stringify(jsonContent, null, 2);
         const commitPayload = {
             branch: branch || 'main',
             commit_message: `AI Agent: Auto-healing test data for scenario '${scenarioName}'`,
@@ -84,7 +87,7 @@ export async function POST(request: Request) {
                 {
                     action: 'update',
                     file_path: filePath,
-                    content: JSON.stringify(jsonContent, null, 2)
+                    content: updatedContentString
                 }
             ]
         };
@@ -103,7 +106,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: `Failed to commit changes to GitLab: ${commitRes.status}`, details: err }, { status: commitRes.status });
         }
 
-        return NextResponse.json({ success: true, updated: true, filePath });
+        return NextResponse.json({ 
+            success: true, 
+            updated: true, 
+            filePath,
+            updatedContent: jsonContent // Return the updated object for preview
+        });
 
     } catch (e: any) {
         console.error("GitLab Process Error:", e);

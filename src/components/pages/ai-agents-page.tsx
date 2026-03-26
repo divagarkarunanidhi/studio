@@ -79,6 +79,7 @@ interface AgentStatus {
     metrics?: AgentMetrics;
     classificationSummary?: FailureClassificationOutput['summary'];
     classifications?: FailureClassificationOutput['classifications'];
+    updatedContent?: string; // New field for JSON preview
 }
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
@@ -249,6 +250,7 @@ export function AIAgentsPage() {
         let metrics: AgentMetrics | undefined = undefined;
         let classificationSummary: FailureClassificationOutput['summary'] | undefined = undefined;
         let classifications: FailureClassificationOutput['classifications'] | undefined = undefined;
+        let updatedContent: string | undefined = undefined;
         let executionStatus: 'success' | 'error' = 'success';
 
         if (agent.id === 1) {
@@ -599,6 +601,8 @@ export function AIAgentsPage() {
                             if (syncRes.ok && result.success) {
                                 addLog(agent.id, `[GITLAB SUCCESS] Scenario synced: ${scenarioName}`);
                                 totalUpdated++;
+                                // Capture updated content for preview (last one updated wins)
+                                updatedContent = JSON.stringify(result.updatedContent, null, 2);
                             } else {
                                 addLog(agent.id, `[GITLAB WARNING] ${result.error || 'Check GitLab configuration'}`);
                             }
@@ -625,7 +629,8 @@ export function AIAgentsPage() {
             extraInfo: extra || a.extraInfo,
             metrics: metrics || a.metrics,
             classificationSummary: classificationSummary || a.classificationSummary,
-            classifications: classifications || a.classifications
+            classifications: classifications || a.classifications,
+            updatedContent: updatedContent || a.updatedContent
         } : a));
 
         if (executionStatus === 'success' && ![2, 3, 4, 5].includes(agent.id)) {
@@ -656,9 +661,9 @@ export function AIAgentsPage() {
         });
     };
 
-    const handleDownloadReport = (fileName: string) => {
-        const content = reportRef.current ? JSON.stringify(reportRef.current.data, null, 2) : "{}";
-        const blob = new Blob([content], { type: 'application/json' });
+    const handleDownloadReport = (fileName: string, content?: string) => {
+        const data = content || (reportRef.current ? JSON.stringify(reportRef.current.data, null, 2) : "{}");
+        const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1076,8 +1081,18 @@ export function AIAgentsPage() {
                                             {idx === 3 ? "Scouting Status:" : "GitLab Sync Status:"}
                                         </span>
                                     </div>
-                                    <div className="p-2 bg-primary/5 border border-primary/10 rounded-md text-center">
+                                    <div className="p-2 bg-primary/5 border border-primary/10 rounded-md text-center flex flex-col gap-2">
                                         <span className="text-xs font-bold text-primary">{agent.extraInfo}</span>
+                                        {idx === 4 && agent.updatedContent && (
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="h-6 text-[10px] w-full"
+                                                onClick={() => setPreviewReport({ name: "Updated GitLab Content", content: agent.updatedContent! })}
+                                            >
+                                                <Eye className="h-3 w-3 mr-1" /> View Updated JSON
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1141,7 +1156,7 @@ export function AIAgentsPage() {
                         </ScrollArea>
                     </div>
                     <DialogFooter className="p-4 border-t bg-muted/5">
-                        <Button variant="outline" onClick={() => handleDownloadReport(previewReport!.name)} className="gap-2">
+                        <Button variant="outline" onClick={() => handleDownloadReport(previewReport!.name, previewReport!.content)} className="gap-2">
                             <Download className="h-4 w-4" /> Download JSON
                         </Button>
                         <Button onClick={() => setPreviewReport(null)}>Close Viewer</Button>
