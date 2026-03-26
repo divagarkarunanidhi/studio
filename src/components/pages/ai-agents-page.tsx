@@ -87,7 +87,7 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using deterministic rules." },
     { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for unique functional failures with screenshots." },
-    { id: 5, name: "Prepare data for functional Issue", description: "Identifies test data file from step output and updates GitLab status to 'found'." },
+    { id: 5, name: "Prepare data for data Issue", description: "Identifies test data file from step output and updates GitLab status to 'found' for data failures." },
     { id: 6, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
     { id: 7, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
     { id: 8, name: "Report Consolidator", description: "Merges original and rerun reports into a single source of truth." },
@@ -536,11 +536,11 @@ export function AIAgentsPage() {
                 addLog(agent.id, "No functional failures identified. Jira creation skipped.");
             }
         } else if (agent.id === 5) {
-            addLog(agent.id, "Starting: Prepare data for functional Issue...");
-            const functionalFailures = classificationsRef.current?.filter(c => c.classification === 'Functional Issue') || [];
+            addLog(agent.id, "Starting: Prepare data for data Issue...");
+            const dataFailures = classificationsRef.current?.filter(c => c.classification === 'Data Issue') || [];
             
-            if (functionalFailures.length > 0) {
-                addLog(agent.id, `Found ${functionalFailures.length} functional failures to process for GitLab test data sync.`);
+            if (dataFailures.length > 0) {
+                addLog(agent.id, `Found ${dataFailures.length} data failures to process for GitLab test data sync.`);
                 
                 // 1. Identify the test data file name from the first step output of ANY scenario
                 let testDataFileName = null;
@@ -578,11 +578,11 @@ export function AIAgentsPage() {
                     addLog(agent.id, `Target GitLab Path: ${testDataFullGitPath}`);
                     
                     // 2. For each unique scenario failure, fetch file from GitLab and update "Agent: found"
-                    const uniqueScenarioNames = Array.from(new Set(functionalFailures.map(f => f.scenarioName)));
+                    const uniqueScenarioNames = Array.from(new Set(dataFailures.map(f => f.scenarioName)));
                     let totalUpdated = 0;
 
                     for (const scenarioName of uniqueScenarioNames) {
-                        addLog(agent.id, `Syncing scenario in GitLab: ${scenarioName}`);
+                        addLog(agent.id, `Syncing data scenario in GitLab: ${scenarioName}`);
                         
                         try {
                             const syncRes = await fetch('/api/gitlab/process', {
@@ -599,7 +599,7 @@ export function AIAgentsPage() {
 
                             const result = await syncRes.json();
                             if (syncRes.ok && result.success) {
-                                addLog(agent.id, `[GITLAB SUCCESS] Scenario synced: ${scenarioName}`);
+                                addLog(agent.id, `[GITLAB SUCCESS] Data scenario synced: ${scenarioName}`);
                                 totalUpdated++;
                                 // Capture updated content for preview (last one updated wins)
                                 updatedContent = JSON.stringify(result.updatedContent, null, 2);
@@ -610,10 +610,10 @@ export function AIAgentsPage() {
                             addLog(agent.id, `GitLab API Error: ${e.message}`);
                         }
                     }
-                    extra = `${totalUpdated} Scenarios Synced in GitLab`;
+                    extra = `${totalUpdated} Data Scenarios Synced in GitLab`;
                 }
             } else {
-                addLog(agent.id, "No functional failures identified. Data preparation skipped.");
+                addLog(agent.id, "No data failures identified. Data preparation skipped.");
             }
         } else {
             addLog(agent.id, `Starting unattended task...`);
