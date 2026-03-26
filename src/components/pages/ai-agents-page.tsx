@@ -35,7 +35,8 @@ import {
     Camera,
     Clock,
     HelpCircle,
-    Bug
+    Bug,
+    Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -50,11 +51,14 @@ import {
     DialogTitle,
     DialogDescription,
     DialogFooter,
-    DialogTrigger
+    DialogTrigger,
+    DialogClose
 } from "@/components/ui/dialog";
 import { parseReportWithAI } from '@/ai/flows/report-parser-flow';
 import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface AgentMetrics {
     total: number;
@@ -144,6 +148,15 @@ export function AIAgentsPage() {
     useEffect(() => {
         scrollToBottom();
     }, [agents]);
+
+    const handleUpdateJiraConfig = (key: string, value: string) => {
+        if (!configRef) return;
+        setDocumentNonBlocking(configRef, { [key]: value }, { merge: true });
+        toast({
+            title: "Settings Updated",
+            description: `Jira ${key} has been saved.`
+        });
+    };
 
     const runAgent = async (index: number) => {
         const agent = AGENTS_CONFIG[index];
@@ -344,7 +357,7 @@ export function AIAgentsPage() {
                     environmentCount: eCount 
                 };
                 classifications = results;
-                classificationsRef.current = results; // Update ref for immediate visibility to Agent 4
+                classificationsRef.current = classifications;
                 
                 addLog(agent.id, `Classification Summary: ${fCount} Functional, ${dCount} Data, ${eCount} Environment.`);
             } else {
@@ -355,11 +368,9 @@ export function AIAgentsPage() {
             }
         } else if (agent.id === 4) {
             addLog(agent.id, "Initializing Jira Defect Scout...");
-            // Use classificationsRef instead of agents state to avoid stale closure issues in the loop
             const functionalFailures = classificationsRef.current?.filter(c => c.classification === 'Functional Issue') || [];
 
             if (functionalFailures.length > 0) {
-                // Deduplicate by scenario name
                 const uniqueFailures = Array.from(new Set(functionalFailures.map(f => f.scenarioName)));
                 addLog(agent.id, `Deduplicated ${functionalFailures.length} functional issues down to ${uniqueFailures.length} unique failures.`);
 
@@ -367,11 +378,9 @@ export function AIAgentsPage() {
                 for (const scenarioName of uniqueFailures) {
                     addLog(agent.id, `Scouting/Creating defect for: ${scenarioName}`);
                     
-                    // Find failure context
                     const scenarioInfo = scenariosRef.current?.find(s => s.name === scenarioName);
                     const errorLogs = scenarioInfo?.logs || 'No log details available.';
                     
-                    // Fetch full scenario steps for description
                     let stepsDescription = "Scenario Execution Trace:\n\n";
                     let screenshotFile: File | null = null;
 
@@ -386,7 +395,6 @@ export function AIAgentsPage() {
                             foundScenario.steps?.forEach((step: any, idx: number) => {
                                 stepsDescription += `${idx + 1}. ${step.keyword}${step.name} [${step.result?.status?.toUpperCase() || 'SKIPPED'}]\n`;
                                 
-                                // Capture screenshot if failed
                                 if (step.result?.status === 'failed') {
                                     const embeds = [...(step.embeddings || []), ...(step.result?.embeddings || [])].filter(e => e.mime_type?.startsWith('image/'));
                                     if (embeds.length > 0) {
@@ -400,9 +408,7 @@ export function AIAgentsPage() {
                                             const byteArray = new Uint8Array(byteNumbers);
                                             const blob = new Blob([byteArray], {type: embeds[0].mime_type});
                                             screenshotFile = new File([blob], `failure_${scenarioName.replace(/\s+/g, '_')}.png`, {type: embeds[0].mime_type});
-                                        } catch (err) {
-                                            // Silently fail screenshot processing to ensure ticket creation continues
-                                        }
+                                        } catch (err) {}
                                     }
                                 }
                             });
@@ -437,9 +443,6 @@ export function AIAgentsPage() {
                             successCount++;
                         } else {
                             addLog(agent.id, `Jira Error: ${jiraResult.error || 'Check configuration'}`);
-                            if (jiraResult.details) {
-                                addLog(agent.id, `Jira Details: ${jiraResult.details}`);
-                            }
                         }
                     } catch (e: any) {
                         addLog(agent.id, `Connection Error: ${e.message}`);
@@ -650,6 +653,77 @@ export function AIAgentsPage() {
                                                 </Button>
                                             )}
                                         </div>
+                                    )}
+                                    {idx === 3 && (
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" title="Configure Jira Settings">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-[425px]">
+                                                <DialogHeader>
+                                                    <DialogTitle>Jira Configuration</DialogTitle>
+                                                    <DialogDescription>
+                                                        Set up your Jira credentials and project details for automated bug creation.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="grid gap-4 py-4">
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="jiraLink">Jira Base URL</Label>
+                                                        <Input 
+                                                            id="jiraLink" 
+                                                            defaultValue={configData?.jiraLink || ''} 
+                                                            placeholder="https://company.atlassian.net"
+                                                            onBlur={(e) => handleUpdateJiraConfig('jiraLink', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="jiraUser">Jira Email / Username</Label>
+                                                        <Input 
+                                                            id="jiraUser" 
+                                                            defaultValue={configData?.jiraUser || ''} 
+                                                            placeholder="user@dhl.com"
+                                                            onBlur={(e) => handleUpdateJiraConfig('jiraUser', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="jiraApiToken">Jira API Token</Label>
+                                                        <Input 
+                                                            id="jiraApiToken" 
+                                                            type="password" 
+                                                            defaultValue={configData?.jiraApiToken || ''} 
+                                                            onBlur={(e) => handleUpdateJiraConfig('jiraApiToken', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="grid gap-2">
+                                                            <Label htmlFor="jiraProjectKey">Project Key</Label>
+                                                            <Input 
+                                                                id="jiraProjectKey" 
+                                                                defaultValue={configData?.jiraProjectKey || ''} 
+                                                                placeholder="PROJ"
+                                                                onBlur={(e) => handleUpdateJiraConfig('jiraProjectKey', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="grid gap-2">
+                                                            <Label htmlFor="jiraIssueType">Issue Type</Label>
+                                                            <Input 
+                                                                id="jiraIssueType" 
+                                                                defaultValue={configData?.jiraIssueType || 'Bug'} 
+                                                                placeholder="Bug"
+                                                                onBlur={(e) => handleUpdateJiraConfig('jiraIssueType', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <DialogClose asChild>
+                                                        <Button type="button">Close</Button>
+                                                    </DialogClose>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
                                     )}
                                     <Button 
                                         variant="ghost" 
