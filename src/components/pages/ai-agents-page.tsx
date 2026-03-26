@@ -52,7 +52,6 @@ import {
     DialogTrigger
 } from "@/components/ui/dialog";
 import { parseReportWithAI } from '@/ai/flows/report-parser-flow';
-import { classifyFailures } from '@/ai/flows/failure-classification-flow';
 import { Input } from '../ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -79,7 +78,7 @@ interface AgentStatus {
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 1, name: "Execution Fetcher", description: "Fetches latest execution JSON from Selenium Data Store (fallback to Confluence)." },
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
-    { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using AI logic." },
+    { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using deterministic rules." },
     { id: 4, name: "Jira Defect Scout", description: "Checks Jira API for existing bugs related to functional failures." },
     { id: 5, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
     { id: 6, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
@@ -229,7 +228,7 @@ export function AIAgentsPage() {
                             { name: "Scenario 2: Shipment Creation Flow", steps: [{ result: { status: "passed", duration: 800000000 }, keyword: "When ", name: "I create a new shipment" }], tags: [{ name: "@TC_2" }] },
                             { name: "Scenario 3: API Integration Health Check", steps: [{ result: { status: "failed", error_message: "HTTP 503 Service Unavailable: Database cluster not reachable", duration: 500000000 }, keyword: "Then ", name: "the API should respond with 200 OK" }], tags: [{ name: "@TC_3" }] },
                             { name: "Scenario 4: Order Release Validation", steps: [{ result: { status: "failed", error_message: "Element 'Order_ID_778' not found in Search Results after 30s timeout", duration: 3000000000 }, keyword: "And ", name: "I search for order ID 778" }], tags: [{ name: "@TC_4" }] },
-                            { name: "Scenario 5: Multi-Leg Planning Logic", steps: [{ result: { status: "failed", error_message: "Assertion Error: Expected Shipment Cost < 5000 but found 5240.50", duration: 1500000000 }, keyword: "Then ", name: "the shipment cost should be valid" }], tags: [{ name: "@TC_5" }] }
+                            { name: "Scenario 5: Multi-Leg Planning Logic", steps: [{ result: { status: "failed", error_message: "java.lang.AssertionError: Total Number of Order Failed to Plan : Expected 5 but found 3", duration: 1500000000 }, keyword: "Then ", name: "the shipment cost should be valid" }], tags: [{ name: "@TC_5" }] }
                         ]
                     }]
                 };
@@ -292,32 +291,63 @@ export function AIAgentsPage() {
                 }
             } else { executionStatus = 'error'; }
         } else if (agent.id === 3) {
-            addLog(agent.id, "Initializing Failure Classifier...");
+            addLog(agent.id, "Initializing Failure Classifier (Rule-Based Mode)...");
             
             const failedScenarios = scenariosRef.current?.filter(s => s.status?.toLowerCase() === 'failed') || [];
 
             if (failedScenarios.length > 0) {
                 addLog(agent.id, `Analyzing ${failedScenarios.length} failed scenarios identified by Parser...`);
                 
-                const failuresToClassify = failedScenarios.map(s => ({ 
-                    scenarioName: s.name, 
-                    logs: s.logs || 'No specific log found in JSON steps. Classification based on scenario context.'
-                }));
+                const results: FailureClassificationOutput['classifications'] = [];
+                let fCount = 0, dCount = 0, eCount = 0;
 
-                try {
-                    const result = await classifyFailures(JSON.stringify(failuresToClassify));
-                    classificationSummary = result.summary;
-                    classifications = result.classifications;
-                    
-                    addLog(agent.id, `Classification Success: ${result.summary.functionalCount} Functional, ${result.summary.dataCount} Data, ${result.summary.environmentCount} Env.`);
-                    
-                    result.classifications.forEach(c => {
-                        addLog(agent.id, `[${c.classification.toUpperCase()}] ${c.scenarioName}: ${c.reasoning}`);
+                failedScenarios.forEach(s => {
+                    const errorLogs = s.logs || '';
+                    let category: 'Functional Issue' | 'Data Issue' | 'Environment Issue' = 'Data Issue';
+                    let reason = "Classified as Data Issue based on typical failure context (missing element or timeout).";
+
+                    // RULE 1: Explicit planning failure rule
+                    if (errorLogs.includes("java.lang.AssertionError: Total Number of Order Failed to Plan :")) {
+                        category = 'Functional Issue';
+                        reason = "Explicit Rule Trigger: 'Order Failed to Plan' identified as a Functional Issue.";
+                    } 
+                    // RULE 2: General Functional rules
+                    else if (errorLogs.toLowerCase().includes("assertionerror") || errorLogs.toLowerCase().includes("mismatch") || errorLogs.toLowerCase().includes("logic")) {
+                        category = 'Functional Issue';
+                        reason = "Assertion failure detected in step logs, indicating a logic or business rule mismatch.";
+                    }
+                    // RULE 3: Environment rules
+                    else if (errorLogs.includes("503") || errorLogs.includes("502") || errorLogs.toLowerCase().includes("network") || errorLogs.toLowerCase().includes("connection refused")) {
+                        category = 'Environment Issue';
+                        reason = "Network or infrastructure error detected (HTTP 50x or connection reset).";
+                    }
+                    // RULE 4: Data rules
+                    else if (errorLogs.toLowerCase().includes("element not found") || errorLogs.toLowerCase().includes("timeout") || errorLogs.toLowerCase().includes("stale element")) {
+                        category = 'Data Issue';
+                        reason = "Test timed out or UI element was missing, typically indicating that expected test data was not available or was deleted.";
+                    }
+
+                    if (category === 'Functional Issue') fCount++;
+                    else if (category === 'Data Issue') dCount++;
+                    else eCount++;
+
+                    results.push({
+                        scenarioName: s.name,
+                        classification: category,
+                        reasoning: reason
                     });
-                } catch (e: any) {
-                    addLog(agent.id, `Classification AI Error: ${e.message}`);
-                    executionStatus = 'error';
-                }
+                    
+                    addLog(agent.id, `[${category.toUpperCase()}] ${s.name}: ${reason}`);
+                });
+
+                classificationSummary = { 
+                    functionalCount: fCount, 
+                    dataCount: dCount, 
+                    environmentCount: eCount 
+                };
+                classifications = results;
+                
+                addLog(agent.id, `Classification Summary: ${fCount} Functional, ${dCount} Data, ${eCount} Environment.`);
             } else {
                 addLog(agent.id, "No failures found by JSON Parser to classify. Skipping analysis.");
                 classificationSummary = { functionalCount: 0, dataCount: 0, environmentCount: 0 };
@@ -606,7 +636,7 @@ export function AIAgentsPage() {
                                 <div className="space-y-2 animate-in zoom-in-95 duration-500">
                                     <div className="flex items-center justify-between text-[10px]">
                                         <span className="text-muted-foreground flex items-center gap-1"><ShieldAlert className="h-2.5 w-2.5" /> Classifications:</span>
-                                        <Sparkles className="h-2.5 w-2.5 text-primary" />
+                                        <Badge variant="outline" className="text-[8px] h-4 border-primary/20 text-primary">DETERMINISTIC</Badge>
                                     </div>
                                     <div className="grid grid-cols-3 gap-1.5">
                                         <button 
@@ -806,7 +836,7 @@ export function AIAgentsPage() {
                             {classificationListView?.title}
                         </DialogTitle>
                         <DialogDescription>
-                            AI-determined root causes for failed scenarios in this category.
+                            Root cause categories determined using deterministic rule analysis.
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -823,7 +853,7 @@ export function AIAgentsPage() {
                                             <div className="bg-muted/30 p-3 rounded-md border border-muted flex gap-3">
                                                 <HelpCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                                                 <div className="space-y-1">
-                                                    <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">AI Reasoning:</span>
+                                                    <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Classification Logic:</span>
                                                     <p className="text-xs text-foreground/90 leading-relaxed italic">"{item.reasoning}"</p>
                                                 </div>
                                             </div>
