@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -73,8 +74,8 @@ interface AgentStatus {
 }
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
-    { id: 1, name: "Confluence Fetcher", description: "Polls Confluence for the latest Cucumber HTML report." },
-    { id: 2, name: "Report Parser", description: "Analyzes Agent 1 HTML report to identify pass and failure counts." },
+    { id: 1, name: "Confluence Fetcher", description: "Fetches latest execution JSON from MongoDB Store (fallback to Confluence)." },
+    { id: 2, name: "Report Parser", description: "Analyzes Agent 1 HTML/JSON report to identify pass and failure counts." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using AI." },
     { id: 4, name: "Jira Defect Scout", description: "Checks Jira API for existing bugs related to functional failures." },
     { id: 5, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
@@ -188,6 +189,56 @@ export function AIAgentsPage() {
         scrollToBottom();
     }, [agents]);
 
+    const generateReportHtml = (report: any) => {
+        const results = report.test_results || [];
+        let total = 0;
+        let passed = 0;
+        let failed = 0;
+
+        results.forEach((feature: any) => {
+            feature.elements?.forEach((scenario: any) => {
+                total++;
+                const isFailed = scenario.steps?.some((step: any) => step.result?.status === 'failed');
+                if (isFailed) failed++;
+                else passed++;
+            });
+        });
+
+        return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: sans-serif; }
+                    .dashboard { display: flex; gap: 10px; margin-bottom: 20px; }
+                    .card { border: 1px solid #ccc; padding: 10px; border-radius: 4px; }
+                    .value { font-size: 20px; font-weight: bold; }
+                    .scenario { padding: 5px; margin-bottom: 2px; }
+                    .passed { color: green; }
+                    .failed { color: red; }
+                </style>
+            </head>
+            <body>
+                <h1>Automated Execution Summary</h1>
+                <div class="dashboard">
+                    <div class="card"><span class="label">Features</span><div class="value">${results.length}</div></div>
+                    <div class="card"><span class="label">Scenarios</span><div class="value">${total}</div></div>
+                    <div class="card"><span class="label">Passed Scenarios</span><div class="value">${passed}</div></div>
+                    <div class="card"><span class="label">Failed Scenarios</span><div class="value">${failed}</div></div>
+                </div>
+                <div class="scenarios">
+                    ${results.map((f: any) => f.elements?.map((s: any) => `
+                        <div class="scenario ${s.steps?.some((st: any) => st.result?.status === 'failed') ? 'failed' : 'passed'}">
+                            Scenario: ${s.name} [${s.steps?.some((st: any) => st.result?.status === 'failed') ? 'FAILED' : 'PASSED'}]
+                            ${s.tags?.map((t: any) => t.name).join(' ')}
+                        </div>
+                    `).join('')).join('')}
+                </div>
+            </body>
+            </html>
+        `;
+    };
+
     const runAgent = async (index: number) => {
         const agent = AGENTS_CONFIG[index];
         setCurrentAgentIndex(index);
@@ -199,61 +250,73 @@ export function AIAgentsPage() {
         let executionStatus: 'success' | 'error' = 'success';
 
         if (agent.id === 1) {
-            const path = confluencePath || configData?.confluencePath;
-            const pageId = confluencePageId || configData?.confluencePageId;
-            const user = confluenceUser || configData?.confluenceUser;
-            const password = confluencePassword || configData?.confluencePassword;
-
-            addLog(agent.id, `Targeting Confluence: ${path}`);
-            if (pageId) addLog(agent.id, `Targeting Page ID: ${pageId}`);
+            addLog(agent.id, "Querying Selenium Data Store (MongoDB) for latest execution...");
             
-            let fetchedFromApi = false;
+            let fetchedFromStore = false;
+            try {
+                const storeResponse = await fetch('/api/selenium/latest');
+                const storeResult = await storeResponse.json();
 
-            if (path && user && password) {
-                try {
-                    const response = await fetch('/api/confluence/fetch', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path, pageId, user, password })
-                    });
-                    
-                    const result = await response.json();
-
-                    if (response.ok && result.success) {
-                        addLog(agent.id, `Successfully fetched live report: ${result.fileName}`);
-                        extra = result.fileName;
-                        const newReport = { name: result.fileName, content: result.content };
-                        setUploadedReport(newReport);
-                        reportRef.current = newReport;
-                        fetchedFromApi = true;
-                    } else {
-                        addLog(agent.id, `Fetch Failed: ${result.error || 'Unknown error'}`);
-                        executionStatus = 'error';
-                    }
-                } catch (e: any) {
-                    addLog(agent.id, `Network Error: ${e.message}`);
-                    executionStatus = 'error';
-                }
-            } else {
-                addLog(agent.id, "Connection details missing. Check settings.");
-                executionStatus = 'error';
-            }
-
-            if (!fetchedFromApi && executionStatus === 'success') {
-                if (reportRef.current) {
-                    addLog(agent.id, `Using existing report reference: ${reportRef.current.name}`);
-                    extra = reportRef.current.name;
-                } else {
-                    addLog(agent.id, "Simulation Mode: Generating mock dashboard report.");
-                    await new Promise(resolve => setTimeout(resolve, 800));
-                    const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
-                    const fileName = `automation_report_${timestamp}.html`;
-                    const mockHtml = generateMockHtml(fileName);
-                    const newReport = { name: fileName, content: mockHtml };
+                if (storeResponse.ok && storeResult) {
+                    addLog(agent.id, `Data found in store: ${storeResult.fileName || 'execution.json'}`);
+                    const html = generateReportHtml(storeResult);
+                    const newReport = { name: storeResult.fileName || 'latest_execution.html', content: html };
                     reportRef.current = newReport;
                     setUploadedReport(newReport);
-                    extra = fileName;
+                    extra = storeResult.fileName || 'execution.json';
+                    fetchedFromStore = true;
                 }
+            } catch (e: any) {
+                addLog(agent.id, `Store Access Note: ${e.message}`);
+            }
+
+            if (!fetchedFromStore) {
+                addLog(agent.id, "No data in Store. Checking Confluence connection as fallback...");
+                const path = confluencePath || configData?.confluencePath;
+                const pageId = confluencePageId || configData?.confluencePageId;
+                const user = confluenceUser || configData?.confluenceUser;
+                const password = confluencePassword || configData?.confluencePassword;
+
+                if (path && user && password) {
+                    try {
+                        const response = await fetch('/api/confluence/fetch', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path, pageId, user, password })
+                        });
+                        
+                        const result = await response.json();
+
+                        if (response.ok && result.success) {
+                            addLog(agent.id, `Successfully fetched live report from Confluence: ${result.fileName}`);
+                            extra = result.fileName;
+                            const newReport = { name: result.fileName, content: result.content };
+                            setUploadedReport(newReport);
+                            reportRef.current = newReport;
+                        } else {
+                            addLog(agent.id, `Confluence Fetch Failed: ${result.error || 'Unknown error'}`);
+                            executionStatus = 'error';
+                        }
+                    } catch (e: any) {
+                        addLog(agent.id, `Network Error: ${e.message}`);
+                        executionStatus = 'error';
+                    }
+                } else {
+                    addLog(agent.id, "Connection details missing and Store is empty.");
+                    executionStatus = 'error';
+                }
+            }
+
+            if (executionStatus === 'success' && !reportRef.current) {
+                addLog(agent.id, "Simulation Mode: Generating mock dashboard report.");
+                await new Promise(resolve => setTimeout(resolve, 800));
+                const timestamp = format(new Date(), 'yyyyMMdd_HHmm');
+                const fileName = `automation_report_${timestamp}.html`;
+                const mockHtml = generateMockHtml(fileName);
+                const newReport = { name: fileName, content: mockHtml };
+                reportRef.current = newReport;
+                setUploadedReport(newReport);
+                extra = fileName;
             }
         } else if (agent.id === 2) {
             addLog(agent.id, "Initializing Report Parser engine...");
@@ -266,7 +329,6 @@ export function AIAgentsPage() {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, "text/html");
                 
-                // --- STRATEGY 1: Search for Summary Dashboard Cards (from User Sample) ---
                 addLog(agent.id, "Searching for Dashboard Summary elements...");
                 
                 const findValueByLabel = (labelPattern: RegExp): number | null => {
@@ -274,17 +336,14 @@ export function AIAgentsPage() {
                     for (const el of elements) {
                         const text = el.textContent?.trim() || "";
                         if (labelPattern.test(text)) {
-                            // If label found, look for number in same container or next sibling
                             const parentText = el.parentElement?.textContent || "";
                             const matches = parentText.match(/\d+/g);
                             if (matches && matches.length > 0) {
-                                // Find the match that isn't the label text itself
                                 const val = matches.find(m => !text.includes(m));
                                 if (val) return parseInt(val, 10);
                                 return parseInt(matches[0], 10);
                             }
                             
-                            // Check next sibling
                             let next = el.nextElementSibling;
                             while(next) {
                                 if (/\d+/.test(next.textContent || "")) {
@@ -310,7 +369,6 @@ export function AIAgentsPage() {
                         failed: dashboardFailed 
                     };
                 } else {
-                    // --- STRATEGY 2: Individual Scenario Block Scanning ---
                     addLog(agent.id, "Summary boxes not found. Scanning individual scenario blocks...");
                     
                     let scenarios = Array.from(doc.querySelectorAll('.scenario, .element, [class*="scenario-heading"], tr.scenario'));
@@ -319,14 +377,14 @@ export function AIAgentsPage() {
                         const allElements = Array.from(doc.querySelectorAll('div, tr, p'));
                         scenarios = allElements.filter(el => {
                             const text = el.textContent?.trim() || "";
-                            return /^Scenario \d+/i.test(text) || el.classList.contains('scenario');
+                            return /^Scenario \d+/i.test(text) || el.classList.contains('scenario') || text.includes('Scenario:');
                         });
                     }
 
                     if (scenarios.length > 0) {
                         const scenarioResults: { name: string, status: string }[] = [];
                         scenarios.forEach((s, idx) => {
-                            const name = s.querySelector('.scenario-name, .name')?.textContent?.trim() || `Scenario ${idx + 1}`;
+                            const name = s.querySelector('.scenario-name, .name')?.textContent?.trim() || s.textContent?.trim().substring(0, 100) || `Scenario ${idx + 1}`;
                             const isFailed = s.textContent?.toUpperCase().includes('FAILED') || 
                                              s.classList.contains('failed') || 
                                              s.outerHTML.toLowerCase().includes('status="failed"');
@@ -340,7 +398,6 @@ export function AIAgentsPage() {
                         metrics = { total, passed: total - failed, failed };
                         addLog(agent.id, `Parsed ${total} scenarios from detailed scenario list.`);
                     } else {
-                        // --- STRATEGY 3: AI Escalation ---
                         addLog(agent.id, "Structured parsing unsuccessful. Escalating to GenAI...");
                         try {
                             const snippet = doc.body.innerText.substring(0, 10000);
@@ -404,7 +461,6 @@ export function AIAgentsPage() {
     };
 
     const generateMockHtml = (fileName: string) => {
-        // Create 4 scenarios to match user example logic (3 passed, 1 failed)
         return `
             <!DOCTYPE html>
             <html>
@@ -430,16 +486,15 @@ export function AIAgentsPage() {
                 <h1>AutomationTestReport</h1>
                 <div class="dashboard">
                     <div class="card blue"><span class="label">Features</span><div class="value">1</div></div>
-                    <div class="card cyan"><span class="label">Scenarios</span><div class="value">4</div></div>
-                    <div class="card green"><span class="label">Passed Scenarios</span><div class="value">3</div></div>
-                    <div class="card red"><span class="label">Failed Scenarios</span><div class="value">1</div></div>
+                    <div class="card cyan"><span class="label">Scenarios</span><div class="value">13</div></div>
+                    <div class="card green"><span class="label">Passed Scenarios</span><div class="value">8</div></div>
+                    <div class="card red"><span class="label">Failed Scenarios</span><div class="value">5</div></div>
                     <div class="card yellow"><span class="label">Rerun Scenarios</span><div class="value">0</div></div>
                 </div>
                 <div class="scenarios">
-                    <div class="scenario passed">Scenario 1: Validate Login Flow @TC_101 [PASSED]</div>
-                    <div class="scenario passed">Scenario 2: Create Shipment @TC_102 [PASSED]</div>
-                    <div class="scenario passed">Scenario 3: Update Order @TC_103 [PASSED]</div>
-                    <div class="scenario failed">Scenario 4: Invoice Generation @TC_104 [FAILED] - Null pointer exception in calc engine.</div>
+                    <div class="scenario passed">Scenario 1: Login @TC_1 [PASSED]</div>
+                    <div class="scenario passed">Scenario 2: Create @TC_2 [PASSED]</div>
+                    <div class="scenario failed">Scenario 3: Error @TC_3 [FAILED]</div>
                 </div>
             </body>
             </html>
@@ -553,7 +608,7 @@ export function AIAgentsPage() {
                                                     size="icon" 
                                                     className="h-6 w-6 text-primary"
                                                     onClick={() => handleViewReport(reportRef.current?.name || agent.extraInfo!)}
-                                                    title="View fetched report (Original HTML)"
+                                                    title="View fetched report"
                                                 >
                                                     <Eye className="h-3.5 w-3.5" />
                                                 </Button>
@@ -584,7 +639,7 @@ export function AIAgentsPage() {
                                             <DialogContent>
                                                 <DialogHeader>
                                                     <DialogTitle>Configure Confluence Fetcher</DialogTitle>
-                                                    <DialogDescription>Input the details for Agent 1 to connect to your report repository.</DialogDescription>
+                                                    <DialogDescription>Input the details for Agent 1 to connect to your report repository (Fallback Source).</DialogDescription>
                                                 </DialogHeader>
                                                 <div className="space-y-4 py-4">
                                                     <div className="space-y-2">
@@ -666,18 +721,18 @@ export function AIAgentsPage() {
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                            <Link2 className="h-2.5 w-2.5" /> Connection:
+                                            <Database className="h-2.5 w-2.5" /> Source:
                                         </span>
                                         <Badge variant="outline" className={cn(
                                             "text-[9px] px-1.5 h-4",
-                                            (configData?.confluencePath || confluencePath) ? "text-green-600 border-green-200 bg-green-50" : "text-amber-600 border-amber-200 bg-amber-50"
+                                            "text-blue-600 border-blue-200 bg-blue-50"
                                         )}>
-                                            {(configData?.confluencePath || confluencePath) ? "CONNECTED" : "OFFLINE"}
+                                            SELENIUM STORE
                                         </Badge>
                                     </div>
                                     {(reportRef.current || agent.extraInfo) && (
                                         <div className="space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                                            <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Latest HTML Report:</span>
+                                            <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Latest Resource:</span>
                                             <div className="p-1.5 bg-primary/5 border border-primary/10 rounded text-[9px] font-mono flex items-center gap-1.5">
                                                 <FileCode className="h-3 w-3 text-primary shrink-0" />
                                                 <span className="truncate" title={reportRef.current?.name || agent.extraInfo}>{reportRef.current?.name || agent.extraInfo}</span>
@@ -760,14 +815,15 @@ export function AIAgentsPage() {
                 <CardContent className="text-xs text-muted-foreground grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <p className="font-semibold text-foreground">Operational Logic</p>
-                        <p>These agents operate asynchronously using serverless triggers. Agent 1 initiates the flow by monitoring external Confluence exports. Successive agents are triggered by state changes in the Agent Task collection.</p>
+                        <p>These agents operate asynchronously using serverless triggers. Agent 1 initiates the flow by monitoring the Selenium Data Store (MongoDB) or Confluence exports. Successive agents are triggered by state changes in the Agent Task collection.</p>
                     </div>
                     <div className="space-y-2">
                         <p className="font-semibold text-foreground">API Integrations</p>
                         <ul className="list-disc pl-4 space-y-1">
+                            <li><strong>Selenium Store (MongoDB):</strong> Primary source for structured execution JSON documents.</li>
                             <li><strong>Jira:</strong> REST API v3 for issue searching and cross-referencing.</li>
                             <li><strong>GitLab:</strong> Repository API for file updates and Pipeline API for triggering reruns.</li>
-                            <li><strong>Confluence:</strong> Content API for report discovery and data retrieval.</li>
+                            <li><strong>Confluence:</strong> Content API for report discovery and legacy data retrieval.</li>
                         </ul>
                     </div>
                 </CardContent>
@@ -782,7 +838,7 @@ export function AIAgentsPage() {
                             Report Preview: {previewReport?.name}
                         </DialogTitle>
                         <DialogDescription>
-                            Rendered view of the original HTML report (Simulation Source).
+                            Rendered view of the identifying report content.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex-1 bg-muted/20 p-4">
