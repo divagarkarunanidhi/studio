@@ -34,7 +34,10 @@ import {
     FileCode,
     Activity,
     Download,
-    ListChecks
+    ListChecks,
+    Save,
+    GitBranch,
+    FileType
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -83,7 +86,7 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using deterministic rules." },
     { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for unique functional failures with screenshots." },
-    { id: 5, name: "Prepare data for functional Issue", description: "Extracts dynamic test data IDs from logs to facilitate automated data corrections." },
+    { id: 5, name: "Prepare data for functional Issue", description: "Identifies test data file from step output and updates GitLab status to 'found'." },
     { id: 6, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
     { id: 7, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
     { id: 8, name: "Report Consolidator", description: "Merges original and rerun reports into a single source of truth." },
@@ -148,12 +151,12 @@ export function AIAgentsPage() {
         scrollToBottom();
     }, [agents]);
 
-    const handleUpdateJiraConfig = (key: string, value: string) => {
+    const handleUpdateConfig = (key: string, value: string) => {
         if (!configRef) return;
         setDocumentNonBlocking(configRef, { [key]: value }, { merge: true });
         toast({
             title: "Settings Updated",
-            description: `Jira ${key} has been saved.`
+            description: `${key} has been saved.`
         });
     };
 
@@ -278,7 +281,7 @@ export function AIAgentsPage() {
                 const mockData = {
                     test_results: [{
                         elements: [
-                            { name: "Scenario 1: User Login Verification", steps: [{ result: { status: "passed", duration: 1200000000 }, keyword: "Given ", name: "I am on the login page" }], tags: [{ name: "@TC_1" }] },
+                            { name: "Scenario 1: User Login Verification", steps: [{ result: { status: "passed", duration: 1200000000 }, keyword: "Given ", name: "I am on the login page", output: ["testDataFile : /taasrunner/builds/dsc-transport-oci/testData/testdata_BACARDI_TEST.json"] }], tags: [{ name: "@TC_1" }] },
                             { name: "Scenario 2: Shipment Creation Flow", steps: [{ result: { status: "passed", duration: 800000000 }, keyword: "When ", name: "I create a new shipment" }], tags: [{ name: "@TC_2" }] },
                             { name: "Scenario 3: API Integration Health Check", steps: [{ result: { status: "failed", error_message: "HTTP 503 Service Unavailable: Database cluster not reachable", duration: 500000000 }, keyword: "Then ", name: "the API should respond with 200 OK" }], tags: [{ name: "@TC_3" }] },
                             { name: "Scenario 4: Order Release Validation", steps: [{ result: { status: "failed", error_message: "Element 'Order_ID_778' not found in Search Results after 30s timeout", duration: 3000000000 }, keyword: "And ", name: "I search for order ID 778" }], tags: [{ name: "@TC_4" }] },
@@ -492,28 +495,80 @@ export function AIAgentsPage() {
                 addLog(agent.id, "No functional failures identified. Jira creation skipped.");
             }
         } else if (agent.id === 5) {
-            addLog(agent.id, "Analyzing logs for dynamic test data identifiers...");
+            addLog(agent.id, "Starting: Prepare data for functional Issue...");
             const functionalFailures = classificationsRef.current?.filter(c => c.classification === 'Functional Issue') || [];
             
             if (functionalFailures.length > 0) {
-                addLog(agent.id, `Scanning ${functionalFailures.length} functional failures for data patterns...`);
-                let idsFound = 0;
+                addLog(agent.id, `Found ${functionalFailures.length} functional failures to process for GitLab test data sync.`);
                 
-                functionalFailures.forEach(f => {
-                    const scenarioInfo = scenariosRef.current?.find(s => s.name === f.scenarioName);
-                    const logs = scenarioInfo?.logs || '';
+                // 1. Identify the test data file name from the first step output of ANY scenario
+                let testDataFileName = null;
+                let testDataFullGitPath = null;
+
+                if (reportRef.current?.data) {
+                    reportRef.current.data.test_results?.some((feature: any) => {
+                        return feature.elements?.some((scenario: any) => {
+                            const firstStep = scenario.steps?.[0];
+                            if (firstStep && firstStep.output) {
+                                const outputLine = firstStep.output.find((line: string) => line.includes('testDataFile :'));
+                                if (outputLine) {
+                                    // Extract filename using regex: looks for something like /path/to/filename.json
+                                    const match = outputLine.match(/testDataFile\s*:\s*(.*\/)?([^\/]+\.json)/);
+                                    if (match && match[2]) {
+                                        testDataFileName = match[2];
+                                        addLog(agent.id, `Identified Test Data File: ${testDataFileName}`);
+                                        
+                                        // Construct the relative path for GitLab (if prefix exists)
+                                        const prefix = configData?.gitlabFilePathPrefix || '';
+                                        testDataFullGitPath = prefix ? `${prefix.replace(/\/$/, '')}/${testDataFileName}` : testDataFileName;
+                                        return true; // Break out of feature/element search
+                                    }
+                                }
+                            }
+                            return false;
+                        });
+                    });
+                }
+
+                if (!testDataFullGitPath) {
+                    addLog(agent.id, "Critical Error: Could not find 'testDataFile :' identifier in any scenario's first step output.");
+                    executionStatus = 'error';
+                } else {
+                    addLog(agent.id, `Target GitLab Path: ${testDataFullGitPath}`);
                     
-                    // Pattern matching for IDs (numeric strings > 6 digits)
-                    const idMatch = logs.match(/\d{7,}/);
-                    if (idMatch) {
-                        addLog(agent.id, `Prepared Data: Found Identifier ${idMatch[0]} in ${f.scenarioName}`);
-                        idsFound++;
-                    } else {
-                        addLog(agent.id, `Manual check required for ${f.scenarioName}: No numeric ID pattern found in logs.`);
+                    // 2. For each unique scenario failure, fetch file from GitLab and update "Agent: found"
+                    const uniqueScenarioNames = Array.from(new Set(functionalFailures.map(f => f.scenarioName)));
+                    let totalUpdated = 0;
+
+                    for (const scenarioName of uniqueScenarioNames) {
+                        addLog(agent.id, `Syncing scenario in GitLab: ${scenarioName}`);
+                        
+                        try {
+                            const syncRes = await fetch('/api/gitlab/process', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    token: configData?.gitlabToken,
+                                    projectId: configData?.gitlabProjectId,
+                                    branch: configData?.gitlabBranch,
+                                    filePath: testDataFullGitPath,
+                                    scenarioName: scenarioName
+                                })
+                            });
+
+                            const result = await syncRes.json();
+                            if (syncRes.ok && result.success) {
+                                addLog(agent.id, `[GITLAB SUCCESS] Scenario synced: ${scenarioName}`);
+                                totalUpdated++;
+                            } else {
+                                addLog(agent.id, `[GITLAB WARNING] ${result.error || 'Check GitLab configuration'}`);
+                            }
+                        } catch (e: any) {
+                            addLog(agent.id, `GitLab API Error: ${e.message}`);
+                        }
                     }
-                });
-                
-                extra = `${idsFound} IDs Prepared for Sync`;
+                    extra = `${totalUpdated} Scenarios Synced in GitLab`;
+                }
             } else {
                 addLog(agent.id, "No functional failures identified. Data preparation skipped.");
             }
@@ -705,21 +760,6 @@ export function AIAgentsPage() {
                                     {idx >= 7 && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                 </div>
                                 <div className="flex gap-1">
-                                    {idx === 0 && (
-                                        <div className="flex gap-1">
-                                            {(reportRef.current || agent.extraInfo) && (
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-6 w-6 text-primary"
-                                                    onClick={() => handleViewReport(reportRef.current?.name || agent.extraInfo!)}
-                                                    title="View fetched JSON"
-                                                >
-                                                    <Eye className="h-3.5 w-3.5" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    )}
                                     {idx === 3 && (
                                         <Dialog>
                                             <DialogTrigger asChild>
@@ -755,7 +795,7 @@ export function AIAgentsPage() {
                                                             id="jiraLink" 
                                                             defaultValue={configData?.jiraLink || ''} 
                                                             placeholder="https://company.atlassian.net"
-                                                            onBlur={(e) => handleUpdateJiraConfig('jiraLink', e.target.value)}
+                                                            onBlur={(e) => handleUpdateConfig('jiraLink', e.target.value)}
                                                         />
                                                     </div>
                                                     <div className="grid gap-2">
@@ -764,7 +804,7 @@ export function AIAgentsPage() {
                                                             id="jiraUser" 
                                                             defaultValue={configData?.jiraUser || ''} 
                                                             placeholder="user@dhl.com"
-                                                            onBlur={(e) => handleUpdateJiraConfig('jiraUser', e.target.value)}
+                                                            onBlur={(e) => handleUpdateConfig('jiraUser', e.target.value)}
                                                         />
                                                     </div>
                                                     <div className="grid gap-2">
@@ -773,7 +813,7 @@ export function AIAgentsPage() {
                                                             id="jiraApiToken" 
                                                             type="password" 
                                                             defaultValue={configData?.jiraApiToken || ''} 
-                                                            onBlur={(e) => handleUpdateJiraConfig('jiraApiToken', e.target.value)}
+                                                            onBlur={(e) => handleUpdateConfig('jiraApiToken', e.target.value)}
                                                         />
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-4">
@@ -783,7 +823,7 @@ export function AIAgentsPage() {
                                                                 id="jiraProjectKey" 
                                                                 defaultValue={configData?.jiraProjectKey || ''} 
                                                                 placeholder="PROJ"
-                                                                onBlur={(e) => handleUpdateJiraConfig('jiraProjectKey', e.target.value)}
+                                                                onBlur={(e) => handleUpdateConfig('jiraProjectKey', e.target.value)}
                                                             />
                                                         </div>
                                                         <div className="grid gap-2">
@@ -792,7 +832,68 @@ export function AIAgentsPage() {
                                                                 id="jiraIssueType" 
                                                                 defaultValue={configData?.jiraIssueType || 'Bug'} 
                                                                 placeholder="Bug"
-                                                                onBlur={(e) => handleUpdateJiraConfig('jiraIssueType', e.target.value)}
+                                                                onBlur={(e) => handleUpdateConfig('jiraIssueType', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <DialogClose asChild>
+                                                        <Button type="button">Close</Button>
+                                                    </DialogClose>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
+                                    {idx === 4 && (
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" title="Configure GitLab Settings">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-[425px]">
+                                                <DialogHeader>
+                                                    <DialogTitle>GitLab Configuration</DialogTitle>
+                                                    <DialogDescription>
+                                                        Set up your GitLab access to allow the agent to sync test data files.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="grid gap-4 py-4">
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="gitlabToken">Private Access Token</Label>
+                                                        <Input 
+                                                            id="gitlabToken" 
+                                                            type="password"
+                                                            defaultValue={configData?.gitlabToken || ''} 
+                                                            onBlur={(e) => handleUpdateConfig('gitlabToken', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="gitlabProjectId">Project ID / Path</Label>
+                                                        <Input 
+                                                            id="gitlabProjectId" 
+                                                            defaultValue={configData?.gitlabProjectId || ''} 
+                                                            placeholder="group/project-name"
+                                                            onBlur={(e) => handleUpdateConfig('gitlabProjectId', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="grid gap-2">
+                                                            <Label htmlFor="gitlabBranch">Target Branch</Label>
+                                                            <Input 
+                                                                id="gitlabBranch" 
+                                                                defaultValue={configData?.gitlabBranch || 'main'} 
+                                                                onBlur={(e) => handleUpdateConfig('gitlabBranch', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="grid gap-2">
+                                                            <Label htmlFor="gitlabFilePathPrefix">File Path Prefix</Label>
+                                                            <Input 
+                                                                id="gitlabFilePathPrefix" 
+                                                                defaultValue={configData?.gitlabFilePathPrefix || ''} 
+                                                                placeholder="e.g. testData/"
+                                                                onBlur={(e) => handleUpdateConfig('gitlabFilePathPrefix', e.target.value)}
                                                             />
                                                         </div>
                                                     </div>
@@ -918,8 +1019,8 @@ export function AIAgentsPage() {
                                 <div className="space-y-2 animate-in fade-in duration-500">
                                     <div className="flex items-center justify-between text-[10px]">
                                         <span className="text-muted-foreground flex items-center gap-1">
-                                            {idx === 3 ? <Bug className="h-2.5 w-2.5" /> : <Search className="h-2.5 w-2.5" />}
-                                            {idx === 3 ? "Scouting Status:" : "Extraction Status:"}
+                                            {idx === 3 ? <Bug className="h-2.5 w-2.5" /> : <GitBranch className="h-2.5 w-2.5" />}
+                                            {idx === 3 ? "Scouting Status:" : "GitLab Sync Status:"}
                                         </span>
                                     </div>
                                     <div className="p-2 bg-primary/5 border border-primary/10 rounded-md text-center">

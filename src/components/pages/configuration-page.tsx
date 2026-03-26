@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Settings, Cpu, FlaskConical, Loader2, ShieldAlert, Bug } from 'lucide-react';
+import { Settings, Cpu, FlaskConical, Loader2, ShieldAlert, Bug, GitBranch } from 'lucide-react';
 import { AppConfigurationSchema } from '@/lib/types';
 import type { AppConfiguration } from '@/lib/types';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -49,6 +49,10 @@ export function ConfigurationPage() {
       confluencePageId: '',
       confluenceUser: '',
       confluencePassword: '',
+      gitlabToken: '',
+      gitlabProjectId: '',
+      gitlabBranch: 'main',
+      gitlabFilePathPrefix: '',
       autoLogoutEnabled: true,
       autoLogoutTime: 5
     },
@@ -360,6 +364,72 @@ export function ConfigurationPage() {
                         <FormControl>
                             <Input placeholder="Bug" {...field} value={field.value || ''} />
                         </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <GitBranch className="h-5 w-5 text-indigo-600" />
+                    GitLab Sync Configuration (Agent 5)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="gitlabToken"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>GitLab Private Token</FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="Enter your GitLab Personal Access Token" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="gitlabProjectId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Project ID or Path</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g. group/project-name" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="gitlabBranch"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Target Branch</FormLabel>
+                        <FormControl>
+                            <Input placeholder="main" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="gitlabFilePathPrefix"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>File Path Prefix (Optional)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g. Selenium/BACARDI/testData" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormDescription>Prefix added to extracted filenames when searching GitLab.</FormDescription>
                         <FormMessage />
                         </FormItem>
                     )}

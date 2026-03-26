@@ -34,6 +34,11 @@ export const AppConfigurationSchema = z.object({
     confluencePageId: z.string().optional().nullable(),
     confluenceUser: z.string().optional().nullable(),
     confluencePassword: z.string().optional().nullable(),
+    // GitLab Configuration
+    gitlabToken: z.string().optional().nullable(),
+    gitlabProjectId: z.string().optional().nullable(),
+    gitlabBranch: z.string().optional().nullable().default('main'),
+    gitlabFilePathPrefix: z.string().optional().nullable().default(''),
     // Session Settings
     autoLogoutEnabled: z.boolean().default(true),
     autoLogoutTime: z.number().min(1, 'Logout time must be at least 1 minute.').default(5),
@@ -63,7 +68,7 @@ export type AgentTask = z.infer<typeof AgentTaskSchema>;
 
 export const AgentActivitySchema = z.object({
     taskId: z.string(),
-    agentId: z.number(),
+    agentId: f.number(),
     agentName: z.string(),
     status: z.enum(['pending', 'running', 'success', 'error']),
     message: z.string(),
