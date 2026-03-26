@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Settings, Cpu, FlaskConical, Loader2, ShieldAlert } from 'lucide-react';
+import { Settings, Cpu, FlaskConical, Loader2, ShieldAlert, Bug } from 'lucide-react';
 import { AppConfigurationSchema } from '@/lib/types';
 import type { AppConfiguration } from '@/lib/types';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -39,6 +39,10 @@ export function ConfigurationPage() {
       geminiModel: 'googleai/gemini-1.5-flash',
       geminiRetryModel: 'googleai/gemini-1.5-pro',
       jiraLink: '',
+      jiraUser: '',
+      jiraApiToken: '',
+      jiraProjectKey: '',
+      jiraIssueType: 'Bug',
       reusabilityLabels: '',
       confluencePath: '',
       confluencePageId: '',
@@ -242,6 +246,71 @@ export function ConfigurationPage() {
                         <FormLabel>MongoDB Database Name</FormLabel>
                         <FormControl>
                             <Input placeholder="e.g., TAASBugSenseAI" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Bug className="h-5 w-5 text-primary" />
+                    JIRA Agent Configuration
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="jiraUser"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Jira Email / Username</FormLabel>
+                        <FormControl>
+                            <Input placeholder="user@dhl.com" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="jiraApiToken"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Jira API Token</FormLabel>
+                        <FormControl>
+                            <Input type="password" placeholder="Enter your Atlassian API Token" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="jiraProjectKey"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Jira Project Key</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., PROJ" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="jiraIssueType"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Jira Issue Type</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Bug" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

@@ -34,7 +34,8 @@ import {
     ListFilter,
     Camera,
     Clock,
-    HelpCircle
+    HelpCircle,
+    Bug
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -79,7 +80,7 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 1, name: "Execution Fetcher", description: "Fetches latest execution JSON from Selenium Data Store (fallback to Confluence)." },
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using deterministic rules." },
-    { id: 4, name: "Jira Defect Scout", description: "Checks Jira API for existing bugs related to functional failures." },
+    { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for unique functional failures with screenshots." },
     { id: 5, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
     { id: 6, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
     { id: 7, name: "Rerun Collector", description: "Fetches the updated results from Confluence post-rerun." },
@@ -306,22 +307,18 @@ export function AIAgentsPage() {
                     let category: 'Functional Issue' | 'Data Issue' | 'Environment Issue' = 'Data Issue';
                     let reason = "Classified as Data Issue based on typical failure context (missing element or timeout).";
 
-                    // RULE 1: Explicit planning failure rule
                     if (errorLogs.includes("java.lang.AssertionError: Total Number of Order Failed to Plan :")) {
                         category = 'Functional Issue';
                         reason = "Explicit Rule Trigger: 'Order Failed to Plan' identified as a Functional Issue.";
                     } 
-                    // RULE 2: General Functional rules
                     else if (errorLogs.toLowerCase().includes("assertionerror") || errorLogs.toLowerCase().includes("mismatch") || errorLogs.toLowerCase().includes("logic")) {
                         category = 'Functional Issue';
                         reason = "Assertion failure detected in step logs, indicating a logic or business rule mismatch.";
                     }
-                    // RULE 3: Environment rules
                     else if (errorLogs.includes("503") || errorLogs.includes("502") || errorLogs.toLowerCase().includes("network") || errorLogs.toLowerCase().includes("connection refused")) {
                         category = 'Environment Issue';
                         reason = "Network or infrastructure error detected (HTTP 50x or connection reset).";
                     }
-                    // RULE 4: Data rules
                     else if (errorLogs.toLowerCase().includes("element not found") || errorLogs.toLowerCase().includes("timeout") || errorLogs.toLowerCase().includes("stale element")) {
                         category = 'Data Issue';
                         reason = "Test timed out or UI element was missing, typically indicating that expected test data was not available or was deleted.";
@@ -353,6 +350,95 @@ export function AIAgentsPage() {
                 classificationSummary = { functionalCount: 0, dataCount: 0, environmentCount: 0 };
                 classifications = [];
             }
+        } else if (agent.id === 4) {
+            addLog(agent.id, "Initializing Jira Defect Scout...");
+            const currentClassifier = agents.find(a => a.id === 3);
+            const functionalFailures = currentClassifier?.classifications?.filter(c => c.classification === 'Functional Issue') || [];
+
+            if (functionalFailures.length > 0) {
+                // Deduplicate by scenario name
+                const uniqueFailures = Array.from(new Set(functionalFailures.map(f => f.scenarioName)));
+                addLog(agent.id, `Deduplicated ${functionalFailures.length} functional issues down to ${uniqueFailures.length} unique failures.`);
+
+                let successCount = 0;
+                for (const scenarioName of uniqueFailures) {
+                    addLog(agent.id, `Scouting/Creating defect for: ${scenarioName}`);
+                    
+                    // Find failure context
+                    const scenarioInfo = scenariosRef.current?.find(s => s.name === scenarioName);
+                    const errorLogs = scenarioInfo?.logs || 'No log details available.';
+                    
+                    // Fetch full scenario steps for description
+                    let stepsDescription = "Scenario Execution Trace:\n\n";
+                    let screenshotFile: File | null = null;
+
+                    if (reportRef.current?.data) {
+                        let foundScenario: any = null;
+                        reportRef.current.data.test_results?.some((f: any) => {
+                            foundScenario = f.elements?.find((s: any) => s.name === scenarioName);
+                            return !!foundScenario;
+                        });
+
+                        if (foundScenario) {
+                            foundScenario.steps?.forEach((step: any, idx: number) => {
+                                stepsDescription += `${idx + 1}. ${step.keyword}${step.name} [${step.result?.status?.toUpperCase() || 'SKIPPED'}]\n`;
+                                
+                                // Capture screenshot if failed
+                                if (step.result?.status === 'failed') {
+                                    const embeds = [...(step.embeddings || []), ...(step.result?.embeddings || [])].filter(e => e.mime_type?.startsWith('image/'));
+                                    if (embeds.length > 0) {
+                                        const b64 = embeds[0].data;
+                                        const byteCharacters = atob(b64);
+                                        const byteNumbers = new Array(byteCharacters.length);
+                                        for (let i = 0; i < byteCharacters.length; i++) {
+                                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                        }
+                                        const byteArray = new Uint8Array(byteNumbers);
+                                        const blob = new Blob([byteArray], {type: embeds[0].mime_type});
+                                        screenshotFile = new File([blob], `failure_${scenarioName.replace(/\s+/g, '_')}.png`, {type: embeds[0].mime_type});
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('config', JSON.stringify({
+                            jiraLink: configData?.jiraLink,
+                            jiraUser: configData?.jiraUser,
+                            jiraApiToken: configData?.jiraApiToken,
+                            jiraProjectKey: configData?.jiraProjectKey,
+                            jiraIssueType: configData?.jiraIssueType || 'Bug'
+                        }));
+                        formData.append('issue', JSON.stringify({
+                            summary: `FAILURE: ${errorLogs.substring(0, 200)}...`,
+                            description: `FAILED SCENARIO: ${scenarioName}\n\n${stepsDescription}`
+                        }));
+                        if (screenshotFile) {
+                            formData.append('screenshot', screenshotFile);
+                        }
+
+                        const jiraRes = await fetch('/api/jira/create', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const jiraResult = await jiraRes.json();
+                        if (jiraRes.ok && jiraResult.success) {
+                            addLog(agent.id, `Created Jira Ticket: ${jiraResult.key}`);
+                            successCount++;
+                        } else {
+                            addLog(agent.id, `Jira Error: ${jiraResult.error || 'Check configuration'}`);
+                        }
+                    } catch (e: any) {
+                        addLog(agent.id, `API Error: ${e.message}`);
+                    }
+                }
+                extra = `${successCount} Tickets Created`;
+            } else {
+                addLog(agent.id, "No functional failures identified. Jira creation skipped.");
+            }
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
@@ -370,7 +456,7 @@ export function AIAgentsPage() {
             classifications: classifications || a.classifications
         } : a));
 
-        if (executionStatus === 'success' && ![2, 3].includes(agent.id)) {
+        if (executionStatus === 'success' && ![2, 3, 4].includes(agent.id)) {
             addLog(agent.id, `Completed successfully.`);
         }
         
@@ -533,7 +619,7 @@ export function AIAgentsPage() {
                                     {idx === 0 && <Database className="h-4 w-4 text-primary" />}
                                     {idx === 1 && <FileJson className="h-4 w-4 text-primary" />}
                                     {idx === 2 && <ShieldAlert className="h-4 w-4 text-primary" />}
-                                    {idx === 3 && <ExternalLink className="h-4 w-4 text-primary" />}
+                                    {idx === 3 && <Bug className="h-4 w-4 text-primary" />}
                                     {idx === 4 && <Network className="h-4 w-4 text-primary" />}
                                     {idx === 5 && <RefreshCcw className="h-4 w-4 text-primary" />}
                                     {idx >= 6 && <CheckCircle2 className="h-4 w-4 text-primary" />}
@@ -643,7 +729,7 @@ export function AIAgentsPage() {
                                             className="bg-red-500/10 border border-red-200 rounded p-1 text-center hover:bg-red-500/20 transition-colors group"
                                             onClick={() => handleOpenClassificationList('Functional Issues', 'Functional Issue', agent.classifications)}
                                         >
-                                            <div className="text-[7px] text-red-600 font-semibold uppercase group-hover:text-red-700">Functional</div>
+                                            <div className="text-[7px] text-red-600 font-semibold uppercase group-hover:text-green-700">Functional</div>
                                             <div className="text-xs font-bold text-red-700">{agent.classificationSummary.functionalCount}</div>
                                         </button>
                                         <button 
@@ -660,6 +746,16 @@ export function AIAgentsPage() {
                                             <div className="text-[7px] text-blue-600 font-semibold uppercase group-hover:text-blue-700">Env.</div>
                                             <div className="text-xs font-bold text-blue-700">{agent.classificationSummary.environmentCount}</div>
                                         </button>
+                                    </div>
+                                </div>
+                            )}
+                            {idx === 3 && agent.extraInfo && (
+                                <div className="space-y-2 animate-in fade-in duration-500">
+                                    <div className="flex items-center justify-between text-[10px]">
+                                        <span className="text-muted-foreground flex items-center gap-1"><Bug className="h-2.5 w-2.5" /> Scouting Status:</span>
+                                    </div>
+                                    <div className="p-2 bg-primary/5 border border-primary/10 rounded-md text-center">
+                                        <span className="text-xs font-bold text-primary">{agent.extraInfo}</span>
                                     </div>
                                 </div>
                             )}

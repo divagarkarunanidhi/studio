@@ -23,6 +23,10 @@ export const AppConfigurationSchema = z.object({
     geminiModel: z.string().min(1, 'Gemini Model is required.'),
     geminiRetryModel: z.string().min(1, 'Gemini Retry Model is required.'),
     jiraLink: z.string().url('Must be a valid URL.').min(1, 'JIRA Link is required.'),
+    jiraUser: z.string().optional().nullable(),
+    jiraApiToken: z.string().optional().nullable(),
+    jiraProjectKey: z.string().optional().nullable(),
+    jiraIssueType: z.string().optional().nullable().default('Bug'),
     reusabilityLabels: z.string().optional().nullable(),
     seleniumDomainDateRanges: z.record(z.any()).optional(),
     // Confluence Fetcher Configuration
