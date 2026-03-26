@@ -27,7 +27,11 @@ import {
     Download,
     Eye,
     Sparkles,
-    ShieldAlert
+    ShieldAlert,
+    XCircle,
+    ChevronRight,
+    Search,
+    ListFilter
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -45,11 +49,13 @@ import {
 } from "@/components/ui/dialog";
 import { parseReportWithAI } from '@/ai/flows/report-parser-flow';
 import { classifyFailures } from '@/ai/flows/failure-classification-flow';
+import { Input } from '../ui/input';
 
 interface AgentMetrics {
     total: number;
     passed: number;
     failed: number;
+    scenarios?: { name: string, status: 'passed' | 'failed', tags: string[] }[];
 }
 
 interface AgentStatus {
@@ -84,6 +90,9 @@ export function AIAgentsPage() {
     const [progress, setProgress] = useState(0);
     const [autoMode, setAutoMode] = useState(false);
     const [previewReport, setPreviewReport] = useState<{ name: string, content: string } | null>(null);
+    const [scenarioListView, setScenarioListView] = useState<{ title: string, status: 'passed' | 'failed', scenarios: AgentMetrics['scenarios'] } | null>(null);
+    const [scenarioSearch, setScenarioListViewSearch] = useState("");
+    
     const reportRef = useRef<{ name: string, data: any } | null>(null);
     
     const { toast } = useToast();
@@ -211,24 +220,45 @@ export function AIAgentsPage() {
             if (currentReport && currentReport.data) {
                 const reportData = currentReport.data;
                 let total = 0, passed = 0, failed = 0;
+                const scenarios: AgentMetrics['scenarios'] = [];
+
                 if (reportData.test_results && Array.isArray(reportData.test_results)) {
                     reportData.test_results.forEach((feature: any) => {
                         feature.elements?.forEach((scenario: any) => {
                             total++;
                             const isFailed = scenario.steps?.some((step: any) => step.result?.status === 'failed');
+                            const status = isFailed ? 'failed' : 'passed';
                             if (isFailed) failed++; else passed++;
+                            
+                            scenarios.push({
+                                name: scenario.name || 'Unnamed Scenario',
+                                status: status,
+                                tags: scenario.tags?.map((t: any) => t.name) || []
+                            });
                         });
                     });
                 }
+
                 if (total > 0) {
-                    metrics = { total, passed, failed };
+                    metrics = { total, passed, failed, scenarios };
                     addLog(agent.id, `Direct traversal identified ${total} scenarios.`);
                 } else {
                     addLog(agent.id, "Invoking GenAI for structural analysis...");
                     try {
                         const jsonSnippet = JSON.stringify(reportData).substring(0, 15000);
                         const aiResult = await parseReportWithAI(jsonSnippet);
-                        if (aiResult) metrics = { total: aiResult.total, passed: aiResult.passed, failed: aiResult.failed };
+                        if (aiResult) {
+                            metrics = { 
+                                total: aiResult.total, 
+                                passed: aiResult.passed, 
+                                failed: aiResult.failed,
+                                scenarios: aiResult.scenarios.map(s => ({
+                                    name: s.name,
+                                    status: s.status,
+                                    tags: s.tags
+                                }))
+                            };
+                        }
                     } catch (e: any) { addLog(agent.id, `AI Error: ${e.message}`); }
                 }
             } else { executionStatus = 'error'; }
@@ -326,6 +356,19 @@ export function AIAgentsPage() {
             content: reportRef.current ? JSON.stringify(reportRef.current.data, null, 2) : "{}"
         });
     };
+
+    const handleOpenScenarioList = (title: string, status: 'passed' | 'failed', scenarios?: AgentMetrics['scenarios']) => {
+        if (!scenarios) return;
+        setScenarioListView({ title, status, scenarios });
+        setScenarioListViewSearch("");
+    };
+
+    const filteredScenarios = scenarioListView?.scenarios?.filter(s => {
+        const matchesStatus = s.status === scenarioListView.status;
+        const matchesSearch = s.name.toLowerCase().includes(scenarioSearch.toLowerCase()) || 
+                             s.tags.some(t => t.toLowerCase().includes(scenarioSearch.toLowerCase()));
+        return matchesStatus && matchesSearch;
+    }) || [];
 
     const isAnyAgentRunning = agents.some(a => a.status === 'running');
 
@@ -479,14 +522,22 @@ export function AIAgentsPage() {
                                         <span className="font-bold flex items-center gap-1">{agent.metrics.total} Scenarios</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div className="bg-green-500/10 border border-green-200 rounded p-1 text-center">
-                                            <div className="text-[8px] text-green-600 font-semibold uppercase">Passed</div>
+                                        <button 
+                                            className="bg-green-500/10 border border-green-200 rounded p-1 text-center hover:bg-green-500/20 transition-colors cursor-pointer group"
+                                            onClick={() => handleOpenScenarioList('Passed Scenarios', 'passed', agent.metrics?.scenarios)}
+                                            title="Click to view passed scenarios"
+                                        >
+                                            <div className="text-[8px] text-green-600 font-semibold uppercase group-hover:text-green-700">Passed</div>
                                             <div className="text-xs font-bold text-green-700">{agent.metrics.passed}</div>
-                                        </div>
-                                        <div className="bg-red-500/10 border border-red-200 rounded p-1 text-center">
-                                            <div className="text-[8px] text-red-600 font-semibold uppercase">Failed</div>
+                                        </button>
+                                        <button 
+                                            className="bg-red-500/10 border border-red-200 rounded p-1 text-center hover:bg-red-500/20 transition-colors cursor-pointer group"
+                                            onClick={() => handleOpenScenarioList('Failed Scenarios', 'failed', agent.metrics?.scenarios)}
+                                            title="Click to view failed scenarios"
+                                        >
+                                            <div className="text-[8px] text-red-600 font-semibold uppercase group-hover:text-red-700">Failed</div>
                                             <div className="text-xs font-bold text-red-700">{agent.metrics.failed}</div>
-                                        </div>
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -572,6 +623,74 @@ export function AIAgentsPage() {
                             <Download className="h-4 w-4" /> Download JSON
                         </Button>
                         <Button onClick={() => setPreviewReport(null)}>Close Viewer</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Scenario List Dialog */}
+            <Dialog open={!!scenarioListView} onOpenChange={(open) => !open && setScenarioListView(null)}>
+                <DialogContent className="max-w-3xl h-[70vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-4 border-b">
+                        <DialogTitle className="flex items-center gap-2">
+                            {scenarioListView?.status === 'passed' ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
+                            {scenarioListView?.title}
+                        </DialogTitle>
+                        <DialogDescription>
+                            List of identified test scenarios with their associated tags.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="p-4 bg-muted/20 border-b">
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search by name or @tag..." 
+                                className="pl-9 h-9" 
+                                value={scenarioSearch}
+                                onChange={(e) => setScenarioListViewSearch(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden">
+                        <ScrollArea className="h-full w-full p-4">
+                            {filteredScenarios.length > 0 ? (
+                                <div className="space-y-3">
+                                    {filteredScenarios.map((scenario, i) => (
+                                        <div key={i} className="p-3 border rounded-lg bg-card hover:bg-accent/5 transition-colors group">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="space-y-1">
+                                                    <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
+                                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                                        {scenario.tags.map((tag, j) => (
+                                                            <Badge key={j} variant="secondary" className="text-[9px] px-1.5 py-0 font-mono">
+                                                                {tag}
+                                                            </Badge>
+                                                        ))}
+                                                        {scenario.tags.length === 0 && <span className="text-[10px] text-muted-foreground italic">No tags</span>}
+                                                    </div>
+                                                </div>
+                                                <Badge variant={scenario.status === 'passed' ? 'outline' : 'destructive'} className="text-[10px] h-5 px-1.5 uppercase shrink-0">
+                                                    {scenario.status}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground opacity-50 space-y-2">
+                                    <ListFilter className="h-8 w-8" />
+                                    <p className="text-sm italic">No matching scenarios found.</p>
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </div>
+                    
+                    <DialogFooter className="p-4 border-t bg-muted/5">
+                        <div className="mr-auto text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                            Showing {filteredScenarios.length} of {scenarioListView?.scenarios?.filter(s => s.status === scenarioListView.status).length || 0} items
+                        </div>
+                        <Button onClick={() => setScenarioListView(null)}>Close List</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
