@@ -250,7 +250,8 @@ export function AIAgentsPage() {
                     reportData.test_results.forEach((feature: any) => {
                         feature.elements?.forEach((scenario: any) => {
                             total++;
-                            const failedStep = scenario.steps?.find((step: any) => step.result?.status === 'failed');
+                            // Case-insensitive status detection
+                            const failedStep = scenario.steps?.find((step: any) => step.result?.status?.toLowerCase() === 'failed');
                             const isFailed = !!failedStep;
                             const status = isFailed ? 'failed' : 'passed';
                             if (isFailed) failed++; else passed++;
@@ -281,7 +282,7 @@ export function AIAgentsPage() {
                                 failed: aiResult.failed,
                                 scenarios: aiResult.scenarios.map(s => ({
                                     name: s.name,
-                                    status: s.status,
+                                    status: s.status, // already lowercase from Zod enum
                                     tags: s.tags,
                                     logs: s.logs
                                 }))
@@ -294,22 +295,30 @@ export function AIAgentsPage() {
         } else if (agent.id === 3) {
             addLog(agent.id, "Initializing Failure Classifier...");
             
-            const failedScenarios = scenariosRef.current?.filter(s => s.status === 'failed') || [];
+            // Case-insensitive filtering of failed scenarios from the parser's findings
+            const failedScenarios = scenariosRef.current?.filter(s => s.status?.toLowerCase() === 'failed') || [];
 
             if (failedScenarios.length > 0) {
                 addLog(agent.id, `Analyzing ${failedScenarios.length} failed scenarios identified by Parser...`);
                 
                 const failuresToClassify = failedScenarios.map(s => ({ 
                     scenarioName: s.name, 
-                    logs: s.logs || 'No specific log found in JSON steps.'
+                    logs: s.logs || 'No specific log found in JSON steps. Classification based on scenario context.'
                 }));
 
                 try {
                     const result = await classifyFailures(JSON.stringify(failuresToClassify));
                     classificationSummary = result.summary;
                     classifications = result.classifications;
+                    
+                    const totalClassified = (result.summary.functionalCount || 0) + (result.summary.dataCount || 0) + (result.summary.environmentCount || 0);
+                    
                     addLog(agent.id, `Classification Success: ${result.summary.functionalCount} Functional, ${result.summary.dataCount} Data, ${result.summary.environmentCount} Env.`);
                     
+                    if (totalClassified !== failedScenarios.length) {
+                        addLog(agent.id, `Note: AI classified ${totalClassified} out of ${failedScenarios.length} failures.`);
+                    }
+
                     result.classifications.forEach(c => {
                         addLog(agent.id, `[${c.classification.toUpperCase()}] ${c.scenarioName}: ${c.reasoning}`);
                     });
@@ -319,6 +328,9 @@ export function AIAgentsPage() {
                 }
             } else {
                 addLog(agent.id, "No failures found by JSON Parser to classify. Skipping analysis.");
+                // Explicitly clear summary to avoid showing old data
+                classificationSummary = { functionalCount: 0, dataCount: 0, environmentCount: 0 };
+                classifications = [];
             }
         } else {
             addLog(agent.id, `Starting unattended task...`);
@@ -835,7 +847,7 @@ export function AIAgentsPage() {
                 <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-4 border-b">
                         <DialogTitle className="flex items-center gap-2">
-                            {selectedScenarioSteps?.steps?.some((s: any) => s.result?.status === 'failed') ? <XCircle className="h-5 w-5 text-red-500" /> : <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                            {selectedScenarioSteps?.steps?.some((s: any) => s.result?.status?.toLowerCase() === 'failed') ? <XCircle className="h-5 w-5 text-red-500" /> : <CheckCircle2 className="h-5 w-5 text-green-500" />}
                             Step Trace: {selectedScenarioSteps?.name}
                         </DialogTitle>
                         <DialogDescription>
@@ -858,7 +870,7 @@ export function AIAgentsPage() {
                                         {selectedScenarioSteps?.steps?.map((step: any, idx: number) => {
                                             const screenshots = [...(step.embeddings || []), ...(step.result?.embeddings || [])].filter(e => e.mime_type?.startsWith('image/'));
                                             const hasScreenshots = screenshots.length > 0;
-                                            const status = step.result?.status || 'skipped';
+                                            const status = step.result?.status?.toLowerCase() || 'skipped';
                                             
                                             return (
                                                 <TableRow key={idx} className={cn(status === 'failed' && "bg-destructive/5")}>

@@ -24,7 +24,7 @@ const prompt = ai.definePrompt({
     input: { schema: z.string() },
     output: { schema: FailureClassificationOutputSchema },
     prompt: `You are an expert QA automation analyst. 
-    You have been provided with a JSON string containing failure logs for multiple test scenarios.
+    You have been provided with a JSON array containing failure logs for multiple test scenarios.
     
     Your task is to analyze each failure and classify it into one of three categories:
     1. **Functional Issue**: The application logic failed. Assertions on business rules failed. Unexpected system errors (500).
@@ -32,13 +32,15 @@ const prompt = ai.definePrompt({
     3. **Environment Issue**: Timeouts, network errors, database connection failures, or server unavailability (503).
     
     CRITICAL INSTRUCTIONS:
-    - For each failure provided, return the scenario name, the classification, and a short reasoning.
+    - For EVERY failure provided in the input list, return the scenario name, the classification, and a short reasoning.
     - Provide a final summary count for each category.
+    - The SUM of functionalCount + dataCount + environmentCount MUST exactly equal the number of scenario objects provided in the input JSON.
+    - Do not group multiple failures into one classification object; return one object per failure.
     
     Failure Data:
     {{{this}}}
     
-    Return a valid JSON object matching the requested schema.
+    Return a valid JSON object matching the requested schema. Ensure all counts in the 'summary' object are accurate based on the individual classifications.
     `,
 });
 
