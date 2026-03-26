@@ -31,11 +31,13 @@ import {
     XCircle,
     ChevronRight,
     Search,
-    ListFilter
+    ListFilter,
+    Camera,
+    Clock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { AppConfiguration, FailureClassificationOutput } from '@/lib/types';
@@ -50,6 +52,7 @@ import {
 import { parseReportWithAI } from '@/ai/flows/report-parser-flow';
 import { classifyFailures } from '@/ai/flows/failure-classification-flow';
 import { Input } from '../ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface AgentMetrics {
     total: number;
@@ -81,6 +84,16 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 8, name: "Report Consolidator", description: "Merges original and rerun reports into a single source of truth." },
 ];
 
+const formatNanosToTime = (nanos: number) => {
+    if (nanos <= 0) return "0s";
+    const totalSeconds = nanos / 1e9;
+    if (totalSeconds < 1) return `${totalSeconds.toFixed(3)}s`;
+    if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    return minutes === 0 ? `${seconds}s` : `${minutes}m ${seconds}s`;
+};
+
 export function AIAgentsPage() {
     const [agents, setAgents] = useState<AgentStatus[]>(
         AGENTS_CONFIG.map(a => ({ ...a, status: 'idle', lastRun: null, logs: [] }))
@@ -91,6 +104,7 @@ export function AIAgentsPage() {
     const [autoMode, setAutoMode] = useState(false);
     const [previewReport, setPreviewReport] = useState<{ name: string, content: string } | null>(null);
     const [scenarioListView, setScenarioListView] = useState<{ title: string, status: 'passed' | 'failed', scenarios: AgentMetrics['scenarios'] } | null>(null);
+    const [selectedScenarioSteps, setSelectedScenarioSteps] = useState<any | null>(null);
     const [scenarioSearch, setScenarioListViewSearch] = useState("");
     
     const reportRef = useRef<{ name: string, data: any } | null>(null);
@@ -203,9 +217,9 @@ export function AIAgentsPage() {
                 const mockData = {
                     test_results: [{
                         elements: [
-                            { name: "Scenario 1: Login", steps: [{ result: { status: "passed" } }], tags: [{ name: "@TC_1" }] },
-                            { name: "Scenario 2: Data Entry", steps: [{ result: { status: "passed" } }], tags: [{ name: "@TC_2" }] },
-                            { name: "Scenario 3: Validation", steps: [{ result: { status: "failed", error_message: "Expected 'Success' but found 'Auth Error'" } }], tags: [{ name: "@TC_3" }] }
+                            { name: "Scenario 1: Login", steps: [{ result: { status: "passed", duration: 1200000000 } }], tags: [{ name: "@TC_1" }] },
+                            { name: "Scenario 2: Data Entry", steps: [{ result: { status: "passed", duration: 800000000 } }], tags: [{ name: "@TC_2" }] },
+                            { name: "Scenario 3: Validation", steps: [{ result: { status: "failed", error_message: "Expected 'Success' but found 'Auth Error'", duration: 500000000 } }], tags: [{ name: "@TC_3" }] }
                         ]
                     }]
                 };
@@ -361,6 +375,26 @@ export function AIAgentsPage() {
         if (!scenarios) return;
         setScenarioListView({ title, status, scenarios });
         setScenarioListViewSearch("");
+    };
+
+    const handleViewScenarioSteps = (scenarioName: string) => {
+        if (!reportRef.current?.data) return;
+        
+        let foundScenario = null;
+        reportRef.current.data.test_results?.some((feature: any) => {
+            foundScenario = feature.elements?.find((s: any) => s.name === scenarioName);
+            return !!foundScenario;
+        });
+
+        if (foundScenario) {
+            setSelectedScenarioSteps(foundScenario);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Steps Not Found",
+                description: "Could not locate step data for this scenario in the current report."
+            });
+        }
     };
 
     const filteredScenarios = scenarioListView?.scenarios?.filter(s => {
@@ -636,7 +670,7 @@ export function AIAgentsPage() {
                             {scenarioListView?.title}
                         </DialogTitle>
                         <DialogDescription>
-                            List of identified test scenarios with their associated tags.
+                            List of identified test scenarios. Click any item to view its execution steps and failure logs.
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -657,10 +691,14 @@ export function AIAgentsPage() {
                             {filteredScenarios.length > 0 ? (
                                 <div className="space-y-3">
                                     {filteredScenarios.map((scenario, i) => (
-                                        <div key={i} className="p-3 border rounded-lg bg-card hover:bg-accent/5 transition-colors group">
+                                        <button 
+                                            key={i} 
+                                            className="w-full text-left p-3 border rounded-lg bg-card hover:bg-accent/5 transition-colors group relative"
+                                            onClick={() => handleViewScenarioSteps(scenario.name)}
+                                        >
                                             <div className="flex items-start justify-between gap-4">
                                                 <div className="space-y-1">
-                                                    <h4 className="text-sm font-semibold leading-tight">{scenario.name}</h4>
+                                                    <h4 className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors">{scenario.name}</h4>
                                                     <div className="flex flex-wrap gap-1.5 mt-2">
                                                         {scenario.tags.map((tag, j) => (
                                                             <Badge key={j} variant="secondary" className="text-[9px] px-1.5 py-0 font-mono">
@@ -670,11 +708,16 @@ export function AIAgentsPage() {
                                                         {scenario.tags.length === 0 && <span className="text-[10px] text-muted-foreground italic">No tags</span>}
                                                     </div>
                                                 </div>
-                                                <Badge variant={scenario.status === 'passed' ? 'outline' : 'destructive'} className="text-[10px] h-5 px-1.5 uppercase shrink-0">
-                                                    {scenario.status}
-                                                </Badge>
+                                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                                    <Badge variant={scenario.status === 'passed' ? 'outline' : 'destructive'} className="text-[10px] h-5 px-1.5 uppercase">
+                                                        {scenario.status}
+                                                    </Badge>
+                                                    <span className="text-[10px] text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1 font-medium">
+                                                        View Steps <ChevronRight className="h-3 w-3" />
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        </button>
                                     ))}
                                 </div>
                             ) : (
@@ -691,6 +734,114 @@ export function AIAgentsPage() {
                             Showing {filteredScenarios.length} of {scenarioListView?.scenarios?.filter(s => s.status === scenarioListView.status).length || 0} items
                         </div>
                         <Button onClick={() => setScenarioListView(null)}>Close List</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Scenario Steps Detail Dialog */}
+            <Dialog open={!!selectedScenarioSteps} onOpenChange={(open) => !open && setSelectedScenarioSteps(null)}>
+                <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-4 border-b">
+                        <DialogTitle className="flex items-center gap-2">
+                            {selectedScenarioSteps?.steps?.some((s: any) => s.result?.status === 'failed') ? <XCircle className="h-5 w-5 text-red-500" /> : <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                            Step Trace: {selectedScenarioSteps?.name}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Detailed execution trail for the selected test scenario.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="flex-1 overflow-hidden">
+                        <ScrollArea className="h-full w-full">
+                            <div className="p-0">
+                                <Table>
+                                    <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                                        <TableRow>
+                                            <TableHead className="w-[60%]">Step Description</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">Duration</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {selectedScenarioSteps?.steps?.map((step: any, idx: number) => {
+                                            const screenshots = [...(step.embeddings || []), ...(step.result?.embeddings || [])].filter(e => e.mime_type?.startsWith('image/'));
+                                            const hasScreenshots = screenshots.length > 0;
+                                            const status = step.result?.status || 'skipped';
+                                            
+                                            return (
+                                                <TableRow key={idx} className={cn(status === 'failed' && "bg-destructive/5")}>
+                                                    <TableCell>
+                                                        <div className="space-y-1">
+                                                            <div className="text-xs font-mono">
+                                                                <span className="font-bold text-primary mr-2 uppercase">{step.keyword}</span>
+                                                                <span className="text-foreground/90">{step.name}</span>
+                                                            </div>
+                                                            <div className="flex gap-3">
+                                                                {step.result?.error_message && (
+                                                                    <Dialog>
+                                                                        <DialogTrigger asChild>
+                                                                            <button className="text-[10px] text-destructive hover:underline flex items-center gap-1 font-semibold uppercase tracking-tight">
+                                                                                <Terminal className="h-2.5 w-2.5" /> View Logs
+                                                                            </button>
+                                                                        </DialogTrigger>
+                                                                        <DialogContent className="max-w-3xl">
+                                                                            <DialogHeader>
+                                                                                <DialogTitle>Failure Logs</DialogTitle>
+                                                                                <DialogDescription>Step: {step.keyword}{step.name}</DialogDescription>
+                                                                            </DialogHeader>
+                                                                            <ScrollArea className="max-h-[60vh] rounded-md border bg-slate-950 p-4">
+                                                                                <pre className="text-[11px] whitespace-pre-wrap font-mono text-slate-300 leading-relaxed">
+                                                                                    {step.result.error_message}
+                                                                                </pre>
+                                                                            </ScrollArea>
+                                                                        </DialogContent>
+                                                                    </Dialog>
+                                                                )}
+                                                                {hasScreenshots && (
+                                                                    <Dialog>
+                                                                        <DialogTrigger asChild>
+                                                                            <button className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-semibold uppercase tracking-tight">
+                                                                                <Camera className="h-2.5 w-2.5" /> View Screenshot
+                                                                            </button>
+                                                                        </DialogTrigger>
+                                                                        <DialogContent className="max-w-5xl">
+                                                                            <DialogHeader>
+                                                                                <DialogTitle>Step Screenshot</DialogTitle>
+                                                                                <DialogDescription>Step: {step.keyword}{step.name}</DialogDescription>
+                                                                            </DialogHeader>
+                                                                            <ScrollArea className="max-h-[80vh] flex flex-col items-center justify-center bg-muted p-2 rounded-md border">
+                                                                                {screenshots.map((e, sIdx) => (
+                                                                                    <img key={sIdx} src={`data:${e.mime_type};base64,${e.data}`} alt={`Screenshot ${sIdx}`} className="max-w-full h-auto shadow-xl rounded border mb-4 last:mb-0" />
+                                                                                ))}
+                                                                            </ScrollArea>
+                                                                        </DialogContent>
+                                                                    </Dialog>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={status === 'passed' ? 'outline' : status === 'failed' ? 'destructive' : 'secondary'} className="text-[9px] uppercase h-5 px-1.5">
+                                                            {status}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-[10px] text-muted-foreground font-mono">
+                                                        {formatNanosToTime(step.result?.duration ? (typeof step.result.duration === 'number' ? step.result.duration : Number(step.result.duration.$numberLong || 0)) : 0)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </ScrollArea>
+                    </div>
+                    
+                    <DialogFooter className="p-4 border-t bg-muted/5">
+                        <div className="mr-auto flex items-center gap-4 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Steps: {selectedScenarioSteps?.steps?.length || 0}</span>
+                        </div>
+                        <Button onClick={() => setSelectedScenarioSteps(null)}>Close Trace</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
