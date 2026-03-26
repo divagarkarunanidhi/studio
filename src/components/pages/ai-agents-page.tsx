@@ -172,11 +172,11 @@ export function AIAgentsPage() {
                     fetchedFromStore = true;
                 }
             } catch (e: any) {
-                addLog(agent.id, `Store Access Note: ${e.message}`);
+                addLog(agent.id, "MongoDB access unavailable or not configured. Trying Confluence...");
             }
 
             if (!fetchedFromStore) {
-                addLog(agent.id, "No data in Store. Checking Confluence for JSON report fallback...");
+                addLog(agent.id, "Checking Confluence for JSON report fallback...");
                 const path = configData?.confluencePath;
                 const pageId = configData?.confluencePageId;
                 const user = configData?.confluenceUser;
@@ -210,7 +210,7 @@ export function AIAgentsPage() {
                             executionStatus = 'error';
                         }
                     } catch (e: any) {
-                        addLog(agent.id, `Network Error: ${e.message}`);
+                        addLog(agent.id, `Network Error during fetch: ${e.message}`);
                         executionStatus = 'error';
                     }
                 } else {
@@ -288,7 +288,7 @@ export function AIAgentsPage() {
                             };
                             scenariosRef.current = metrics.scenarios;
                         }
-                    } catch (e: any) { addLog(agent.id, `AI Error: ${e.message}`); }
+                    } catch (e: any) { addLog(agent.id, `AI Parser Error: ${e.message}`); }
                 }
             } else { executionStatus = 'error'; }
         } else if (agent.id === 3) {
@@ -387,15 +387,19 @@ export function AIAgentsPage() {
                                 if (step.result?.status === 'failed') {
                                     const embeds = [...(step.embeddings || []), ...(step.result?.embeddings || [])].filter(e => e.mime_type?.startsWith('image/'));
                                     if (embeds.length > 0) {
-                                        const b64 = embeds[0].data;
-                                        const byteCharacters = atob(b64);
-                                        const byteNumbers = new Array(byteCharacters.length);
-                                        for (let i = 0; i < byteCharacters.length; i++) {
-                                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                        try {
+                                            const b64 = embeds[0].data;
+                                            const byteCharacters = atob(b64);
+                                            const byteNumbers = new Array(byteCharacters.length);
+                                            for (let i = 0; i < byteCharacters.length; i++) {
+                                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                            }
+                                            const byteArray = new Uint8Array(byteNumbers);
+                                            const blob = new Blob([byteArray], {type: embeds[0].mime_type});
+                                            screenshotFile = new File([blob], `failure_${scenarioName.replace(/\s+/g, '_')}.png`, {type: embeds[0].mime_type});
+                                        } catch (err) {
+                                            addLog(agent.id, `Screenshot Processing Error: Failed to convert base64 payload.`);
                                         }
-                                        const byteArray = new Uint8Array(byteNumbers);
-                                        const blob = new Blob([byteArray], {type: embeds[0].mime_type});
-                                        screenshotFile = new File([blob], `failure_${scenarioName.replace(/\s+/g, '_')}.png`, {type: embeds[0].mime_type});
                                     }
                                 }
                             });
@@ -431,11 +435,11 @@ export function AIAgentsPage() {
                         } else {
                             addLog(agent.id, `Jira Error: ${jiraResult.error || 'Check configuration'}`);
                             if (jiraResult.details) {
-                                console.error("Detailed Jira Error:", jiraResult.details);
+                                addLog(agent.id, `Jira Trace: ${jiraResult.details}`);
                             }
                         }
                     } catch (e: any) {
-                        addLog(agent.id, `API Error: ${e.message}`);
+                        addLog(agent.id, `Connection Error: ${e.message}`);
                     }
                 }
                 extra = `${successCount} Tickets Created`;

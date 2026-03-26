@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 /**
  * POST /api/jira/create
  * Creates a Jira issue and optionally attaches a file.
+ * Includes improved sanitization and error message extraction.
  */
 export async function POST(request: Request) {
     try {
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
         const { jiraLink, jiraUser, jiraApiToken, jiraProjectKey, jiraIssueType } = config;
 
         if (!jiraLink || !jiraUser || !jiraApiToken || !jiraProjectKey) {
-            return NextResponse.json({ error: "Jira configuration is incomplete. Check Application Configuration." }, { status: 400 });
+            return NextResponse.json({ error: "Jira configuration is incomplete. Please check the Application Configuration page." }, { status: 400 });
         }
 
         const auth = Buffer.from(`${jiraUser}:${jiraApiToken}`).toString('base64');
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
         const safeSummary = (issue.summary || 'Selenium Test Failure')
             .replace(/\n/g, ' ')
             .replace(/\r/g, ' ')
-            .substring(0, 250);
+            .substring(0, 250)
+            .trim();
 
         const payload = {
             fields: {
@@ -64,18 +66,20 @@ export async function POST(request: Request) {
             
             try {
                 const parsedError = JSON.parse(errBody);
-                if (parsedError.errors) {
+                if (parsedError.errors && Object.keys(parsedError.errors).length > 0) {
                     errorMessage = Object.entries(parsedError.errors)
                         .map(([key, val]) => `${key}: ${val}`)
                         .join(', ');
-                } else if (parsedError.errorMessages) {
+                } else if (parsedError.errorMessages && parsedError.errorMessages.length > 0) {
                     errorMessage = parsedError.errorMessages.join(', ');
                 }
             } catch (e) {
-                // Not JSON, use raw body
+                // Not JSON, fallback to raw text if it's short
+                if (errBody && errBody.length < 200) {
+                    errorMessage = errBody;
+                }
             }
 
-            console.error("Jira Create Issue Error:", errBody);
             return NextResponse.json({ error: errorMessage, details: errBody }, { status: createRes.status });
         }
 
@@ -89,6 +93,7 @@ export async function POST(request: Request) {
             const attachFormData = new FormData();
             attachFormData.append('file', screenshot);
 
+            // Fetch without JSON headers for multi-part upload
             const attachRes = await fetch(attachUrl, {
                 method: 'POST',
                 headers: {
@@ -99,15 +104,14 @@ export async function POST(request: Request) {
             });
 
             if (!attachRes.ok) {
-                const attachErr = await attachRes.text();
-                console.warn(`Jira attachment failed for ${issueKey}:`, attachErr);
+                // Non-critical failure for the overall process
+                console.warn(`Jira attachment failed for ${issueKey}: status ${attachRes.status}`);
             }
         }
 
         return NextResponse.json({ success: true, key: issueKey });
 
     } catch (e: any) {
-        console.error("Jira Integration Error:", e);
-        return NextResponse.json({ error: e.message || "An unexpected error occurred." }, { status: 500 });
+        return NextResponse.json({ error: e.message || "An unexpected error occurred in the Jira integration." }, { status: 500 });
     }
 }
