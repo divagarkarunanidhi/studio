@@ -220,7 +220,6 @@ export function AIAgentsPage() {
                 
                 addLog(agent.id, "Analyzing JSON schema for test metadata...");
                 
-                // Logic 1: Direct JSON traversal (fast)
                 let total = 0;
                 let passed = 0;
                 let failed = 0;
@@ -475,10 +474,12 @@ export function AIAgentsPage() {
                                     </div>
                                     {(reportRef.current || agent.extraInfo) && (
                                         <div className="space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                                            <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Active Resource:</span>
+                                            <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Fetched JSON File:</span>
                                             <div className="p-1.5 bg-primary/5 border border-primary/10 rounded text-[9px] font-mono flex items-center gap-1.5">
                                                 <FileCode className="h-3 w-3 text-primary shrink-0" />
-                                                <span className="truncate" title={reportRef.current?.name || agent.extraInfo}>{reportRef.current?.name || agent.extraInfo}</span>
+                                                <span className="truncate text-primary font-bold" title={reportRef.current?.name || agent.extraInfo}>
+                                                    {reportRef.current?.name || agent.extraInfo}
+                                                </span>
                                             </div>
                                         </div>
                                     )}
