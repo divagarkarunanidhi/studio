@@ -79,7 +79,8 @@ interface AgentStatus {
     metrics?: AgentMetrics;
     classificationSummary?: FailureClassificationOutput['summary'];
     classifications?: FailureClassificationOutput['classifications'];
-    updatedContent?: string; // New field for JSON preview
+    updatedContent?: string; 
+    targetFilePath?: string;
 }
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
@@ -87,8 +88,8 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using deterministic rules." },
     { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for unique functional failures with screenshots." },
-    { id: 5, name: "Prepare data for data Issue", description: "Identifies test data file from step output and updates GitLab status to 'found' for data failures." },
-    { id: 6, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
+    { id: 5, name: "Prepare data for data Issue", description: "Identifies test data file from step output and prepares updated JSON with 'Agent: found'." },
+    { id: 6, name: "GitLab Data Sync", description: "Automatically commits prepared test data updates back to GitLab repositories." },
     { id: 7, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
     { id: 8, name: "Report Consolidator", description: "Merges original and rerun reports into a single source of truth." },
 ];
@@ -124,6 +125,7 @@ export function AIAgentsPage() {
     const reportRef = useRef<{ name: string, data: any } | null>(null);
     const scenariosRef = useRef<AgentMetrics['scenarios']>([]);
     const classificationsRef = useRef<FailureClassificationOutput['classifications']>([]);
+    const preparedContentRef = useRef<{ content: string, filePath: string } | null>(null);
     
     const { toast } = useToast();
     const firestore = useFirestore();
@@ -251,6 +253,7 @@ export function AIAgentsPage() {
         let classificationSummary: FailureClassificationOutput['summary'] | undefined = undefined;
         let classifications: FailureClassificationOutput['classifications'] | undefined = undefined;
         let updatedContent: string | undefined = undefined;
+        let targetFilePath: string | undefined = undefined;
         let executionStatus: 'success' | 'error' = 'success';
 
         if (agent.id === 1) {
@@ -540,9 +543,8 @@ export function AIAgentsPage() {
             const dataFailures = classificationsRef.current?.filter(c => c.classification === 'Data Issue') || [];
             
             if (dataFailures.length > 0) {
-                addLog(agent.id, `Found ${dataFailures.length} data failures to process for GitLab test data sync.`);
+                addLog(agent.id, `Found ${dataFailures.length} data failures to process.`);
                 
-                // 1. Identify the test data file name from the first step output of ANY scenario
                 let testDataFileName = null;
                 let testDataFullGitPath = null;
 
@@ -553,16 +555,12 @@ export function AIAgentsPage() {
                             if (firstStep && firstStep.output) {
                                 const outputLine = firstStep.output.find((line: string) => line.includes('testDataFile :'));
                                 if (outputLine) {
-                                    // Extract filename using regex: looks for something like /path/to/filename.json
                                     const match = outputLine.match(/testDataFile\s*:\s*(.*\/)?([^\/]+\.json)/);
                                     if (match && match[2]) {
                                         testDataFileName = match[2];
-                                        addLog(agent.id, `Identified Test Data File: ${testDataFileName}`);
-                                        
-                                        // Construct the relative path for GitLab (if prefix exists)
                                         const prefix = configData?.gitlabFilePathPrefix || '';
                                         testDataFullGitPath = prefix ? `${prefix.replace(/\/$/, '')}/${testDataFileName}` : testDataFileName;
-                                        return true; // Break out of feature/element search
+                                        return true;
                                     }
                                 }
                             }
@@ -572,20 +570,18 @@ export function AIAgentsPage() {
                 }
 
                 if (!testDataFullGitPath) {
-                    addLog(agent.id, "Critical Error: Could not find 'testDataFile :' identifier in any scenario's first step output.");
+                    addLog(agent.id, "Error: Could not find 'testDataFile :' identifier in logs.");
                     executionStatus = 'error';
                 } else {
-                    addLog(agent.id, `Target GitLab Path: ${testDataFullGitPath}`);
+                    addLog(agent.id, `Fetching and preparing JSON for: ${testDataFullGitPath}`);
                     
-                    // 2. For each unique scenario failure, fetch file from GitLab and update "Agent: found"
                     const uniqueScenarioNames = Array.from(new Set(dataFailures.map(f => f.scenarioName)));
-                    let totalUpdated = 0;
+                    let totalPrepared = 0;
+                    let lastContent = null;
 
                     for (const scenarioName of uniqueScenarioNames) {
-                        addLog(agent.id, `Syncing data scenario in GitLab: ${scenarioName}`);
-                        
                         try {
-                            const syncRes = await fetch('/api/gitlab/process', {
+                            const prepRes = await fetch('/api/gitlab/update', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -597,23 +593,69 @@ export function AIAgentsPage() {
                                 })
                             });
 
-                            const result = await syncRes.json();
-                            if (syncRes.ok && result.success) {
-                                addLog(agent.id, `[GITLAB SUCCESS] Data scenario synced: ${scenarioName}`);
-                                totalUpdated++;
-                                // Capture updated content for preview (last one updated wins)
-                                updatedContent = JSON.stringify(result.updatedContent, null, 2);
+                            const result = await prepRes.json();
+                            if (prepRes.ok && result.success) {
+                                addLog(agent.id, `Applied 'Agent: found' status for: ${scenarioName}`);
+                                totalPrepared++;
+                                lastContent = JSON.stringify(result.updatedContent, null, 2);
                             } else {
-                                addLog(agent.id, `[GITLAB WARNING] ${result.error || 'Check GitLab configuration'}`);
+                                addLog(agent.id, `Warning: ${result.error || 'Check GitLab configuration'}`);
                             }
                         } catch (e: any) {
-                            addLog(agent.id, `GitLab API Error: ${e.message}`);
+                            addLog(agent.id, `GitLab Prep Error: ${e.message}`);
                         }
                     }
-                    extra = `${totalUpdated} Data Scenarios Synced in GitLab`;
+
+                    if (totalPrepared > 0 && lastContent) {
+                        preparedContentRef.current = { content: lastContent, filePath: testDataFullGitPath };
+                        updatedContent = lastContent;
+                        targetFilePath = testDataFullGitPath;
+                        extra = `${totalPrepared} Scenarios Prepared`;
+                    } else {
+                        addLog(agent.id, "No scenarios could be successfully updated in the JSON file.");
+                        executionStatus = 'error';
+                    }
                 }
             } else {
                 addLog(agent.id, "No data failures identified. Data preparation skipped.");
+            }
+        } else if (agent.id === 6) {
+            addLog(agent.id, "Initializing GitLab Data Sync (Commit)...");
+            
+            if (preparedContentRef.current) {
+                const { content, filePath } = preparedContentRef.current;
+                addLog(agent.id, `Committing changes to repository: ${filePath}`);
+
+                try {
+                    const commitRes = await fetch('/api/gitlab/commit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            token: configData?.gitlabToken,
+                            projectId: configData?.gitlabProjectId,
+                            branch: configData?.gitlabBranch,
+                            filePath: filePath,
+                            content: content,
+                            commitMessage: `AI Agent: Unattended auto-healing for ${filePath}`
+                        })
+                    });
+
+                    const result = await commitRes.json();
+                    if (commitRes.ok && result.success) {
+                        addLog(agent.id, `Successfully committed update. Commit ID: ${result.commitHash.substring(0, 8)}`);
+                        extra = "Data Synchronized";
+                        // Store the content for preview on Agent 6 too
+                        updatedContent = content;
+                    } else {
+                        addLog(agent.id, `Commit Failed: ${result.error || 'Unknown error'}`);
+                        executionStatus = 'error';
+                    }
+                } catch (e: any) {
+                    addLog(agent.id, `GitLab Commit Error: ${e.message}`);
+                    executionStatus = 'error';
+                }
+            } else {
+                addLog(agent.id, "No updated content found from previous agent. Sync skipped.");
             }
         } else {
             addLog(agent.id, `Starting unattended task...`);
@@ -630,10 +672,11 @@ export function AIAgentsPage() {
             metrics: metrics || a.metrics,
             classificationSummary: classificationSummary || a.classificationSummary,
             classifications: classifications || a.classifications,
-            updatedContent: updatedContent || a.updatedContent
+            updatedContent: updatedContent || a.updatedContent,
+            targetFilePath: targetFilePath || a.targetFilePath
         } : a));
 
-        if (executionStatus === 'success' && ![2, 3, 4, 5].includes(agent.id)) {
+        if (executionStatus === 'success' && ![2, 3, 4, 5, 6].includes(agent.id)) {
             addLog(agent.id, `Completed successfully.`);
         }
         
@@ -649,6 +692,7 @@ export function AIAgentsPage() {
         setAgents(prev => prev.map(a => ({ ...a, status: 'idle' })));
         scenariosRef.current = []; 
         classificationsRef.current = [];
+        preparedContentRef.current = null;
         
         for (let i = 0; i < AGENTS_CONFIG.length; i++) {
             await runAgent(i);
@@ -799,7 +843,7 @@ export function AIAgentsPage() {
                                     {idx === 2 && <ShieldAlert className="h-4 w-4 text-primary" />}
                                     {idx === 3 && <Bug className="h-4 w-4 text-primary" />}
                                     {idx === 4 && <ListChecks className="h-4 w-4 text-primary" />}
-                                    {idx === 5 && <Network className="h-4 w-4 text-primary" />}
+                                    {idx === 5 && <GitBranch className="h-4 w-4 text-primary" />}
                                     {idx === 6 && <RefreshCcw className="h-4 w-4 text-primary" />}
                                     {idx >= 7 && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                 </div>
@@ -889,7 +933,7 @@ export function AIAgentsPage() {
                                             </DialogContent>
                                         </Dialog>
                                     )}
-                                    {idx === 4 && (
+                                    {(idx === 4 || idx === 5) && (
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" title="Configure GitLab Settings">
@@ -1073,24 +1117,24 @@ export function AIAgentsPage() {
                                     </div>
                                 </div>
                             )}
-                            {(idx === 3 || idx === 4) && agent.extraInfo && (
+                            {(idx === 3 || idx === 4 || idx === 5) && agent.extraInfo && (
                                 <div className="space-y-2 animate-in fade-in duration-500">
                                     <div className="flex items-center justify-between text-[10px]">
                                         <span className="text-muted-foreground flex items-center gap-1">
                                             {idx === 3 ? <Bug className="h-2.5 w-2.5" /> : <GitBranch className="h-2.5 w-2.5" />}
-                                            {idx === 3 ? "Scouting Status:" : "GitLab Sync Status:"}
+                                            {idx === 3 ? "Scouting Status:" : "Status:"}
                                         </span>
                                     </div>
                                     <div className="p-2 bg-primary/5 border border-primary/10 rounded-md text-center flex flex-col gap-2">
-                                        <span className="text-xs font-bold text-primary">{agent.extraInfo}</span>
-                                        {idx === 4 && agent.updatedContent && (
+                                        <span className="text-[10px] font-bold text-primary truncate" title={agent.extraInfo}>{agent.extraInfo}</span>
+                                        {(idx === 4 || idx === 5) && agent.updatedContent && (
                                             <Button 
                                                 variant="outline" 
                                                 size="sm" 
                                                 className="h-6 text-[10px] w-full"
-                                                onClick={() => setPreviewReport({ name: "Updated GitLab Content", content: agent.updatedContent! })}
+                                                onClick={() => setPreviewReport({ name: "Updated Test Data Content", content: agent.updatedContent! })}
                                             >
-                                                <Eye className="h-3 w-3 mr-1" /> View Updated JSON
+                                                <Eye className="h-3 w-3 mr-1" /> View JSON Changes
                                             </Button>
                                         )}
                                     </div>
@@ -1142,10 +1186,10 @@ export function AIAgentsPage() {
                     <DialogHeader className="p-4 border-b">
                         <DialogTitle className="flex items-center gap-2">
                             <FileJson className="h-5 w-5 text-primary" />
-                            Active JSON Payload: {previewReport?.name}
+                            Data Preview: {previewReport?.name}
                         </DialogTitle>
                         <DialogDescription>
-                            Raw data currently being processed by the AI Agent pipeline.
+                            JSON content with injected 'Agent: found' key for self-healing pipelines.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex-1 bg-slate-950 p-4 font-mono text-xs overflow-hidden">
