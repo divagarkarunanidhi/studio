@@ -37,6 +37,9 @@ const prompt = ai.definePrompt({
     - The SUM of functionalCount + dataCount + environmentCount MUST exactly equal the number of scenario objects provided in the input JSON.
     - Do not group multiple failures into one classification object; return one object per failure.
     
+    **SPECIFIC CLASSIFICATION RULE**: 
+    If a failure log contains "java.lang.AssertionError: Total Number of Order Failed to Plan :", you MUST classify it as a **Functional Issue**. This specific error indicates that the application's core planning logic did not behave as expected.
+    
     Failure Data:
     {{{this}}}
     
