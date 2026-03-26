@@ -16,17 +16,9 @@ import {
     Network, 
     Database, 
     RefreshCcw, 
-    ExternalLink, 
     FileJson,
     Terminal,
-    AlertCircle,
-    ShieldCheck,
-    PlayCircle,
-    FileCode,
-    Activity,
-    Download,
     Eye,
-    Sparkles,
     ShieldAlert,
     XCircle,
     ChevronRight,
@@ -37,11 +29,16 @@ import {
     HelpCircle,
     Bug,
     Settings,
-    FlaskConical
+    FlaskConical,
+    PlayCircle,
+    FileCode,
+    Activity,
+    Download,
+    ListChecks
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { AppConfiguration, FailureClassificationOutput } from '@/lib/types';
@@ -86,10 +83,11 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using deterministic rules." },
     { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for unique functional failures with screenshots." },
-    { id: 5, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
-    { id: 6, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
-    { id: 7, name: "Rerun Collector", description: "Fetches the updated results from Confluence post-rerun." },
-    { id: 8, name: "Report Consolidator", description: "Merges original and rerun reports into a single source of truth." },
+    { id: 5, name: "Prepare data for functional Issue", description: "Extracts dynamic test data IDs from logs to facilitate automated data corrections." },
+    { id: 6, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
+    { id: 7, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
+    { id: 8, name: "Rerun Collector", description: "Fetches the updated results from Confluence post-rerun." },
+    { id: 9, name: "Report Consolidator", description: "Merges original and rerun reports into a single source of truth." },
 ];
 
 const formatNanosToTime = (nanos: number) => {
@@ -494,6 +492,32 @@ export function AIAgentsPage() {
             } else {
                 addLog(agent.id, "No functional failures identified. Jira creation skipped.");
             }
+        } else if (agent.id === 5) {
+            addLog(agent.id, "Analyzing logs for dynamic test data identifiers...");
+            const functionalFailures = classificationsRef.current?.filter(c => c.classification === 'Functional Issue') || [];
+            
+            if (functionalFailures.length > 0) {
+                addLog(agent.id, `Scanning ${functionalFailures.length} functional failures for data patterns...`);
+                let idsFound = 0;
+                
+                functionalFailures.forEach(f => {
+                    const scenarioInfo = scenariosRef.current?.find(s => s.name === f.scenarioName);
+                    const logs = scenarioInfo?.logs || '';
+                    
+                    // Pattern matching for IDs (numeric strings > 6 digits)
+                    const idMatch = logs.match(/\d{7,}/);
+                    if (idMatch) {
+                        addLog(agent.id, `Prepared Data: Found Identifier ${idMatch[0]} in ${f.scenarioName}`);
+                        idsFound++;
+                    } else {
+                        addLog(agent.id, `Manual check required for ${f.scenarioName}: No numeric ID pattern found in logs.`);
+                    }
+                });
+                
+                extra = `${idsFound} IDs Prepared for Sync`;
+            } else {
+                addLog(agent.id, "No functional failures identified. Data preparation skipped.");
+            }
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
@@ -511,7 +535,7 @@ export function AIAgentsPage() {
             classifications: classifications || a.classifications
         } : a));
 
-        if (executionStatus === 'success' && ![2, 3, 4].includes(agent.id)) {
+        if (executionStatus === 'success' && ![2, 3, 4, 5].includes(agent.id)) {
             addLog(agent.id, `Completed successfully.`);
         }
         
@@ -676,9 +700,10 @@ export function AIAgentsPage() {
                                     {idx === 1 && <FileJson className="h-4 w-4 text-primary" />}
                                     {idx === 2 && <ShieldAlert className="h-4 w-4 text-primary" />}
                                     {idx === 3 && <Bug className="h-4 w-4 text-primary" />}
-                                    {idx === 4 && <Network className="h-4 w-4 text-primary" />}
-                                    {idx === 5 && <RefreshCcw className="h-4 w-4 text-primary" />}
-                                    {idx >= 6 && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                                    {idx === 4 && <ListChecks className="h-4 w-4 text-primary" />}
+                                    {idx === 5 && <Network className="h-4 w-4 text-primary" />}
+                                    {idx === 6 && <RefreshCcw className="h-4 w-4 text-primary" />}
+                                    {idx >= 7 && <CheckCircle2 className="h-4 w-4 text-primary" />}
                                 </div>
                                 <div className="flex gap-1">
                                     {idx === 0 && (
@@ -890,10 +915,13 @@ export function AIAgentsPage() {
                                     </div>
                                 </div>
                             )}
-                            {idx === 3 && agent.extraInfo && (
+                            {(idx === 3 || idx === 4) && agent.extraInfo && (
                                 <div className="space-y-2 animate-in fade-in duration-500">
                                     <div className="flex items-center justify-between text-[10px]">
-                                        <span className="text-muted-foreground flex items-center gap-1"><Bug className="h-2.5 w-2.5" /> Scouting Status:</span>
+                                        <span className="text-muted-foreground flex items-center gap-1">
+                                            {idx === 3 ? <Bug className="h-2.5 w-2.5" /> : <Search className="h-2.5 w-2.5" />}
+                                            {idx === 3 ? "Scouting Status:" : "Extraction Status:"}
+                                        </span>
                                     </div>
                                     <div className="p-2 bg-primary/5 border border-primary/10 rounded-md text-center">
                                         <span className="text-xs font-bold text-primary">{agent.extraInfo}</span>
@@ -1107,7 +1135,7 @@ export function AIAgentsPage() {
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground opacity-50 space-y-2">
-                                    <ShieldCheck className="h-8 w-8" />
+                                    <CheckCircle2 className="h-8 w-8" />
                                     <p className="text-sm italic">No scenarios identified in this category.</p>
                                 </div>
                             )}
