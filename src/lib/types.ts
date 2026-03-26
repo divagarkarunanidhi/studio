@@ -68,7 +68,7 @@ export type AgentTask = z.infer<typeof AgentTaskSchema>;
 
 export const AgentActivitySchema = z.object({
     taskId: z.string(),
-    agentId: f.number(),
+    agentId: z.number(),
     agentName: z.string(),
     status: z.enum(['pending', 'running', 'success', 'error']),
     message: z.string(),
