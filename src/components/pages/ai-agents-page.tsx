@@ -225,11 +225,11 @@ export function AIAgentsPage() {
                 const mockData = {
                     test_results: [{
                         elements: [
-                            { name: "Scenario 1: User Login Verification", steps: [{ result: { status: "passed", duration: 1200000000 } }], tags: [{ name: "@TC_1" }] },
-                            { name: "Scenario 2: Shipment Creation Flow", steps: [{ result: { status: "passed", duration: 800000000 } }], tags: [{ name: "@TC_2" }] },
-                            { name: "Scenario 3: API Integration Health Check", steps: [{ result: { status: "failed", error_message: "HTTP 503 Service Unavailable: Database cluster not reachable", duration: 500000000 } }], tags: [{ name: "@TC_3" }] },
-                            { name: "Scenario 4: Order Release Validation", steps: [{ result: { status: "failed", error_message: "Element 'Order_ID_778' not found in Search Results after 30s timeout", duration: 3000000000 } }], tags: [{ name: "@TC_4" }] },
-                            { name: "Scenario 5: Multi-Leg Planning Logic", steps: [{ result: { status: "failed", error_message: "Assertion Error: Expected Shipment Cost < 5000 but found 5240.50", duration: 1500000000 } }], tags: [{ name: "@TC_5" }] }
+                            { name: "Scenario 1: User Login Verification", steps: [{ result: { status: "passed", duration: 1200000000 }, keyword: "Given ", name: "I am on the login page" }], tags: [{ name: "@TC_1" }] },
+                            { name: "Scenario 2: Shipment Creation Flow", steps: [{ result: { status: "passed", duration: 800000000 }, keyword: "When ", name: "I create a new shipment" }], tags: [{ name: "@TC_2" }] },
+                            { name: "Scenario 3: API Integration Health Check", steps: [{ result: { status: "failed", error_message: "HTTP 503 Service Unavailable: Database cluster not reachable", duration: 500000000 }, keyword: "Then ", name: "the API should respond with 200 OK" }], tags: [{ name: "@TC_3" }] },
+                            { name: "Scenario 4: Order Release Validation", steps: [{ result: { status: "failed", error_message: "Element 'Order_ID_778' not found in Search Results after 30s timeout", duration: 3000000000 }, keyword: "And ", name: "I search for order ID 778" }], tags: [{ name: "@TC_4" }] },
+                            { name: "Scenario 5: Multi-Leg Planning Logic", steps: [{ result: { status: "failed", error_message: "Assertion Error: Expected Shipment Cost < 5000 but found 5240.50", duration: 1500000000 }, keyword: "Then ", name: "the shipment cost should be valid" }], tags: [{ name: "@TC_5" }] }
                         ]
                     }]
                 };
@@ -861,7 +861,7 @@ export function AIAgentsPage() {
                                 <Table>
                                     <TableHeader className="bg-muted/50 sticky top-0 z-10">
                                         <TableRow>
-                                            <TableHead className="w-[60%]">Step Description</TableHead>
+                                            <TableHead className="w-[60%]">Step Description & Output</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead className="text-right">Duration</TableHead>
                                         </TableRow>
@@ -871,21 +871,36 @@ export function AIAgentsPage() {
                                             const screenshots = [...(step.embeddings || []), ...(step.result?.embeddings || [])].filter(e => e.mime_type?.startsWith('image/'));
                                             const hasScreenshots = screenshots.length > 0;
                                             const status = step.result?.status?.toLowerCase() || 'skipped';
+                                            const outputs = step.output || [];
                                             
                                             return (
                                                 <TableRow key={idx} className={cn(status === 'failed' && "bg-destructive/5")}>
                                                     <TableCell>
-                                                        <div className="space-y-1">
+                                                        <div className="space-y-2">
                                                             <div className="text-xs font-mono">
                                                                 <span className="font-bold text-primary mr-2 uppercase">{step.keyword}</span>
                                                                 <span className="text-foreground/90">{step.name}</span>
                                                             </div>
+                                                            
+                                                            {outputs.length > 0 && (
+                                                                <div className="p-2 bg-slate-900 rounded border border-slate-800 space-y-1">
+                                                                    <div className="text-[9px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1">
+                                                                        <Terminal className="h-2 w-2" /> Step Output:
+                                                                    </div>
+                                                                    {outputs.map((out: string, oIdx: number) => (
+                                                                        <pre key={oIdx} className="text-[10px] font-mono text-slate-300 whitespace-pre-wrap break-all leading-normal border-l-2 border-primary/30 pl-2">
+                                                                            {out}
+                                                                        </pre>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
                                                             <div className="flex gap-3">
                                                                 {step.result?.error_message && (
                                                                     <Dialog>
                                                                         <DialogTrigger asChild>
                                                                             <button className="text-[10px] text-destructive hover:underline flex items-center gap-1 font-semibold uppercase tracking-tight">
-                                                                                <Terminal className="h-2.5 w-2.5" /> View Logs
+                                                                                <Terminal className="h-2.5 w-2.5" /> View Failure Logs
                                                                             </button>
                                                                         </DialogTrigger>
                                                                         <DialogContent className="max-w-3xl">
