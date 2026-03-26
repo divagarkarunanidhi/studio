@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to parse test execution metrics from a JSON report.
@@ -33,7 +34,8 @@ const prompt = ai.definePrompt({
     2. For each scenario, check the 'steps'. A scenario is 'failed' if ANY step has a status of 'failed'.
     3. provide a total count, passed count, and failed count.
     4. List all identified scenarios with their full names, final statuses, and ALL tags associated with them.
-    5. The total count must exactly match the number of scenarios in the list.
+    5. For each failed scenario, capture the 'error_message' from the first failed step and include it in the 'logs' field.
+    6. The total count must exactly match the number of scenarios in the list.
     
     JSON Content:
     {{{this}}}

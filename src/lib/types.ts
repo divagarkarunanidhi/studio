@@ -153,7 +153,8 @@ export const ReportParserOutputSchema = z.object({
     scenarios: z.array(z.object({
         name: z.string().describe("The name of the test scenario."),
         status: z.enum(['passed', 'failed']).describe("The final status of the test scenario."),
-        tags: z.array(z.string()).describe("A list of name tags or identifiers associated with the scenario (e.g. @TC_101).")
+        tags: z.array(z.string()).describe("A list of name tags or identifiers associated with the scenario (e.g. @TC_101)."),
+        logs: z.string().optional().nullable().describe("The failure message or error logs if the scenario failed.")
     })).describe("A detailed list of scenarios found in the report.")
 });
 export type ReportParserOutput = z.infer<typeof ReportParserOutputSchema>;

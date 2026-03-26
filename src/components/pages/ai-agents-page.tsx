@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -58,7 +59,7 @@ interface AgentMetrics {
     total: number;
     passed: number;
     failed: number;
-    scenarios?: { name: string, status: 'passed' | 'failed', tags: string[] }[];
+    scenarios?: { name: string, status: 'passed' | 'failed', tags: string[], logs?: string | null }[];
 }
 
 interface AgentStatus {
@@ -108,6 +109,8 @@ export function AIAgentsPage() {
     const [scenarioSearch, setScenarioListViewSearch] = useState("");
     
     const reportRef = useRef<{ name: string, data: any } | null>(null);
+    // Reference to store parsed scenarios for input-output chaining between agents
+    const scenariosRef = useRef<AgentMetrics['scenarios']>([]);
     
     const { toast } = useToast();
     const firestore = useFirestore();
@@ -219,7 +222,7 @@ export function AIAgentsPage() {
                         elements: [
                             { name: "Scenario 1: Login", steps: [{ result: { status: "passed", duration: 1200000000 } }], tags: [{ name: "@TC_1" }] },
                             { name: "Scenario 2: Data Entry", steps: [{ result: { status: "passed", duration: 800000000 } }], tags: [{ name: "@TC_2" }] },
-                            { name: "Scenario 3: Validation", steps: [{ result: { status: "failed", error_message: "Expected 'Success' but found 'Auth Error'", duration: 500000000 } }], tags: [{ name: "@TC_3" }] }
+                            { name: "Scenario 3: Validation", steps: [{ result: { status: "failed", error_message: "Expected 'Success' but found 'Auth Error' at Login Page", duration: 500000000 } }], tags: [{ name: "@TC_3" }] }
                         ]
                     }]
                 };
@@ -240,14 +243,16 @@ export function AIAgentsPage() {
                     reportData.test_results.forEach((feature: any) => {
                         feature.elements?.forEach((scenario: any) => {
                             total++;
-                            const isFailed = scenario.steps?.some((step: any) => step.result?.status === 'failed');
+                            const failedStep = scenario.steps?.find((step: any) => step.result?.status === 'failed');
+                            const isFailed = !!failedStep;
                             const status = isFailed ? 'failed' : 'passed';
                             if (isFailed) failed++; else passed++;
                             
                             scenarios.push({
                                 name: scenario.name || 'Unnamed Scenario',
                                 status: status,
-                                tags: scenario.tags?.map((t: any) => t.name) || []
+                                tags: scenario.tags?.map((t: any) => t.name) || [],
+                                logs: failedStep?.result?.error_message || null
                             });
                         });
                     });
@@ -255,6 +260,7 @@ export function AIAgentsPage() {
 
                 if (total > 0) {
                     metrics = { total, passed, failed, scenarios };
+                    scenariosRef.current = scenarios;
                     addLog(agent.id, `Direct traversal identified ${total} scenarios.`);
                 } else {
                     addLog(agent.id, "Invoking GenAI for structural analysis...");
@@ -269,47 +275,43 @@ export function AIAgentsPage() {
                                 scenarios: aiResult.scenarios.map(s => ({
                                     name: s.name,
                                     status: s.status,
-                                    tags: s.tags
+                                    tags: s.tags,
+                                    logs: s.logs
                                 }))
                             };
+                            scenariosRef.current = metrics.scenarios;
                         }
                     } catch (e: any) { addLog(agent.id, `AI Error: ${e.message}`); }
                 }
             } else { executionStatus = 'error'; }
         } else if (agent.id === 3) {
             addLog(agent.id, "Initializing Failure Classifier...");
-            const currentReport = reportRef.current;
-            if (currentReport && currentReport.data) {
-                const failures: any[] = [];
-                currentReport.data.test_results?.forEach((feature: any) => {
-                    feature.elements?.forEach((scenario: any) => {
-                        const failedStep = scenario.steps?.find((step: any) => step.result?.status === 'failed');
-                        if (failedStep) {
-                            failures.push({ 
-                                scenarioName: scenario.name, 
-                                logs: failedStep.result?.error_message || 'No specific log found.'
-                            });
-                        }
-                    });
-                });
+            
+            // Take input specifically from the scenarios list identified by the Parser (Agent 2)
+            const failedScenarios = scenariosRef.current?.filter(s => s.status === 'failed') || [];
 
-                if (failures.length > 0) {
-                    addLog(agent.id, `Analyzing ${failures.length} failed scenarios with GenAI...`);
-                    try {
-                        const result = await classifyFailures(JSON.stringify(failures));
-                        classificationSummary = result.summary;
-                        addLog(agent.id, `Classification Results: ${result.summary.functionalCount} Functional, ${result.summary.dataCount} Data.`);
-                        result.classifications.forEach(c => {
-                            addLog(agent.id, `[${c.classification.toUpperCase()}] ${c.scenarioName}: ${c.reasoning}`);
-                        });
-                    } catch (e: any) {
-                        addLog(agent.id, `Classification AI Error: ${e.message}`);
-                        executionStatus = 'error';
-                    }
-                } else {
-                    addLog(agent.id, "No failures found to classify. Skipping analysis.");
+            if (failedScenarios.length > 0) {
+                addLog(agent.id, `Analyzing ${failedScenarios.length} failures identified by JSON Parser...`);
+                
+                const failuresToClassify = failedScenarios.map(s => ({ 
+                    scenarioName: s.name, 
+                    logs: s.logs || 'No specific log found in JSON steps.'
+                }));
+
+                try {
+                    const result = await classifyFailures(JSON.stringify(failuresToClassify));
+                    classificationSummary = result.summary;
+                    addLog(agent.id, `Classification Results: ${result.summary.functionalCount} Functional, ${result.summary.dataCount} Data.`);
+                    result.classifications.forEach(c => {
+                        addLog(agent.id, `[${c.classification.toUpperCase()}] ${c.scenarioName}: ${c.reasoning}`);
+                    });
+                } catch (e: any) {
+                    addLog(agent.id, `Classification AI Error: ${e.message}`);
+                    executionStatus = 'error';
                 }
-            } else { executionStatus = 'error'; }
+            } else {
+                addLog(agent.id, "No failures found by JSON Parser to classify. Skipping analysis.");
+            }
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
@@ -340,6 +342,8 @@ export function AIAgentsPage() {
         setIsPipelineRunning(true);
         setProgress(0);
         setAgents(prev => prev.map(a => ({ ...a, status: 'idle' })));
+        scenariosRef.current = []; // Clear current parsed context
+        
         for (let i = 0; i < AGENTS_CONFIG.length; i++) {
             await runAgent(i);
         }
