@@ -33,7 +33,8 @@ import {
     Search,
     ListFilter,
     Camera,
-    Clock
+    Clock,
+    HelpCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -72,6 +73,7 @@ interface AgentStatus {
     extraInfo?: string; 
     metrics?: AgentMetrics;
     classificationSummary?: FailureClassificationOutput['summary'];
+    classifications?: FailureClassificationOutput['classifications'];
 }
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
@@ -103,13 +105,15 @@ export function AIAgentsPage() {
     const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(-1);
     const [progress, setProgress] = useState(0);
     const [autoMode, setAutoMode] = useState(false);
+    
+    // View States
     const [previewReport, setPreviewReport] = useState<{ name: string, content: string } | null>(null);
     const [scenarioListView, setScenarioListView] = useState<{ title: string, status: 'passed' | 'failed', scenarios: AgentMetrics['scenarios'] } | null>(null);
+    const [classificationListView, setClassificationListView] = useState<{ title: string, classification: string, items: FailureClassificationOutput['classifications'] } | null>(null);
     const [selectedScenarioSteps, setSelectedScenarioSteps] = useState<any | null>(null);
     const [scenarioSearch, setScenarioListViewSearch] = useState("");
     
     const reportRef = useRef<{ name: string, data: any } | null>(null);
-    // Reference to store parsed scenarios for input-output chaining between agents
     const scenariosRef = useRef<AgentMetrics['scenarios']>([]);
     
     const { toast } = useToast();
@@ -149,6 +153,7 @@ export function AIAgentsPage() {
         let extra = undefined;
         let metrics: AgentMetrics | undefined = undefined;
         let classificationSummary: FailureClassificationOutput['summary'] | undefined = undefined;
+        let classifications: FailureClassificationOutput['classifications'] | undefined = undefined;
         let executionStatus: 'success' | 'error' = 'success';
 
         if (agent.id === 1) {
@@ -215,14 +220,16 @@ export function AIAgentsPage() {
             }
 
             if (executionStatus === 'success' && !reportRef.current) {
-                addLog(agent.id, "Simulation Mode: Using baseline JSON results.");
+                addLog(agent.id, "Simulation Mode: Using baseline JSON results with multiple failures.");
                 await new Promise(resolve => setTimeout(resolve, 800));
                 const mockData = {
                     test_results: [{
                         elements: [
-                            { name: "Scenario 1: Login", steps: [{ result: { status: "passed", duration: 1200000000 } }], tags: [{ name: "@TC_1" }] },
-                            { name: "Scenario 2: Data Entry", steps: [{ result: { status: "passed", duration: 800000000 } }], tags: [{ name: "@TC_2" }] },
-                            { name: "Scenario 3: Validation", steps: [{ result: { status: "failed", error_message: "Expected 'Success' but found 'Auth Error' at Login Page", duration: 500000000 } }], tags: [{ name: "@TC_3" }] }
+                            { name: "Scenario 1: User Login Verification", steps: [{ result: { status: "passed", duration: 1200000000 } }], tags: [{ name: "@TC_1" }] },
+                            { name: "Scenario 2: Shipment Creation Flow", steps: [{ result: { status: "passed", duration: 800000000 } }], tags: [{ name: "@TC_2" }] },
+                            { name: "Scenario 3: API Integration Health Check", steps: [{ result: { status: "failed", error_message: "HTTP 503 Service Unavailable: Database cluster not reachable", duration: 500000000 } }], tags: [{ name: "@TC_3" }] },
+                            { name: "Scenario 4: Order Release Validation", steps: [{ result: { status: "failed", error_message: "Element 'Order_ID_778' not found in Search Results after 30s timeout", duration: 3000000000 } }], tags: [{ name: "@TC_4" }] },
+                            { name: "Scenario 5: Multi-Leg Planning Logic", steps: [{ result: { status: "failed", error_message: "Assertion Error: Expected Shipment Cost < 5000 but found 5240.50", duration: 1500000000 } }], tags: [{ name: "@TC_5" }] }
                         ]
                     }]
                 };
@@ -287,11 +294,10 @@ export function AIAgentsPage() {
         } else if (agent.id === 3) {
             addLog(agent.id, "Initializing Failure Classifier...");
             
-            // Take input specifically from the scenarios list identified by the Parser (Agent 2)
             const failedScenarios = scenariosRef.current?.filter(s => s.status === 'failed') || [];
 
             if (failedScenarios.length > 0) {
-                addLog(agent.id, `Analyzing ${failedScenarios.length} failures identified by JSON Parser...`);
+                addLog(agent.id, `Analyzing ${failedScenarios.length} failed scenarios identified by Parser...`);
                 
                 const failuresToClassify = failedScenarios.map(s => ({ 
                     scenarioName: s.name, 
@@ -301,7 +307,9 @@ export function AIAgentsPage() {
                 try {
                     const result = await classifyFailures(JSON.stringify(failuresToClassify));
                     classificationSummary = result.summary;
-                    addLog(agent.id, `Classification Results: ${result.summary.functionalCount} Functional, ${result.summary.dataCount} Data.`);
+                    classifications = result.classifications;
+                    addLog(agent.id, `Classification Success: ${result.summary.functionalCount} Functional, ${result.summary.dataCount} Data, ${result.summary.environmentCount} Env.`);
+                    
                     result.classifications.forEach(c => {
                         addLog(agent.id, `[${c.classification.toUpperCase()}] ${c.scenarioName}: ${c.reasoning}`);
                     });
@@ -325,7 +333,8 @@ export function AIAgentsPage() {
             lastRun: new Date().toISOString(),
             extraInfo: extra || a.extraInfo,
             metrics: metrics || a.metrics,
-            classificationSummary: classificationSummary || a.classificationSummary
+            classificationSummary: classificationSummary || a.classificationSummary,
+            classifications: classifications || a.classifications
         } : a));
 
         if (executionStatus === 'success' && ![2, 3].includes(agent.id)) {
@@ -342,7 +351,7 @@ export function AIAgentsPage() {
         setIsPipelineRunning(true);
         setProgress(0);
         setAgents(prev => prev.map(a => ({ ...a, status: 'idle' })));
-        scenariosRef.current = []; // Clear current parsed context
+        scenariosRef.current = []; 
         
         for (let i = 0; i < AGENTS_CONFIG.length; i++) {
             await runAgent(i);
@@ -379,6 +388,12 @@ export function AIAgentsPage() {
         if (!scenarios) return;
         setScenarioListView({ title, status, scenarios });
         setScenarioListViewSearch("");
+    };
+
+    const handleOpenClassificationList = (title: string, classification: string, allClassifications?: FailureClassificationOutput['classifications']) => {
+        if (!allClassifications) return;
+        const filtered = allClassifications.filter(c => c.classification === classification);
+        setClassificationListView({ title, classification, items: filtered });
     };
 
     const handleViewScenarioSteps = (scenarioName: string) => {
@@ -585,15 +600,28 @@ export function AIAgentsPage() {
                                         <span className="text-muted-foreground flex items-center gap-1"><ShieldAlert className="h-2.5 w-2.5" /> Classifications:</span>
                                         <Sparkles className="h-2.5 w-2.5 text-primary" />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="bg-red-500/10 border border-red-200 rounded p-1 text-center">
-                                            <div className="text-[8px] text-red-600 font-semibold uppercase">Functional</div>
+                                    <div className="grid grid-cols-3 gap-1.5">
+                                        <button 
+                                            className="bg-red-500/10 border border-red-200 rounded p-1 text-center hover:bg-red-500/20 transition-colors group"
+                                            onClick={() => handleOpenClassificationList('Functional Issues', 'Functional Issue', agent.classifications)}
+                                        >
+                                            <div className="text-[7px] text-red-600 font-semibold uppercase group-hover:text-red-700">Functional</div>
                                             <div className="text-xs font-bold text-red-700">{agent.classificationSummary.functionalCount}</div>
-                                        </div>
-                                        <div className="bg-amber-500/10 border border-amber-200 rounded p-1 text-center">
-                                            <div className="text-[8px] text-amber-600 font-semibold uppercase">Data</div>
+                                        </button>
+                                        <button 
+                                            className="bg-amber-500/10 border border-amber-200 rounded p-1 text-center hover:bg-amber-500/20 transition-colors group"
+                                            onClick={() => handleOpenClassificationList('Data Issues', 'Data Issue', agent.classifications)}
+                                        >
+                                            <div className="text-[7px] text-amber-600 font-semibold uppercase group-hover:text-amber-700">Data</div>
                                             <div className="text-xs font-bold text-amber-700">{agent.classificationSummary.dataCount}</div>
-                                        </div>
+                                        </button>
+                                        <button 
+                                            className="bg-blue-500/10 border border-blue-200 rounded p-1 text-center hover:bg-blue-500/20 transition-colors group"
+                                            onClick={() => handleOpenClassificationList('Env. Issues', 'Environment Issue', agent.classifications)}
+                                        >
+                                            <div className="text-[7px] text-blue-600 font-semibold uppercase group-hover:text-blue-700">Env.</div>
+                                            <div className="text-xs font-bold text-blue-700">{agent.classificationSummary.environmentCount}</div>
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -738,6 +766,66 @@ export function AIAgentsPage() {
                             Showing {filteredScenarios.length} of {scenarioListView?.scenarios?.filter(s => s.status === scenarioListView.status).length || 0} items
                         </div>
                         <Button onClick={() => setScenarioListView(null)}>Close List</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Classification List Dialog */}
+            <Dialog open={!!classificationListView} onOpenChange={(open) => !open && setClassificationListView(null)}>
+                <DialogContent className="max-w-3xl h-[70vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-4 border-b">
+                        <DialogTitle className="flex items-center gap-2">
+                            <ShieldAlert className={cn(
+                                "h-5 w-5",
+                                classificationListView?.classification === 'Functional Issue' ? "text-red-500" :
+                                classificationListView?.classification === 'Data Issue' ? "text-amber-500" : "text-blue-500"
+                            )} />
+                            {classificationListView?.title}
+                        </DialogTitle>
+                        <DialogDescription>
+                            AI-determined root causes for failed scenarios in this category.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="flex-1 overflow-hidden">
+                        <ScrollArea className="h-full w-full p-4">
+                            {classificationListView?.items && classificationListView.items.length > 0 ? (
+                                <div className="space-y-4">
+                                    {classificationListView.items.map((item, i) => (
+                                        <div key={i} className="p-4 border rounded-lg bg-card space-y-3">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <h4 className="text-sm font-bold text-foreground">{item.scenarioName}</h4>
+                                                <Badge variant="outline" className="text-[10px] uppercase">{item.classification}</Badge>
+                                            </div>
+                                            <div className="bg-muted/30 p-3 rounded-md border border-muted flex gap-3">
+                                                <HelpCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <div className="space-y-1">
+                                                    <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">AI Reasoning:</span>
+                                                    <p className="text-xs text-foreground/90 leading-relaxed italic">"{item.reasoning}"</p>
+                                                </div>
+                                            </div>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="h-7 text-[10px] w-full"
+                                                onClick={() => handleViewScenarioSteps(item.scenarioName)}
+                                            >
+                                                <Terminal className="h-3 w-3 mr-2" /> Inspect Logs & Trace
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground opacity-50 space-y-2">
+                                    <ShieldCheck className="h-8 w-8" />
+                                    <p className="text-sm italic">No scenarios identified in this category.</p>
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </div>
+                    
+                    <DialogFooter className="p-4 border-t bg-muted/5">
+                        <Button onClick={() => setClassificationListView(null)}>Close Analysis</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
