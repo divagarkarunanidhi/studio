@@ -111,6 +111,7 @@ export function AIAgentsPage() {
     const [progress, setProgress] = useState(0);
     const [autoMode, setAutoMode] = useState(false);
     const [isTestingJira, setIsTestingJira] = useState(false);
+    const [isTestingGitlab, setIsTestingGitlab] = useState(false);
     
     // View States
     const [previewReport, setPreviewReport] = useState<{ name: string, content: string } | null>(null);
@@ -197,6 +198,44 @@ export function AIAgentsPage() {
             toast({ variant: "destructive", title: "Network Error", description: e.message });
         } finally {
             setIsTestingJira(false);
+        }
+    };
+
+    const handleTestGitlab = async () => {
+        if (!configData?.gitlabToken || !configData?.gitlabProjectId) {
+            toast({
+                variant: "destructive",
+                title: "Incomplete Config",
+                description: "Please provide GitLab Token and Project ID before testing."
+            });
+            return;
+        }
+
+        setIsTestingGitlab(true);
+        try {
+            const response = await fetch('/api/gitlab/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: configData.gitlabToken,
+                    projectId: configData.gitlabProjectId
+                })
+            });
+            
+            const result = await response.json();
+            if (response.ok) {
+                toast({ title: "GitLab Test Successful", description: result.message });
+            } else {
+                toast({ 
+                    variant: "destructive", 
+                    title: "GitLab Test Failed", 
+                    description: result.error || "Could not connect to GitLab." 
+                });
+            }
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Network Error", description: e.message });
+        } finally {
+            setIsTestingGitlab(false);
         }
     };
 
@@ -854,10 +893,24 @@ export function AIAgentsPage() {
                                             </DialogTrigger>
                                             <DialogContent className="sm:max-w-[425px]">
                                                 <DialogHeader>
-                                                    <DialogTitle>GitLab Configuration</DialogTitle>
-                                                    <DialogDescription>
-                                                        Set up your GitLab access to allow the agent to sync test data files.
-                                                    </DialogDescription>
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <DialogTitle>GitLab Configuration</DialogTitle>
+                                                            <DialogDescription>
+                                                                Set up your GitLab access to allow the agent to sync test data files.
+                                                            </DialogDescription>
+                                                        </div>
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            onClick={handleTestGitlab} 
+                                                            disabled={isTestingGitlab}
+                                                            className="h-8 text-xs"
+                                                        >
+                                                            {isTestingGitlab ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <FlaskConical className="h-3 w-3 mr-2" />}
+                                                            Test Connection
+                                                        </Button>
+                                                    </div>
                                                 </DialogHeader>
                                                 <div className="grid gap-4 py-4">
                                                     <div className="grid gap-2">

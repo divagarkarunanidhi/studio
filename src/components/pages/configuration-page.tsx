@@ -27,6 +27,7 @@ export function ConfigurationPage() {
   const [isTestingMongo, setIsTestingMongo] = useState(false);
   const [isTestingConfluence, setIsTestingConfluence] = useState(false);
   const [isTestingJira, setIsTestingJira] = useState(false);
+  const [isTestingGitlab, setIsTestingGitlab] = useState(false);
 
   const configRef = useMemoFirebase(() => doc(firestore, 'appConfiguration', 'global'), [firestore]);
   const { data: configData, isLoading: isConfigLoading, error: configError } = useDoc<AppConfiguration>(configRef);
@@ -186,6 +187,45 @@ export function ConfigurationPage() {
         });
     } finally {
         setIsTestingJira(false);
+    }
+  };
+
+  const handleTestGitlab = async () => {
+    const values = form.getValues();
+    if (!values.gitlabToken || !values.gitlabProjectId) {
+        toast({
+            variant: 'destructive',
+            title: 'Missing Details',
+            description: 'Please provide GitLab Token and Project ID before testing.'
+        });
+        return;
+    }
+
+    setIsTestingGitlab(true);
+    try {
+        const response = await fetch('/api/gitlab/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                token: values.gitlabToken,
+                projectId: values.gitlabProjectId
+            })
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+            toast({ title: 'GitLab Connection Successful', description: result.message });
+        } else {
+            throw new Error(result.error || 'Failed to connect to GitLab.');
+        }
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'GitLab Test Failed',
+            description: error.message
+        });
+    } finally {
+        setIsTestingGitlab(false);
     }
   };
 
@@ -374,10 +414,16 @@ export function ConfigurationPage() {
             <Separator />
 
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <GitBranch className="h-5 w-5 text-indigo-600" />
-                    GitLab Sync Configuration (Agent 5)
-                </h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <GitBranch className="h-5 w-5 text-indigo-600" />
+                        GitLab Sync Configuration
+                    </h3>
+                    <Button type="button" variant="ghost" size="sm" onClick={handleTestGitlab} disabled={isTestingGitlab}>
+                        {isTestingGitlab ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <FlaskConical className="h-3 w-3 mr-2" />}
+                        Test GitLab Connection
+                    </Button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                     control={form.control}
