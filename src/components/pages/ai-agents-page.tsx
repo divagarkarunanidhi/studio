@@ -86,8 +86,7 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 5, name: "Prepare data for functional Issue", description: "Extracts dynamic test data IDs from logs to facilitate automated data corrections." },
     { id: 6, name: "GitLab Data Sync", description: "Automatically updates incorrect test data in GitLab repositories." },
     { id: 7, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
-    { id: 8, name: "Rerun Collector", description: "Fetches the updated results from Confluence post-rerun." },
-    { id: 9, name: "Report Consolidator", description: "Merges original and rerun reports into a single source of truth." },
+    { id: 8, name: "Report Consolidator", description: "Merges original and rerun reports into a single source of truth." },
 ];
 
 const formatNanosToTime = (nanos: number) => {
