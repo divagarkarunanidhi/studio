@@ -250,7 +250,6 @@ export function AIAgentsPage() {
                     reportData.test_results.forEach((feature: any) => {
                         feature.elements?.forEach((scenario: any) => {
                             total++;
-                            // Case-insensitive status detection
                             const failedStep = scenario.steps?.find((step: any) => step.result?.status?.toLowerCase() === 'failed');
                             const isFailed = !!failedStep;
                             const status = isFailed ? 'failed' : 'passed';
@@ -282,7 +281,7 @@ export function AIAgentsPage() {
                                 failed: aiResult.failed,
                                 scenarios: aiResult.scenarios.map(s => ({
                                     name: s.name,
-                                    status: s.status, // already lowercase from Zod enum
+                                    status: s.status,
                                     tags: s.tags,
                                     logs: s.logs
                                 }))
@@ -295,7 +294,6 @@ export function AIAgentsPage() {
         } else if (agent.id === 3) {
             addLog(agent.id, "Initializing Failure Classifier...");
             
-            // Case-insensitive filtering of failed scenarios from the parser's findings
             const failedScenarios = scenariosRef.current?.filter(s => s.status?.toLowerCase() === 'failed') || [];
 
             if (failedScenarios.length > 0) {
@@ -311,14 +309,8 @@ export function AIAgentsPage() {
                     classificationSummary = result.summary;
                     classifications = result.classifications;
                     
-                    const totalClassified = (result.summary.functionalCount || 0) + (result.summary.dataCount || 0) + (result.summary.environmentCount || 0);
-                    
                     addLog(agent.id, `Classification Success: ${result.summary.functionalCount} Functional, ${result.summary.dataCount} Data, ${result.summary.environmentCount} Env.`);
                     
-                    if (totalClassified !== failedScenarios.length) {
-                        addLog(agent.id, `Note: AI classified ${totalClassified} out of ${failedScenarios.length} failures.`);
-                    }
-
                     result.classifications.forEach(c => {
                         addLog(agent.id, `[${c.classification.toUpperCase()}] ${c.scenarioName}: ${c.reasoning}`);
                     });
@@ -328,7 +320,6 @@ export function AIAgentsPage() {
                 }
             } else {
                 addLog(agent.id, "No failures found by JSON Parser to classify. Skipping analysis.");
-                // Explicitly clear summary to avoid showing old data
                 classificationSummary = { functionalCount: 0, dataCount: 0, environmentCount: 0 };
                 classifications = [];
             }
@@ -426,6 +417,11 @@ export function AIAgentsPage() {
                 description: "Could not locate step data for this scenario in the current report."
             });
         }
+    };
+
+    const getClassificationForScenario = (name: string) => {
+        const classifierAgent = agents.find(a => a.id === 3);
+        return classifierAgent?.classifications?.find(c => c.scenarioName === name);
     };
 
     const filteredScenarios = scenarioListView?.scenarios?.filter(s => {
@@ -734,35 +730,50 @@ export function AIAgentsPage() {
                         <ScrollArea className="h-full w-full p-4">
                             {filteredScenarios.length > 0 ? (
                                 <div className="space-y-3">
-                                    {filteredScenarios.map((scenario, i) => (
-                                        <button 
-                                            key={i} 
-                                            className="w-full text-left p-3 border rounded-lg bg-card hover:bg-accent/5 transition-colors group relative"
-                                            onClick={() => handleViewScenarioSteps(scenario.name)}
-                                        >
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="space-y-1">
-                                                    <h4 className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors">{scenario.name}</h4>
-                                                    <div className="flex flex-wrap gap-1.5 mt-2">
-                                                        {scenario.tags.map((tag, j) => (
-                                                            <Badge key={j} variant="secondary" className="text-[9px] px-1.5 py-0 font-mono">
-                                                                {tag}
-                                                            </Badge>
-                                                        ))}
-                                                        {scenario.tags.length === 0 && <span className="text-[10px] text-muted-foreground italic">No tags</span>}
+                                    {filteredScenarios.map((scenario, i) => {
+                                        const aiClassification = getClassificationForScenario(scenario.name);
+                                        return (
+                                            <button 
+                                                key={i} 
+                                                className="w-full text-left p-3 border rounded-lg bg-card hover:bg-accent/5 transition-colors group relative"
+                                                onClick={() => handleViewScenarioSteps(scenario.name)}
+                                            >
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors">{scenario.name}</h4>
+                                                            {aiClassification && (
+                                                                <Badge variant="outline" className={cn(
+                                                                    "text-[9px] h-4 px-1 uppercase shrink-0",
+                                                                    aiClassification.classification === 'Functional Issue' ? "border-red-200 text-red-600 bg-red-50" :
+                                                                    aiClassification.classification === 'Data Issue' ? "border-amber-200 text-amber-600 bg-amber-50" :
+                                                                    "border-blue-200 text-blue-600 bg-blue-50"
+                                                                )}>
+                                                                    {aiClassification.classification}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                                            {scenario.tags.map((tag, j) => (
+                                                                <Badge key={j} variant="secondary" className="text-[9px] px-1.5 py-0 font-mono">
+                                                                    {tag}
+                                                                </Badge>
+                                                            ))}
+                                                            {scenario.tags.length === 0 && <span className="text-[10px] text-muted-foreground italic">No tags</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                                        <Badge variant={scenario.status === 'passed' ? 'outline' : 'destructive'} className="text-[10px] h-5 px-1.5 uppercase">
+                                                            {scenario.status}
+                                                        </Badge>
+                                                        <span className="text-[10px] text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1 font-medium">
+                                                            View Steps <ChevronRight className="h-3 w-3" />
+                                                        </span>
                                                     </div>
                                                 </div>
-                                                <div className="flex flex-col items-end gap-2 shrink-0">
-                                                    <Badge variant={scenario.status === 'passed' ? 'outline' : 'destructive'} className="text-[10px] h-5 px-1.5 uppercase">
-                                                        {scenario.status}
-                                                    </Badge>
-                                                    <span className="text-[10px] text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1 font-medium">
-                                                        View Steps <ChevronRight className="h-3 w-3" />
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    ))}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground opacity-50 space-y-2">
