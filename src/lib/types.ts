@@ -30,6 +30,9 @@ export const AppConfigurationSchema = z.object({
     confluencePageId: z.string().optional().nullable(),
     confluenceUser: z.string().optional().nullable(),
     confluencePassword: z.string().optional().nullable(),
+    // Session Settings
+    autoLogoutEnabled: z.boolean().default(true),
+    autoLogoutTime: z.number().min(1, 'Logout time must be at least 1 minute.').default(5),
 });
   
 export type AppConfiguration = z.infer<typeof AppConfigurationSchema>;

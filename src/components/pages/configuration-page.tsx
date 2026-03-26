@@ -14,11 +14,12 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Settings, Cpu, FlaskConical, Loader2 } from 'lucide-react';
+import { Settings, Cpu, FlaskConical, Loader2, ShieldAlert } from 'lucide-react';
 import { AppConfigurationSchema } from '@/lib/types';
 import type { AppConfiguration } from '@/lib/types';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Separator } from '../ui/separator';
+import { Switch } from '../ui/switch';
 
 export function ConfigurationPage() {
   const { toast } = useToast();
@@ -42,7 +43,9 @@ export function ConfigurationPage() {
       confluencePath: '',
       confluencePageId: '',
       confluenceUser: '',
-      confluencePassword: ''
+      confluencePassword: '',
+      autoLogoutEnabled: true,
+      autoLogoutTime: 5
     },
   });
 
@@ -172,7 +175,7 @@ export function ConfigurationPage() {
       <CardHeader>
         <CardTitle>Application Configuration</CardTitle>
         <CardDescription>
-          Manage global application settings, API keys, and model configurations. These values are stored securely in Firestore.
+          Manage global application settings, API keys, and session policies. These values are stored securely in Firestore.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -241,6 +244,58 @@ export function ConfigurationPage() {
                             <Input placeholder="e.g., TAASBugSenseAI" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-destructive" />
+                    Security & Session Management
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                    control={form.control}
+                    name="autoLogoutEnabled"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel>Automatic Logout</FormLabel>
+                                <FormDescription>
+                                    Force user logout after a period of total inactivity.
+                                </FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="autoLogoutTime"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Inactivity Timeout (Minutes)</FormLabel>
+                            <FormControl>
+                                <Input 
+                                    type="number" 
+                                    {...field} 
+                                    onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)}
+                                    disabled={!form.watch('autoLogoutEnabled')}
+                                />
+                            </FormControl>
+                            <FormDescription>
+                                The number of minutes before an idle user is logged out.
+                            </FormDescription>
+                            <FormMessage />
                         </FormItem>
                     )}
                     />

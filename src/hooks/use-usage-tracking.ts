@@ -2,21 +2,20 @@
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useAuth } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useUser, useFirestore, useAuth, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import type { UsageEvent } from '@/lib/types';
+import type { UsageEvent, AppConfiguration } from '@/lib/types';
 import { signOut } from 'firebase/auth';
 
 const IDLE_THRESHOLD = 2 * 60 * 1000; // 2 minutes for session pulses
 const PULSE_INTERVAL = 5 * 60 * 1000; // 5 minutes between pulses
-const AUTO_LOGOUT_THRESHOLD = 5 * 60 * 1000; // 5 minutes for auto-logout
 const CHECK_INTERVAL = 10 * 1000; // Check idle state every 10 seconds
 
 /**
  * Hook to track user activity and menu usage.
  * Logs events to the 'usageEvents' collection with idle detection.
- * Automatically logs out the user after 5 minutes of total inactivity.
+ * Automatically logs out the user after a configurable duration of inactivity.
  */
 export function useUsageTracking(username?: string) {
     const { user } = useUser();
@@ -24,6 +23,14 @@ export function useUsageTracking(username?: string) {
     const auth = useAuth();
     const lastActivityRef = useRef<number>(Date.now());
     const hasLoggedLoginRef = useRef<boolean>(false);
+
+    // Fetch Global Config for Auto-Logout settings
+    const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
+    const { data: configData } = useDoc<AppConfiguration>(configRef);
+
+    const autoLogoutEnabled = configData?.autoLogoutEnabled ?? true;
+    const autoLogoutTime = configData?.autoLogoutTime ?? 5; // minutes
+    const autoLogoutThreshold = autoLogoutTime * 60 * 1000;
 
     const logEvent = useCallback((eventType: UsageEvent['eventType'], menuId?: string) => {
         if (!user || !firestore) return;
@@ -84,18 +91,18 @@ export function useUsageTracking(username?: string) {
 
     // Auto-logout timer
     useEffect(() => {
-        if (!user || !auth) return;
+        if (!user || !auth || !autoLogoutEnabled) return;
 
         const logoutInterval = setInterval(() => {
             const now = Date.now();
-            if (now - lastActivityRef.current >= AUTO_LOGOUT_THRESHOLD) {
+            if (now - lastActivityRef.current >= autoLogoutThreshold) {
                 logEvent('logout');
                 signOut(auth).catch(err => console.error("Auto-logout error:", err));
             }
         }, CHECK_INTERVAL);
 
         return () => clearInterval(logoutInterval);
-    }, [user, auth, logEvent]);
+    }, [user, auth, logEvent, autoLogoutEnabled, autoLogoutThreshold]);
 
     return { logEvent };
 }
