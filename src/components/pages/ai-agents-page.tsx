@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -25,14 +26,15 @@ import {
     Activity,
     Download,
     Eye,
-    Sparkles
+    Sparkles,
+    ShieldAlert
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { AppConfiguration } from '@/lib/types';
+import type { AppConfiguration, FailureClassificationOutput } from '@/lib/types';
 import {
     Dialog,
     DialogContent,
@@ -42,6 +44,7 @@ import {
     DialogFooter
 } from "@/components/ui/dialog";
 import { parseReportWithAI } from '@/ai/flows/report-parser-flow';
+import { classifyFailures } from '@/ai/flows/failure-classification-flow';
 
 interface AgentMetrics {
     total: number;
@@ -58,6 +61,7 @@ interface AgentStatus {
     logs: string[];
     extraInfo?: string; 
     metrics?: AgentMetrics;
+    classificationSummary?: FailureClassificationOutput['summary'];
 }
 
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
@@ -118,6 +122,7 @@ export function AIAgentsPage() {
         
         let extra = undefined;
         let metrics: AgentMetrics | undefined = undefined;
+        let classificationSummary: FailureClassificationOutput['summary'] | undefined = undefined;
         let executionStatus: 'success' | 'error' = 'success';
 
         if (agent.id === 1) {
@@ -132,7 +137,7 @@ export function AIAgentsPage() {
                     const fileName = storeResult.fileName || 'execution.json';
                     addLog(agent.id, `JSON Data found in store: ${fileName}`);
                     reportRef.current = { name: fileName, data: storeResult };
-                    extra = fileName; // Display actual filename on card
+                    extra = fileName;
                     fetchedFromStore = true;
                 }
             } catch (e: any) {
@@ -165,7 +170,7 @@ export function AIAgentsPage() {
                                 parsedData = JSON.parse(result.content);
                                 addLog(agent.id, "Successfully identified valid JSON structure from source.");
                             } catch (e) {
-                                addLog(agent.id, "Fetched file is not native JSON. Preparing for secondary conversion...");
+                                addLog(agent.id, "Fetched file is not native JSON. Attempting direct parsing...");
                                 parsedData = { raw: result.content };
                             }
                             reportRef.current = { name: fileName, data: parsedData };
@@ -191,7 +196,7 @@ export function AIAgentsPage() {
                         elements: [
                             { name: "Scenario 1: Login", steps: [{ result: { status: "passed" } }], tags: [{ name: "@TC_1" }] },
                             { name: "Scenario 2: Data Entry", steps: [{ result: { status: "passed" } }], tags: [{ name: "@TC_2" }] },
-                            { name: "Scenario 3: Validation", steps: [{ result: { status: "failed" } }], tags: [{ name: "@TC_3" }] }
+                            { name: "Scenario 3: Validation", steps: [{ result: { status: "failed", error_message: "Expected 'Success' but found 'Auth Error'" } }], tags: [{ name: "@TC_3" }] }
                         ]
                     }]
                 };
@@ -202,70 +207,65 @@ export function AIAgentsPage() {
         } else if (agent.id === 2) {
             addLog(agent.id, "Initializing JSON Report Parser...");
             await new Promise(resolve => setTimeout(resolve, 800));
-            
             const currentReport = reportRef.current;
-            
             if (currentReport && currentReport.data) {
                 const reportData = currentReport.data;
-                
-                addLog(agent.id, "Analyzing JSON schema for test metadata...");
-                
-                let total = 0;
-                let passed = 0;
-                let failed = 0;
-                const identifiedScenarios: any[] = [];
-
+                let total = 0, passed = 0, failed = 0;
                 if (reportData.test_results && Array.isArray(reportData.test_results)) {
                     reportData.test_results.forEach((feature: any) => {
                         feature.elements?.forEach((scenario: any) => {
                             total++;
                             const isFailed = scenario.steps?.some((step: any) => step.result?.status === 'failed');
-                            const tags = scenario.tags?.map((t: any) => t.name).join(' ') || '';
-                            
-                            identifiedScenarios.push({
-                                name: scenario.name,
-                                status: isFailed ? 'failed' : 'passed',
-                                tags
-                            });
-
-                            if (isFailed) failed++;
-                            else passed++;
+                            if (isFailed) failed++; else passed++;
                         });
                     });
                 }
-
                 if (total > 0) {
-                    addLog(agent.id, `Direct traversal identified ${total} scenarios.`);
                     metrics = { total, passed, failed };
-                    
-                    identifiedScenarios.forEach(s => {
-                        addLog(agent.id, `Identified: ${s.name} [${s.status.toUpperCase()}] ${s.tags}`);
-                    });
+                    addLog(agent.id, `Direct traversal identified ${total} scenarios.`);
                 } else {
-                    addLog(agent.id, "Standard schema not found. Invoking GenAI for structural analysis...");
+                    addLog(agent.id, "Invoking GenAI for structural analysis...");
                     try {
                         const jsonSnippet = JSON.stringify(reportData).substring(0, 15000);
                         const aiResult = await parseReportWithAI(jsonSnippet);
-                        if (aiResult && aiResult.total > 0) {
-                            metrics = { total: aiResult.total, passed: aiResult.passed, failed: aiResult.failed };
-                            addLog(agent.id, `AI identified metrics: ${aiResult.total} Total, ${aiResult.passed} Passed.`);
-                            aiResult.scenarios.forEach(s => {
-                                addLog(agent.id, `AI Found: ${s.name} [${s.status.toUpperCase()}] ${s.tags.join(' ')}`);
+                        if (aiResult) metrics = { total: aiResult.total, passed: aiResult.passed, failed: aiResult.failed };
+                    } catch (e: any) { addLog(agent.id, `AI Error: ${e.message}`); }
+                }
+            } else { executionStatus = 'error'; }
+        } else if (agent.id === 3) {
+            addLog(agent.id, "Initializing Failure Classifier...");
+            const currentReport = reportRef.current;
+            if (currentReport && currentReport.data) {
+                const failures: any[] = [];
+                currentReport.data.test_results?.forEach((feature: any) => {
+                    feature.elements?.forEach((scenario: any) => {
+                        const failedStep = scenario.steps?.find((step: any) => step.result?.status === 'failed');
+                        if (failedStep) {
+                            failures.push({ 
+                                scenarioName: scenario.name, 
+                                logs: failedStep.result?.error_message || 'No specific log found.'
                             });
                         }
+                    });
+                });
+
+                if (failures.length > 0) {
+                    addLog(agent.id, `Analyzing ${failures.length} failed scenarios with GenAI...`);
+                    try {
+                        const result = await classifyFailures(JSON.stringify(failures));
+                        classificationSummary = result.summary;
+                        addLog(agent.id, `Classification Results: ${result.summary.functionalCount} Functional, ${result.summary.dataCount} Data.`);
+                        result.classifications.forEach(c => {
+                            addLog(agent.id, `[${c.classification.toUpperCase()}] ${c.scenarioName}: ${c.reasoning}`);
+                        });
                     } catch (e: any) {
-                        addLog(agent.id, `AI Error: ${e.message}. Using safest baseline.`);
-                        metrics = { total: 1, passed: 0, failed: 1 };
+                        addLog(agent.id, `Classification AI Error: ${e.message}`);
+                        executionStatus = 'error';
                     }
+                } else {
+                    addLog(agent.id, "No failures found to classify. Skipping analysis.");
                 }
-            } else {
-                addLog(agent.id, "Error: No JSON data reference available.");
-                executionStatus = 'error';
-            }
-            
-            if (metrics) {
-                addLog(agent.id, `Final Analysis: ${metrics.total} Total, ${metrics.passed} Passed, ${metrics.failed} Failed.`);
-            }
+            } else { executionStatus = 'error'; }
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
@@ -278,10 +278,11 @@ export function AIAgentsPage() {
             status: executionStatus, 
             lastRun: new Date().toISOString(),
             extraInfo: extra || a.extraInfo,
-            metrics: metrics || a.metrics
+            metrics: metrics || a.metrics,
+            classificationSummary: classificationSummary || a.classificationSummary
         } : a));
 
-        if (executionStatus === 'success' && agent.id !== 2) {
+        if (executionStatus === 'success' && ![2, 3].includes(agent.id)) {
             addLog(agent.id, `Completed successfully.`);
         }
         
@@ -317,7 +318,6 @@ export function AIAgentsPage() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast({ title: "Data Downloaded", description: `Saved ${fileName} to your device.` });
     };
 
     const handleViewReport = (fileName: string) => {
@@ -398,7 +398,7 @@ export function AIAgentsPage() {
                                 <div className="bg-primary/10 p-2 rounded-lg">
                                     {idx === 0 && <Database className="h-4 w-4 text-primary" />}
                                     {idx === 1 && <FileJson className="h-4 w-4 text-primary" />}
-                                    {idx === 2 && <Cpu className="h-4 w-4 text-primary" />}
+                                    {idx === 2 && <ShieldAlert className="h-4 w-4 text-primary" />}
                                     {idx === 3 && <ExternalLink className="h-4 w-4 text-primary" />}
                                     {idx === 4 && <Network className="h-4 w-4 text-primary" />}
                                     {idx === 5 && <RefreshCcw className="h-4 w-4 text-primary" />}
@@ -455,10 +455,7 @@ export function AIAgentsPage() {
                                         <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                                             <Database className="h-2.5 w-2.5" /> Data Source:
                                         </span>
-                                        <Badge variant="outline" className={cn(
-                                            "text-[9px] px-1.5 h-4",
-                                            "text-blue-600 border-blue-200 bg-blue-50"
-                                        )}>
+                                        <Badge variant="outline" className="text-[9px] px-1.5 h-4 text-blue-600 border-blue-200 bg-blue-50">
                                             JSON STORE
                                         </Badge>
                                     </div>
@@ -478,13 +475,8 @@ export function AIAgentsPage() {
                             {idx === 1 && agent.metrics && (
                                 <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-500">
                                     <div className="flex items-center justify-between text-[10px]">
-                                        <span className="text-muted-foreground flex items-center gap-1">
-                                            <Activity className="h-2.5 w-2.5" /> Execution Metrics:
-                                        </span>
-                                        <span className="font-bold flex items-center gap-1">
-                                            {agent.metrics.total} Scenarios
-                                            <Sparkles className="h-2.5 w-2.5 text-primary" title="Analyzed with AI" />
-                                        </span>
+                                        <span className="text-muted-foreground flex items-center gap-1"><Activity className="h-2.5 w-2.5" /> Metrics:</span>
+                                        <span className="font-bold flex items-center gap-1">{agent.metrics.total} Scenarios</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div className="bg-green-500/10 border border-green-200 rounded p-1 text-center">
@@ -498,11 +490,28 @@ export function AIAgentsPage() {
                                     </div>
                                 </div>
                             )}
+                            {idx === 2 && agent.classificationSummary && (
+                                <div className="space-y-2 animate-in zoom-in-95 duration-500">
+                                    <div className="flex items-center justify-between text-[10px]">
+                                        <span className="text-muted-foreground flex items-center gap-1"><ShieldAlert className="h-2.5 w-2.5" /> Classifications:</span>
+                                        <Sparkles className="h-2.5 w-2.5 text-primary" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-red-500/10 border border-red-200 rounded p-1 text-center">
+                                            <div className="text-[8px] text-red-600 font-semibold uppercase">Functional</div>
+                                            <div className="text-xs font-bold text-red-700">{agent.classificationSummary.functionalCount}</div>
+                                        </div>
+                                        <div className="bg-amber-500/10 border border-amber-200 rounded p-1 text-center">
+                                            <div className="text-[8px] text-amber-600 font-semibold uppercase">Data</div>
+                                            <div className="text-xs font-bold text-amber-700">{agent.classificationSummary.dataCount}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                         <CardFooter className="p-4 pt-0 text-[10px] text-muted-foreground flex justify-between border-t mt-auto pt-2">
                             <div className="flex items-center gap-1">
                                 <span>Last run: {agent.lastRun ? format(new Date(agent.lastRun), 'HH:mm') : 'Never'}</span>
-                                {idx === 0 && (configData?.confluencePath ? <ShieldCheck className="h-3 w-3 text-green-500" title="Configured" /> : <AlertCircle className="h-3 w-3 text-amber-500" title="Missing Config" />)}
                             </div>
                             {agent.status === 'running' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                         </CardFooter>
@@ -536,25 +545,6 @@ export function AIAgentsPage() {
                             </div>
                         )}
                     </ScrollArea>
-                </CardContent>
-            </Card>
-
-            <Card className="border-dashed">
-                <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-primary" />
-                        JSON-Based Pipeline Architecture
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="text-xs text-muted-foreground grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <p className="font-semibold text-foreground">Operational Logic</p>
-                        <p>The pipeline has been upgraded to use **JSON as the primary data carrier**. Agent 1 retrieves structured test execution documents directly from the Selenium Store (MongoDB). Agent 2 processes this structured data using direct object traversal and Generative AI for schema recognition.</p>
-                    </div>
-                    <div className="space-y-2">
-                        <p className="font-semibold text-foreground">Data Integrity</p>
-                        <p>By eliminating HTML parsing where possible, the agents achieve higher accuracy in failure detection. The "JSON Parser" agent specifically scans for scenario-level failure bits within the Cucumber JSON specification.</p>
-                    </div>
                 </CardContent>
             </Card>
 

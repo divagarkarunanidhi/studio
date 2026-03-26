@@ -7,3 +7,4 @@ import './flows/defect-summary-flow';
 import './flows/test-case-analysis-flow';
 import './flows/refine-suggestion-flow';
 import './flows/report-parser-flow';
+import './flows/failure-classification-flow';

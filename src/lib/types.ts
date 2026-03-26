@@ -157,3 +157,20 @@ export const ReportParserOutputSchema = z.object({
     })).describe("A detailed list of scenarios found in the report.")
 });
 export type ReportParserOutput = z.infer<typeof ReportParserOutputSchema>;
+
+// Agent 3 Failure Classifier Schema
+export const FailureClassificationSchema = z.object({
+    scenarioName: z.string().describe("The name of the failed test scenario."),
+    classification: z.enum(['Functional Issue', 'Data Issue', 'Environment Issue']).describe("The categorized cause of the failure."),
+    reasoning: z.string().describe("The explanation for why the failure was categorized this way."),
+});
+
+export const FailureClassificationOutputSchema = z.object({
+    classifications: z.array(FailureClassificationSchema),
+    summary: z.object({
+        functionalCount: z.number().describe("Total number of functional issues identified."),
+        dataCount: z.number().describe("Total number of data-related issues identified."),
+        environmentCount: z.number().describe("Total number of environment-related issues identified.")
+    })
+});
+export type FailureClassificationOutput = z.infer<typeof FailureClassificationOutputSchema>;
