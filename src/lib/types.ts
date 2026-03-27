@@ -40,6 +40,8 @@ export const AppConfigurationSchema = z.object({
     gitlabBranch: z.string().optional().nullable().default('main'),
     gitlabFilePathPrefix: z.string().optional().nullable().default(''),
     gitlabPipelineScheduleDescription: z.string().optional().nullable(),
+    // Notification Settings
+    teamsWebhookUrl: z.string().optional().nullable(),
     // Session Settings
     autoLogoutEnabled: z.boolean().default(true),
     autoLogoutTime: z.number().min(1, 'Logout time must be at least 1 minute.').default(5),
