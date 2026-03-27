@@ -34,7 +34,8 @@ import {
     Download,
     ListChecks,
     GitBranch,
-    MessageSquare
+    MessageSquare,
+    Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -827,7 +828,14 @@ export function AIAgentsPage() {
                                 {filteredScenarios.map((scenario, i) => (
                                     <button key={i} className="w-full text-left p-3 border rounded-lg hover:bg-accent/5" onClick={() => handleViewScenarioSteps(scenario.name)}>
                                         <div className="flex justify-between items-start">
-                                            <h4 className="text-sm font-semibold">{scenario.name}</h4>
+                                            <div className="space-y-1">
+                                                <h4 className="text-sm font-semibold">{scenario.name}</h4>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {scenario.tags.map((tag, idx) => (
+                                                        <Badge key={idx} variant="outline" className="text-[8px] py-0 px-1 font-mono">{tag}</Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
                                             <Badge variant={scenario.status === 'passed' ? 'outline' : 'destructive'} className="text-[10px] uppercase">{scenario.status}</Badge>
                                         </div>
                                     </button>
@@ -840,19 +848,74 @@ export function AIAgentsPage() {
 
             {/* Steps Detail Dialog */}
             <Dialog open={!!selectedScenarioSteps} onOpenChange={(open) => !open && setSelectedScenarioSteps(null)}>
-                <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+                <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-4 border-b"><DialogTitle>Step Trace: {selectedScenarioSteps?.name}</DialogTitle></DialogHeader>
                     <ScrollArea className="flex-1 p-4">
                         <Table>
-                            <TableHeader><TableRow><TableHead>Step</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Duration</TableHead></TableRow></TableHeader>
+                            <TableHeader><TableRow><TableHead>Step Definition</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Duration</TableHead></TableRow></TableHeader>
                             <TableBody>
-                                {selectedScenarioSteps?.steps?.map((step: any, idx: number) => (
-                                    <TableRow key={idx}>
-                                        <TableCell><div className="text-xs font-mono"><span className="font-bold text-primary mr-2 uppercase">{step.keyword}</span>{step.name}</div></TableCell>
-                                        <TableCell><Badge variant={step.result?.status === 'passed' ? 'outline' : 'destructive'} className="text-[9px] uppercase">{step.result?.status}</Badge></TableCell>
-                                        <TableCell className="text-right text-[10px] text-muted-foreground">{formatNanosToTime(step.result?.duration || 0)}</TableCell>
-                                    </TableRow>
-                                ))}
+                                {selectedScenarioSteps?.steps?.map((step: any, idx: number) => {
+                                    const screenshots = [
+                                        ...(step.embeddings || []), 
+                                        ...(step.result?.embeddings || [])
+                                    ].filter((e: any) => e.mime_type?.startsWith('image/'));
+                                    const hasScreenshots = screenshots.length > 0;
+
+                                    return (
+                                        <TableRow key={idx}>
+                                            <TableCell>
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="text-xs font-mono"><span className="font-bold text-primary mr-2 uppercase">{step.keyword}</span>{step.name}</div>
+                                                    {step.output && step.output.length > 0 && (
+                                                        <div className="bg-muted/50 p-1.5 rounded border text-[10px] font-mono text-muted-foreground mt-1">
+                                                            {step.output.map((out: string, i: number) => <div key={i}>{out}</div>)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col gap-1.5">
+                                                    <Badge variant={step.result?.status === 'passed' ? 'outline' : 'destructive'} className="text-[9px] uppercase w-fit">{step.result?.status}</Badge>
+                                                    <div className="flex gap-2">
+                                                        {step.result?.error_message && (
+                                                            <Dialog>
+                                                                <DialogTrigger asChild>
+                                                                    <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-destructive underline flex gap-1">
+                                                                        <Terminal className="h-2.5 w-2.5" /> View Logs
+                                                                    </Button>
+                                                                </DialogTrigger>
+                                                                <DialogContent className="max-w-3xl">
+                                                                    <DialogHeader><DialogTitle>Failure Log Trace</DialogTitle><DialogDescription>{step.keyword}{step.name}</DialogDescription></DialogHeader>
+                                                                    <ScrollArea className="max-h-[60vh] rounded-md border bg-slate-950 p-4 font-mono text-slate-300 text-xs leading-relaxed">
+                                                                        <pre className="whitespace-pre-wrap">{step.result.error_message}</pre>
+                                                                    </ScrollArea>
+                                                                </DialogContent>
+                                                            </Dialog>
+                                                        )}
+                                                        {hasScreenshots && (
+                                                            <Dialog>
+                                                                <DialogTrigger asChild>
+                                                                    <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-blue-600 underline flex gap-1">
+                                                                        <Camera className="h-2.5 w-2.5" /> View Screenshot
+                                                                    </Button>
+                                                                </DialogTrigger>
+                                                                <DialogContent className="max-w-5xl">
+                                                                    <DialogHeader><DialogTitle>Step Screenshot</DialogTitle><DialogDescription>{step.keyword}{step.name}</DialogDescription></DialogHeader>
+                                                                    <ScrollArea className="max-h-[80vh] flex flex-col items-center justify-center bg-muted p-2 rounded-md border">
+                                                                        {screenshots.map((e: any, idx: number) => (
+                                                                            <img key={idx} src={`data:${e.mime_type};base64,${e.data}`} alt={`Execution Screenshot ${idx}`} className="max-w-full h-auto shadow-md rounded-sm mb-4 last:mb-0 border border-border" />
+                                                                        ))}
+                                                                    </ScrollArea>
+                                                                </DialogContent>
+                                                            </Dialog>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right text-[10px] text-muted-foreground whitespace-nowrap">{formatNanosToTime(step.result?.duration || 0)}</TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </ScrollArea>
