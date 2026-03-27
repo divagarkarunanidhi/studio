@@ -1048,7 +1048,7 @@ export function AIAgentsPage() {
                                         </Badge>
                                     </div>
                                     {agent.extraInfo && (
-                                        <div className="space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                        <div className="space-y-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
                                             <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Fetched JSON File:</span>
                                             <div className="p-1.5 bg-primary/5 border border-primary/10 rounded text-[9px] font-mono flex items-center gap-1.5">
                                                 <FileCode className="h-3 w-3 text-primary shrink-0" />
@@ -1056,6 +1056,16 @@ export function AIAgentsPage() {
                                                     {agent.extraInfo}
                                                 </span>
                                             </div>
+                                            {agent.status === 'success' && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="h-6 text-[10px] w-full"
+                                                    onClick={() => handleViewReport(agent.extraInfo!)}
+                                                >
+                                                    <Eye className="h-3 w-3 mr-1" /> View Fetched JSON
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                 </div>
