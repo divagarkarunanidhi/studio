@@ -90,7 +90,7 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for unique functional failures with screenshots." },
     { id: 5, name: "Prepare data for data Issue", description: "Identifies test data file from step output and prepares updated JSON with 'Agent: found'." },
     { id: 6, name: "GitLab Data Sync", description: "Automatically commits prepared test data updates back to GitLab repositories." },
-    { id: 7, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines for failed scenarios." },
+    { id: 7, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines by calling specified pipeline schedules." },
     { id: 8, name: "Report Consolidator", description: "Merges original and rerun reports into a single source of truth." },
 ];
 
@@ -657,6 +657,39 @@ export function AIAgentsPage() {
             } else {
                 addLog(agent.id, "No updated content found from previous agent. Sync skipped.");
             }
+        } else if (agent.id === 7) {
+            addLog(agent.id, "Initializing Pipeline Orchestrator...");
+            const scheduleDesc = configData?.gitlabPipelineScheduleDescription;
+
+            if (!scheduleDesc) {
+                addLog(agent.id, "Error: No Pipeline Schedule Description configured.");
+                executionStatus = 'error';
+            } else {
+                addLog(agent.id, `Attempting to trigger GitLab Schedule: '${scheduleDesc}'`);
+                try {
+                    const triggerRes = await fetch('/api/gitlab/trigger-schedule', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            token: configData?.gitlabToken,
+                            projectId: configData?.gitlabProjectId,
+                            scheduleDescription: scheduleDesc
+                        })
+                    });
+
+                    const result = await triggerRes.json();
+                    if (triggerRes.ok && result.success) {
+                        addLog(agent.id, `SUCCESS: ${result.message}`);
+                        extra = `Triggered: ${scheduleDesc}`;
+                    } else {
+                        addLog(agent.id, `FAILURE: ${result.error || 'Check configuration'}`);
+                        executionStatus = 'error';
+                    }
+                } catch (e: any) {
+                    addLog(agent.id, `Connection Error: ${e.message}`);
+                    executionStatus = 'error';
+                }
+            }
         } else {
             addLog(agent.id, `Starting unattended task...`);
         }
@@ -676,7 +709,7 @@ export function AIAgentsPage() {
             targetFilePath: targetFilePath || a.targetFilePath
         } : a));
 
-        if (executionStatus === 'success' && ![2, 3, 4, 5, 6].includes(agent.id)) {
+        if (executionStatus === 'success' && ![2, 3, 4, 5, 6, 7].includes(agent.id)) {
             addLog(agent.id, `Completed successfully.`);
         }
         
@@ -1008,6 +1041,42 @@ export function AIAgentsPage() {
                                             </DialogContent>
                                         </Dialog>
                                     )}
+                                    {idx === 6 && (
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" title="Configure Orchestrator Settings">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-[425px]">
+                                                <DialogHeader>
+                                                    <DialogTitle>Orchestrator Configuration</DialogTitle>
+                                                    <DialogDescription>
+                                                        Define which GitLab Pipeline Schedule should be triggered by this agent.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="grid gap-4 py-4">
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor="gitlabPipelineScheduleDescription">Pipeline Schedule Description (Name)</Label>
+                                                        <Input 
+                                                            id="gitlabPipelineScheduleDescription" 
+                                                            defaultValue={configData?.gitlabPipelineScheduleDescription || ''} 
+                                                            placeholder="e.g. Nightly Regression Rerun"
+                                                            onBlur={(e) => handleUpdateConfig('gitlabPipelineScheduleDescription', e.target.value)}
+                                                        />
+                                                        <p className="text-[10px] text-muted-foreground italic">
+                                                            Matching is case-insensitive. Ensure this matches the 'Description' field in your GitLab Schedule.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <DialogClose asChild>
+                                                        <Button type="button">Close</Button>
+                                                    </DialogClose>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
@@ -1127,12 +1196,12 @@ export function AIAgentsPage() {
                                     </div>
                                 </div>
                             )}
-                            {(idx === 3 || idx === 4 || idx === 5) && agent.extraInfo && (
+                            {(idx === 3 || idx === 4 || idx === 5 || idx === 6) && agent.extraInfo && (
                                 <div className="space-y-2 animate-in fade-in duration-500">
                                     <div className="flex items-center justify-between text-[10px]">
                                         <span className="text-muted-foreground flex items-center gap-1">
-                                            {idx === 3 ? <Bug className="h-2.5 w-2.5" /> : <GitBranch className="h-2.5 w-2.5" />}
-                                            {idx === 3 ? "Scouting Status:" : "Status:"}
+                                            {idx === 3 ? <Bug className="h-2.5 w-2.5" /> : idx === 6 ? <RefreshCcw className="h-2.5 w-2.5" /> : <GitBranch className="h-2.5 w-2.5" />}
+                                            {idx === 3 ? "Scouting Status:" : idx === 6 ? "Orchestrator Status:" : "Status:"}
                                         </span>
                                     </div>
                                     <div className="p-2 bg-primary/5 border border-primary/10 rounded-md text-center flex flex-col gap-2">

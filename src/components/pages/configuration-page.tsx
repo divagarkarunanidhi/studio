@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Settings, Cpu, FlaskConical, Loader2, ShieldAlert, Bug, GitBranch } from 'lucide-react';
+import { Settings, Cpu, FlaskConical, Loader2, ShieldAlert, Bug, GitBranch, RefreshCcw } from 'lucide-react';
 import { AppConfigurationSchema } from '@/lib/types';
 import type { AppConfiguration } from '@/lib/types';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -54,6 +54,7 @@ export function ConfigurationPage() {
       gitlabProjectId: '',
       gitlabBranch: 'main',
       gitlabFilePathPrefix: '',
+      gitlabPipelineScheduleDescription: '',
       autoLogoutEnabled: true,
       autoLogoutTime: 5
     },
@@ -481,6 +482,31 @@ export function ConfigurationPage() {
                     )}
                     />
                 </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <RefreshCcw className="h-5 w-5 text-primary" />
+                    Agent 7: Pipeline Orchestrator Settings
+                </h3>
+                <FormField
+                    control={form.control}
+                    name="gitlabPipelineScheduleDescription"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>GitLab Pipeline Schedule Description</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g. Self-Healing Rerun" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormDescription>
+                            The exact description (name) of the GitLab Pipeline Schedule to trigger.
+                        </FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
             </div>
 
             <Separator />
