@@ -85,7 +85,7 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 1, name: "Execution Fetcher", description: "Fetches latest execution JSON from Selenium Data Store (fallback to Confluence)." },
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
     { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using deterministic rules." },
-    { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for unique functional failures with screenshots." },
+    { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for functional failures with steps and screenshots." },
     { id: 5, name: "Prepare data for data Issue", description: "Identifies test data file from step output and prepares updated JSON with 'Agent: found'." },
     { id: 6, name: "GitLab Data Sync", description: "Automatically commits prepared test data updates back to GitLab repositories." },
     { id: 7, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines by calling specified pipeline schedules." },
@@ -452,13 +452,82 @@ export function AIAgentsPage() {
                 let successCount = 0;
                 for (const scenarioName of uniqueFailures) {
                     try {
+                        // 1. Find detailed scenario data for steps and screenshots
+                        let scenarioObj: any = null;
+                        reportRef.current?.data?.test_results?.some((f: any) => {
+                            scenarioObj = f.elements?.find((s: any) => s.name === scenarioName);
+                            return !!scenarioObj;
+                        });
+
+                        if (!scenarioObj) {
+                            addLog(agent.id, `Warning: Detailed data for ${scenarioName} not found.`);
+                            continue;
+                        }
+
+                        // 2. Build detailed description
+                        let description = "AI Automated Failure Report\n\nTest Steps:\n";
+                        let screenshotFile: File | null = null;
+                        let failureLog = "";
+
+                        scenarioObj.steps?.forEach((step: any, sIdx: number) => {
+                            const status = step.result?.status?.toUpperCase() || 'UNKNOWN';
+                            description += `${sIdx + 1}. [${status}] ${step.keyword}${step.name}\n`;
+                            
+                            if (status === 'FAILED') {
+                                failureLog = step.result?.error_message || "No logs captured.";
+                                
+                                // Extract first screenshot from failed step if available
+                                const embeddings = [
+                                    ...(step.embeddings || []), 
+                                    ...(step.result?.embeddings || [])
+                                ].filter((e: any) => e.mime_type?.startsWith('image/'));
+                                
+                                if (embeddings.length > 0 && !screenshotFile) {
+                                    const img = embeddings[0];
+                                    const byteCharacters = atob(img.data);
+                                    const byteNumbers = new Array(byteCharacters.length);
+                                    for (let i = 0; i < byteCharacters.length; i++) {
+                                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                    }
+                                    const byteArray = new Uint8Array(byteNumbers);
+                                    const blob = new Blob([byteArray], { type: img.mime_type });
+                                    screenshotFile = new File([blob], `failure_${scenarioName.replace(/\W+/g, '_')}.png`, { type: img.mime_type });
+                                }
+                            }
+                        });
+
+                        if (failureLog) {
+                            description += `\nDetailed Failure Logs:\n${failureLog}`;
+                        }
+
                         const formData = new FormData();
-                        formData.append('config', JSON.stringify({ jiraLink: configData?.jiraLink, jiraUser: configData?.jiraUser, jiraApiToken: configData?.jiraApiToken, jiraProjectKey: configData?.jiraProjectKey }));
-                        formData.append('issue', JSON.stringify({ summary: `AI FAILURE: ${scenarioName}`, description: `Scenario failed during automated execution.` }));
+                        formData.append('config', JSON.stringify({ 
+                            jiraLink: configData?.jiraLink, 
+                            jiraUser: configData?.jiraUser, 
+                            jiraApiToken: configData?.jiraApiToken, 
+                            jiraProjectKey: configData?.jiraProjectKey,
+                            jiraIssueType: configData?.jiraIssueType || 'Bug'
+                        }));
+                        formData.append('issue', JSON.stringify({ 
+                            summary: `AI FAILURE: ${scenarioName}`, 
+                            description: description 
+                        }));
+                        
+                        if (screenshotFile) {
+                            formData.append('screenshot', screenshotFile);
+                        }
+
                         const jiraRes = await fetch('/api/jira/create', { method: 'POST', body: formData });
                         const jiraResult = await jiraRes.json();
-                        if (jiraRes.ok && jiraResult.success) { addLog(agent.id, `Created Jira Ticket: ${jiraResult.key}`); successCount++; }
-                    } catch (e: any) {}
+                        if (jiraRes.ok && jiraResult.success) { 
+                            addLog(agent.id, `Created Jira Ticket: ${jiraResult.key}`); 
+                            successCount++; 
+                        } else {
+                            addLog(agent.id, `Jira API Error: ${jiraResult.error || 'Unknown'}`);
+                        }
+                    } catch (e: any) {
+                        addLog(agent.id, `Internal error creating Jira for ${scenarioName}: ${e.message}`);
+                    }
                 }
                 extra = `${successCount} Tickets Created`;
             } else { addLog(agent.id, "No functional failures identified."); }
