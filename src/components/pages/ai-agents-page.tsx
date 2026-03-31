@@ -692,7 +692,11 @@ export function AIAgentsPage() {
                                 <div className="flex gap-1">
                                     {idx === 3 && (
                                         <Dialog>
-                                            <DialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-primary"><Settings className="h-3.5 w-3.5" /></Button></DialogTrigger>
+                                            <DialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DialogTrigger>
                                             <DialogContent className="sm:max-w-[425px]">
                                                 <DialogHeader>
                                                     <div className="flex items-center justify-between">
@@ -711,7 +715,11 @@ export function AIAgentsPage() {
                                     )}
                                     {(idx === 4 || idx === 5) && (
                                         <Dialog>
-                                            <DialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-primary"><Settings className="h-3.5 w-3.5" /></Button></DialogTrigger>
+                                            <DialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DialogTrigger>
                                             <DialogContent className="sm:max-w-[425px]">
                                                 <DialogHeader>
                                                     <div className="flex items-center justify-between">
@@ -729,7 +737,11 @@ export function AIAgentsPage() {
                                     )}
                                     {idx === 6 && (
                                         <Dialog>
-                                            <DialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-primary"><Settings className="h-3.5 w-3.5" /></Button></DialogTrigger>
+                                            <DialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DialogTrigger>
                                             <DialogContent className="sm:max-w-[425px]">
                                                 <DialogHeader><DialogTitle>Orchestrator Configuration</DialogTitle></DialogHeader>
                                                 <div className="grid gap-4 py-4">
@@ -740,7 +752,11 @@ export function AIAgentsPage() {
                                     )}
                                     {idx === 7 && (
                                         <Dialog>
-                                            <DialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-primary"><Settings className="h-3.5 w-3.5" /></Button></DialogTrigger>
+                                            <DialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DialogTrigger>
                                             <DialogContent className="sm:max-w-[425px]">
                                                 <DialogHeader>
                                                     <div className="flex items-center justify-between">
@@ -848,6 +864,60 @@ export function AIAgentsPage() {
                                         </div>
                                     </button>
                                 ))}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Classification List Dialog */}
+            <Dialog open={!!classificationListView} onOpenChange={(open) => !open && setClassificationListView(null)}>
+                <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-4 border-b">
+                        <DialogTitle>{classificationListView?.title}</DialogTitle>
+                        <DialogDescription>Detailed list of failures categorized as {classificationListView?.classification}</DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-hidden">
+                        <ScrollArea className="h-full w-full p-4">
+                            <div className="space-y-4">
+                                {classificationListView?.items.map((item, i) => {
+                                    const scenario = scenariosRef.current.find(s => s.name === item.scenarioName);
+                                    return (
+                                        <div key={i} className="p-4 border rounded-lg bg-card space-y-3 shadow-sm">
+                                            <div className="flex justify-between items-start">
+                                                <h4 className="text-sm font-bold text-foreground">{item.scenarioName}</h4>
+                                                <Badge variant="outline" className="text-[10px] uppercase bg-primary/5">{item.classification}</Badge>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded border-l-4 border-primary">
+                                                <span className="font-semibold text-primary uppercase text-[9px] mr-1">AI Reasoning:</span>
+                                                {item.reasoning}
+                                            </div>
+                                            {scenario?.logs && (
+                                                <div className="space-y-1">
+                                                    <div className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                                                        <Terminal className="h-3 w-3" /> Failure Logs
+                                                    </div>
+                                                    <div className="bg-slate-950 p-3 rounded font-mono text-[10px] text-slate-300 overflow-x-auto border border-white/5">
+                                                        <pre className="whitespace-pre-wrap">{scenario.logs}</pre>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-end pt-1">
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    className="h-7 text-[10px] bg-primary/5 hover:bg-primary/10 border-primary/20" 
+                                                    onClick={() => {
+                                                        handleViewScenarioSteps(item.scenarioName);
+                                                        setClassificationListView(null);
+                                                    }}
+                                                >
+                                                    <Eye className="h-3 w-3 mr-1" /> View Full Step Trace
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </ScrollArea>
                     </div>
