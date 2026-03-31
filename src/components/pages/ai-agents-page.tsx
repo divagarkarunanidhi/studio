@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -230,7 +230,7 @@ export function AIAgentsPage() {
             } else {
                 toast({ 
                     variant: "destructive", 
-                    title: "GitLab Test Failed", 
+                    title: "Test Failed", 
                     description: result.error || "Could not connect to GitLab." 
                 });
             }
@@ -619,11 +619,19 @@ export function AIAgentsPage() {
         return classifierAgent?.classifications?.find(c => c.scenarioName === name);
     };
 
-    const filteredScenarios = scenarioListView?.scenarios?.filter(s => {
-        const matchesStatus = s.status === scenarioListView.status;
-        const matchesSearch = s.name.toLowerCase().includes(scenarioSearch.toLowerCase()) || s.tags.some(t => t.toLowerCase().includes(scenarioSearch.toLowerCase()));
-        return matchesStatus && matchesSearch;
-    }) || [];
+    const filteredScenarios = useMemo(() => {
+        if (!scenarioListView || !scenarioListView.scenarios) return [];
+        const searchStr = scenarioSearch.toLowerCase().trim();
+        return scenarioListView.scenarios.filter(s => {
+            const matchesStatus = s.status === scenarioListView.status;
+            if (!searchStr) return matchesStatus;
+            
+            const matchesName = s.name.toLowerCase().includes(searchStr);
+            const matchesTags = s.tags.some(tag => tag.toLowerCase().includes(searchStr));
+            
+            return matchesStatus && (matchesName || matchesTags);
+        });
+    }, [scenarioListView, scenarioSearch]);
 
     const isAnyAgentRunning = agents.some(a => a.status === 'running');
 
