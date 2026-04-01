@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
@@ -14,24 +14,21 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Settings, Cpu, FlaskConical, Loader2, ShieldAlert, Bug, GitBranch, RefreshCcw, Bell } from 'lucide-react';
+import { Settings, Cpu, FlaskConical, Loader2, ShieldAlert, Bug, GitBranch, RefreshCcw, Bell, Trash2, Plus } from 'lucide-react';
 import { AppConfigurationSchema } from '@/lib/types';
 import type { AppConfiguration } from '@/lib/types';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Separator } from '../ui/separator';
 import { Switch } from '../ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 export function ConfigurationPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const [isTestingMongo, setIsTestingMongo] = useState(false);
-  const [isTestingConfluence, setIsTestingConfluence] = useState(false);
-  const [isTestingJira, setIsTestingJira] = useState(false);
-  const [isTestingGitlab, setIsTestingGitlab] = useState(false);
   const [isTestingTeams, setIsTestingTeams] = useState(false);
 
-  const configRef = useMemoFirebase(() => doc(firestore, 'appConfiguration', 'global'), [firestore]);
-  const { data: configData, isLoading: isConfigLoading, error: configError } = useDoc<AppConfiguration>(configRef);
+  const configRef = useMemoFirebase(() => (firestore ? doc(firestore, 'appConfiguration', 'global') : null), [firestore]);
+  const { data: configData, isLoading: isConfigLoading } = useDoc<AppConfiguration>(configRef);
 
   const form = useForm<AppConfiguration>({
     resolver: zodResolver(AppConfigurationSchema),
@@ -57,9 +54,15 @@ export function ConfigurationPage() {
       gitlabFilePathPrefix: '',
       gitlabPipelineScheduleDescription: '',
       teamsWebhookUrl: '',
+      failureRules: [],
       autoLogoutEnabled: true,
       autoLogoutTime: 5
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "failureRules"
   });
 
   useEffect(() => {
@@ -104,7 +107,7 @@ export function ConfigurationPage() {
     <Card>
       <CardHeader>
         <CardTitle>Application Configuration</CardTitle>
-        <CardDescription>Manage global application settings, API keys, and session policies.</CardDescription>
+        <CardDescription>Manage global application settings, API keys, and automated classification rules.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -118,6 +121,48 @@ export function ConfigurationPage() {
                     <FormField control={form.control} name="mongodbUri" render={({ field }) => (
                         <FormItem><FormLabel>MongoDB URI</FormLabel><FormControl><Input type="password" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                     )} />
+                </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-amber-600" /> Failure Classifier Rules</h3>
+                <p className="text-sm text-muted-foreground">Define patterns in execution logs to automatically categorize failures.</p>
+                <div className="space-y-3">
+                    {fields.map((field, index) => (
+                        <div key={field.id} className="flex items-end gap-3 p-3 border rounded-md bg-muted/20">
+                            <FormField control={form.control} name={`failureRules.${index}.pattern`} render={({ field }) => (
+                                <FormItem className="flex-1">
+                                    <FormLabel className="text-xs">Log Pattern</FormLabel>
+                                    <FormControl><Input {...field} placeholder="e.g. timeout" className="h-8 text-xs" /></FormControl>
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name={`failureRules.${index}.category`} render={({ field }) => (
+                                <FormItem className="w-48">
+                                    <FormLabel className="text-xs">Category</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="Functional Issue">Functional Issue</SelectItem>
+                                            <SelectItem value="Data Issue">Data Issue</SelectItem>
+                                            <SelectItem value="Environment Issue">Environment Issue</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )} />
+                            <Button type="button" variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => remove(index)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => append({ pattern: '', category: 'Functional Issue' })}>
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Add Classification Rule
+                    </Button>
                 </div>
             </div>
 
@@ -145,20 +190,6 @@ export function ConfigurationPage() {
                     )} />
                     <FormField control={form.control} name="jiraProjectKey" render={({ field }) => (
                         <FormItem><FormLabel>Project Key</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2"><GitBranch className="h-5 w-5 text-indigo-600" /> GitLab Sync Configuration</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="gitlabToken" render={({ field }) => (
-                        <FormItem><FormLabel>Private Token</FormLabel><FormControl><Input type="password" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="gitlabProjectId" render={({ field }) => (
-                        <FormItem><FormLabel>Project ID</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
             </div>

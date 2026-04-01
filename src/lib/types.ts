@@ -16,6 +16,13 @@ export const DefectSchema = z.object({
 
 export type Defect = z.infer<typeof DefectSchema>;
 
+export const FailureRuleSchema = z.object({
+    pattern: z.string().min(1, 'Pattern is required'),
+    category: z.enum(['Functional Issue', 'Data Issue', 'Environment Issue']),
+});
+
+export type FailureRule = z.infer<typeof FailureRuleSchema>;
+
 export const AppConfigurationSchema = z.object({
     geminiApiKey: z.string().min(1, 'Gemini API Key is required.'),
     mongodbUri: z.string().min(1, 'MongoDB URI is required.'),
@@ -42,6 +49,8 @@ export const AppConfigurationSchema = z.object({
     gitlabPipelineScheduleDescription: z.string().optional().nullable(),
     // Notification Settings
     teamsWebhookUrl: z.string().optional().nullable(),
+    // Failure Classifier Rules
+    failureRules: z.array(FailureRuleSchema).optional().default([]),
     // Session Settings
     autoLogoutEnabled: z.boolean().default(true),
     autoLogoutTime: z.number().min(1, 'Logout time must be at least 1 minute.').default(5),

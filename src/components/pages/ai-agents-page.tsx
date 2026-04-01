@@ -35,14 +35,16 @@ import {
     ListChecks,
     GitBranch,
     MessageSquare,
-    Info
+    Info,
+    Plus,
+    Trash2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { AppConfiguration, FailureClassificationOutput } from '@/lib/types';
+import type { AppConfiguration, FailureClassificationOutput, FailureRule } from '@/lib/types';
 import {
     Dialog,
     DialogContent,
@@ -58,6 +60,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface AgentMetrics {
     total: number;
@@ -121,6 +124,10 @@ export function AIAgentsPage() {
     const [selectedScenarioSteps, setSelectedScenarioSteps] = useState<any | null>(null);
     const [scenarioSearch, setScenarioListViewSearch] = useState("");
     
+    // Failure Rules Edit State
+    const [newPattern, setNewPattern] = useState("");
+    const [newCategory, setNewCategory] = useState<'Functional Issue' | 'Data Issue' | 'Environment Issue'>('Functional Issue');
+
     const reportRef = useRef<{ name: string, data: any } | null>(null);
     const scenariosRef = useRef<AgentMetrics['scenarios']>([]);
     const classificationsRef = useRef<FailureClassificationOutput['classifications']>([]);
@@ -154,13 +161,27 @@ export function AIAgentsPage() {
         scrollToBottom();
     }, [agents]);
 
-    const handleUpdateConfig = (key: string, value: string) => {
+    const handleUpdateConfig = (key: string, value: any) => {
         if (!configRef) return;
         setDocumentNonBlocking(configRef, { [key]: value }, { merge: true });
         toast({
             title: "Settings Updated",
-            description: `${key} has been saved.`
+            description: "Configuration has been saved."
         });
+    };
+
+    const handleAddFailureRule = () => {
+        if (!newPattern) return;
+        const currentRules = configData?.failureRules || [];
+        const updatedRules = [...currentRules, { pattern: newPattern, category: newCategory }];
+        handleUpdateConfig('failureRules', updatedRules);
+        setNewPattern("");
+    };
+
+    const handleRemoveFailureRule = (index: number) => {
+        const currentRules = configData?.failureRules || [];
+        const updatedRules = currentRules.filter((_, i) => i !== index);
+        handleUpdateConfig('failureRules', updatedRules);
     };
 
     const handleTestJira = async () => {
@@ -422,19 +443,45 @@ export function AIAgentsPage() {
         } else if (agent.id === 3) {
             addLog(agent.id, "Initializing Failure Classifier (Rule-Based Mode)...");
             const failedScenarios = scenariosRef.current?.filter(s => s.status?.toLowerCase() === 'failed') || [];
+            const userRules = configData?.failureRules || [];
+
             if (failedScenarios.length > 0) {
                 const results: FailureClassificationOutput['classifications'] = [];
                 let fCount = 0, dCount = 0, eCount = 0;
+                
                 failedScenarios.forEach(s => {
                     const errorLogs = s.logs || '';
-                    let category: 'Functional Issue' | 'Data Issue' | 'Environment Issue' = 'Data Issue';
-                    let reason = "Classified as Data Issue based on typical failure context.";
-                    if (errorLogs.includes("java.lang.AssertionError: Total Number of Order Failed to Plan :")) { category = 'Functional Issue'; reason = "Explicit Rule Trigger: 'Order Failed to Plan'."; } 
-                    else if (errorLogs.toLowerCase().includes("assertionerror") || errorLogs.toLowerCase().includes("mismatch")) { category = 'Functional Issue'; reason = "Assertion failure detected."; }
-                    else if (errorLogs.includes("503") || errorLogs.includes("502")) { category = 'Environment Issue'; reason = "Network or infrastructure error detected."; }
+                    let category: 'Functional Issue' | 'Data Issue' | 'Environment Issue' | null = null;
+                    let reason = "";
+
+                    // 1. Check user-defined rules first
+                    const matchedRule = userRules.find(rule => errorLogs.includes(rule.pattern));
+                    if (matchedRule) {
+                        category = matchedRule.category;
+                        reason = `Matched User Rule: "${matchedRule.pattern}"`;
+                    } else {
+                        // 2. Fallback to hardcoded heuristics if no user rule matches
+                        if (errorLogs.includes("java.lang.AssertionError: Total Number of Order Failed to Plan :")) { 
+                            category = 'Functional Issue'; 
+                            reason = "Explicit System Rule: 'Order Failed to Plan'."; 
+                        } 
+                        else if (errorLogs.toLowerCase().includes("assertionerror") || errorLogs.toLowerCase().includes("mismatch")) { 
+                            category = 'Functional Issue'; 
+                            reason = "Assertion failure detected."; 
+                        }
+                        else if (errorLogs.includes("503") || errorLogs.includes("502")) { 
+                            category = 'Environment Issue'; 
+                            reason = "Network or infrastructure error detected."; 
+                        } else {
+                            category = 'Data Issue';
+                            reason = "Defaulted to Data Issue based on typical failure context.";
+                        }
+                    }
+
                     if (category === 'Functional Issue') fCount++; else if (category === 'Data Issue') dCount++; else eCount++;
                     results.push({ scenarioName: s.name, classification: category, reasoning: reason });
                 });
+                
                 classificationSummary = { functionalCount: fCount, dataCount: dCount, environmentCount: eCount };
                 classifications = results;
                 classificationsRef.current = classifications;
@@ -683,11 +730,6 @@ export function AIAgentsPage() {
         if (foundScenario) setSelectedScenarioSteps(foundScenario);
     };
 
-    const getClassificationForScenario = (name: string) => {
-        const classifierAgent = agents.find(a => a.id === 3);
-        return classifierAgent?.classifications?.find(c => c.scenarioName === name);
-    };
-
     const filteredScenarios = useMemo(() => {
         if (!scenarioListView || !scenarioListView.scenarios) return [];
         const searchStr = scenarioSearch.toLowerCase().trim();
@@ -759,6 +801,80 @@ export function AIAgentsPage() {
                                     {idx === 7 && <MessageSquare className="h-4 w-4 text-primary" />}
                                 </div>
                                 <div className="flex gap-1">
+                                    {idx === 2 && (
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
+                                                    <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-2xl">
+                                                <DialogHeader>
+                                                    <DialogTitle>Failure Classification Rules</DialogTitle>
+                                                    <DialogDescription>Define patterns in error logs to automatically categorize test failures.</DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="flex items-end gap-2 bg-muted/50 p-3 rounded-lg border">
+                                                        <div className="flex-1 space-y-1.5">
+                                                            <Label className="text-xs">Error Log Pattern (Substring)</Label>
+                                                            <Input 
+                                                                placeholder="e.g. timeout, 503, java.lang.AssertionError" 
+                                                                value={newPattern}
+                                                                onChange={(e) => setNewPattern(e.target.value)}
+                                                                className="h-8 text-xs"
+                                                            />
+                                                        </div>
+                                                        <div className="w-40 space-y-1.5">
+                                                            <Label className="text-xs">Assign Category</Label>
+                                                            <Select value={newCategory} onValueChange={(val: any) => setNewCategory(val)}>
+                                                                <SelectTrigger className="h-8 text-xs">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Functional Issue">Functional Issue</SelectItem>
+                                                                    <SelectItem value="Data Issue">Data Issue</SelectItem>
+                                                                    <SelectItem value="Environment Issue">Environment Issue</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <Button size="sm" className="h-8" onClick={handleAddFailureRule}><Plus className="h-3.5 w-3.5 mr-1" /> Add</Button>
+                                                    </div>
+
+                                                    <ScrollArea className="h-64 rounded-md border bg-card">
+                                                        <Table>
+                                                            <TableHeader className="bg-muted/30">
+                                                                <TableRow>
+                                                                    <TableHead className="text-[10px] uppercase">Pattern</TableHead>
+                                                                    <TableHead className="text-[10px] uppercase">Target Category</TableHead>
+                                                                    <TableHead className="w-10"></TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {(configData?.failureRules || []).map((rule, i) => (
+                                                                    <TableRow key={i} className="group">
+                                                                        <TableCell className="font-mono text-[10px] py-2">{rule.pattern}</TableCell>
+                                                                        <TableCell className="py-2">
+                                                                            <Badge variant="outline" className="text-[9px] uppercase px-1.5">{rule.category}</Badge>
+                                                                        </TableCell>
+                                                                        <TableCell className="py-2">
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => handleRemoveFailureRule(i)}>
+                                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                                            </Button>
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                ))}
+                                                                {(configData?.failureRules || []).length === 0 && (
+                                                                    <TableRow>
+                                                                        <TableCell colSpan={3} className="text-center text-xs text-muted-foreground py-8">No custom rules defined yet.</TableCell>
+                                                                    </TableRow>
+                                                                )}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </ScrollArea>
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
                                     {idx === 3 && (
                                         <Dialog>
                                             <DialogTrigger asChild>
