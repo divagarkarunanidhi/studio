@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -151,6 +150,7 @@ export function ConfigurationPage() {
                                             <SelectItem value="Functional Issue">Functional Issue</SelectItem>
                                             <SelectItem value="Data Issue">Data Issue</SelectItem>
                                             <SelectItem value="Environment Issue">Environment Issue</SelectItem>
+                                            <SelectItem value="Automation script issue">Automation script issue</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </FormItem>

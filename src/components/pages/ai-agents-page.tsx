@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -87,7 +86,7 @@ interface AgentStatus {
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 1, name: "Execution Fetcher", description: "Fetches latest execution JSON from Selenium Data Store (fallback to Confluence)." },
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
-    { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional Issues or Data Issues using deterministic rules." },
+    { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional, Data, Environment, or Automation issues." },
     { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for functional failures with steps and screenshots." },
     { id: 5, name: "Prepare data for data Issue", description: "Identifies test data file from step output and prepares updated JSON with 'Agent: found'." },
     { id: 6, name: "GitLab Data Sync", description: "Automatically commits prepared test data updates back to GitLab repositories." },
@@ -126,7 +125,7 @@ export function AIAgentsPage() {
     
     // Failure Rules Edit State
     const [newPattern, setNewPattern] = useState("");
-    const [newCategory, setNewCategory] = useState<'Functional Issue' | 'Data Issue' | 'Environment Issue'>('Functional Issue');
+    const [newCategory, setNewCategory] = useState<'Functional Issue' | 'Data Issue' | 'Environment Issue' | 'Automation script issue'>('Functional Issue');
 
     const reportRef = useRef<{ name: string, data: any } | null>(null);
     const scenariosRef = useRef<AgentMetrics['scenarios']>([]);
@@ -447,11 +446,11 @@ export function AIAgentsPage() {
 
             if (failedScenarios.length > 0) {
                 const results: FailureClassificationOutput['classifications'] = [];
-                let fCount = 0, dCount = 0, eCount = 0;
+                let fCount = 0, dCount = 0, eCount = 0, aCount = 0;
                 
                 failedScenarios.forEach(s => {
                     const errorLogs = s.logs || '';
-                    let category: 'Functional Issue' | 'Data Issue' | 'Environment Issue' | null = null;
+                    let category: 'Functional Issue' | 'Data Issue' | 'Environment Issue' | 'Automation script issue' | null = null;
                     let reason = "";
 
                     // 1. Check user-defined rules first
@@ -478,16 +477,20 @@ export function AIAgentsPage() {
                         }
                     }
 
-                    if (category === 'Functional Issue') fCount++; else if (category === 'Data Issue') dCount++; else eCount++;
-                    results.push({ scenarioName: s.name, classification: category, reasoning: reason });
+                    if (category === 'Functional Issue') fCount++; 
+                    else if (category === 'Data Issue') dCount++; 
+                    else if (category === 'Environment Issue') eCount++;
+                    else if (category === 'Automation script issue') aCount++;
+
+                    results.push({ scenarioName: s.name, classification: category || 'Functional Issue', reasoning: reason });
                 });
                 
-                classificationSummary = { functionalCount: fCount, dataCount: dCount, environmentCount: eCount };
+                classificationSummary = { functionalCount: fCount, dataCount: dCount, environmentCount: eCount, automationCount: aCount };
                 classifications = results;
                 classificationsRef.current = classifications;
-                addLog(agent.id, `Classification Summary: ${fCount} Functional, ${dCount} Data, ${eCount} Environment.`);
+                addLog(agent.id, `Classification Summary: ${fCount} Functional, ${dCount} Data, ${eCount} Environment, ${aCount} Automation.`);
             } else {
-                classificationSummary = { functionalCount: 0, dataCount: 0, environmentCount: 0 };
+                classificationSummary = { functionalCount: 0, dataCount: 0, environmentCount: 0, automationCount: 0 };
                 classifications = [];
                 classificationsRef.current = [];
             }
@@ -834,6 +837,7 @@ export function AIAgentsPage() {
                                                                     <SelectItem value="Functional Issue">Functional Issue</SelectItem>
                                                                     <SelectItem value="Data Issue">Data Issue</SelectItem>
                                                                     <SelectItem value="Environment Issue">Environment Issue</SelectItem>
+                                                                    <SelectItem value="Automation script issue">Automation script issue</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>
@@ -976,10 +980,11 @@ export function AIAgentsPage() {
                                 </div>
                             )}
                             {idx === 2 && agent.classificationSummary && (
-                                <div className="grid grid-cols-3 gap-1.5">
+                                <div className="grid grid-cols-2 gap-1.5">
                                     <button className="bg-red-500/10 border border-red-200 rounded p-1 text-center" onClick={() => handleOpenClassificationList('Functional Issues', 'Functional Issue', agent.classifications)}><div className="text-[7px] text-red-600 font-semibold uppercase">Func</div><div className="text-xs font-bold text-red-700">{agent.classificationSummary.functionalCount}</div></button>
                                     <button className="bg-amber-500/10 border border-amber-200 rounded p-1 text-center" onClick={() => handleOpenClassificationList('Data Issues', 'Data Issue', agent.classifications)}><div className="text-[7px] text-amber-600 font-semibold uppercase">Data</div><div className="text-xs font-bold text-amber-700">{agent.classificationSummary.dataCount}</div></button>
                                     <button className="bg-blue-500/10 border border-blue-200 rounded p-1 text-center" onClick={() => handleOpenClassificationList('Env. Issues', 'Environment Issue', agent.classifications)}><div className="text-[7px] text-blue-600 font-semibold uppercase">Env</div><div className="text-xs font-bold text-blue-700">{agent.classificationSummary.environmentCount}</div></button>
+                                    <button className="bg-purple-500/10 border border-purple-200 rounded p-1 text-center" onClick={() => handleOpenClassificationList('Automation Issues', 'Automation script issue', agent.classifications)}><div className="text-[7px] text-purple-600 font-semibold uppercase">Auto</div><div className="text-xs font-bold text-purple-700">{agent.classificationSummary.automationCount}</div></button>
                                 </div>
                             )}
                             {(idx >= 3) && agent.extraInfo && (
