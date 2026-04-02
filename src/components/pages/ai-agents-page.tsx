@@ -490,7 +490,6 @@ export function AIAgentsPage() {
                         }
                     } catch (e: any) {
                         addLog(agent.id, `AI Analytics Error: ${e.message}. Falling back to standard heuristics.`);
-                        // ... fallback logic if AI fails ...
                     }
                 }
                 
@@ -511,7 +510,6 @@ export function AIAgentsPage() {
                 let successCount = 0;
                 for (const scenarioName of uniqueFailures) {
                     try {
-                        // 1. Find detailed scenario data for steps and screenshots
                         let scenarioObj: any = null;
                         reportRef.current?.data?.test_results?.some((f: any) => {
                             scenarioObj = f.elements?.find((s: any) => s.name === scenarioName);
@@ -523,7 +521,6 @@ export function AIAgentsPage() {
                             continue;
                         }
 
-                        // 2. Build detailed description
                         let description = "AI Automated Failure Report\n\nTest Steps:\n";
                         let screenshotFile: File | null = null;
                         let failureLog = "";
@@ -534,8 +531,6 @@ export function AIAgentsPage() {
                             
                             if (status === 'FAILED') {
                                 failureLog = step.result?.error_message || "No logs captured.";
-                                
-                                // Extract first screenshot from failed step if available
                                 const embeddings = [
                                     ...(step.embeddings || []), 
                                     ...(step.result?.embeddings || [])
@@ -571,10 +566,7 @@ export function AIAgentsPage() {
                             summary: `AI FAILURE: ${scenarioName}`, 
                             description: description 
                         }));
-                        
-                        if (screenshotFile) {
-                            formData.append('screenshot', screenshotFile);
-                        }
+                        if (screenshotFile) formData.append('screenshot', screenshotFile);
 
                         const jiraRes = await fetch('/api/jira/create', { method: 'POST', body: formData });
                         const jiraResult = await jiraRes.json();
@@ -615,32 +607,70 @@ export function AIAgentsPage() {
                     });
                 }
                 if (testDataFullGitPath) {
-                    let totalPrepared = 0;
-                    let lastContent = null;
-                    for (const f of dataFailures) {
-                        try {
-                            const prepRes = await fetch('/api/gitlab/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: configData?.gitlabToken, projectId: configData?.gitlabProjectId, branch: configData?.gitlabBranch, filePath: testDataFullGitPath, scenarioName: f.scenarioName }) });
-                            const result = await prepRes.json();
-                            if (prepRes.ok && result.success) { totalPrepared++; lastContent = JSON.stringify(result.updatedContent, null, 2); }
-                        } catch (e) {}
+                    addLog(agent.id, `Targeting test data file: ${testDataFullGitPath}`);
+                    const scenarioNames = dataFailures.map(f => f.scenarioName);
+                    try {
+                        const prepRes = await fetch('/api/gitlab/update', { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' }, 
+                            body: JSON.stringify({ 
+                                token: configData?.gitlabToken, 
+                                projectId: configData?.gitlabProjectId, 
+                                branch: configData?.gitlabBranch, 
+                                filePath: testDataFullGitPath, 
+                                scenarioNames 
+                            }) 
+                        });
+                        const result = await prepRes.json();
+                        if (prepRes.ok && result.success) { 
+                            addLog(agent.id, `Successfully injected "Agent: found" for ${result.updateCount} scenarios.`);
+                            const contentStr = JSON.stringify(result.updatedContent, null, 2);
+                            preparedContentRef.current = { content: contentStr, filePath: testDataFullGitPath };
+                            updatedContent = contentStr;
+                            targetFilePath = testDataFullGitPath;
+                            extra = `${result.updateCount} Scenarios Prepared`;
+                        } else {
+                            addLog(agent.id, `Preparation Error: ${result.error || 'Scenarios not found in file.'}`);
+                            executionStatus = 'error';
+                        }
+                    } catch (e: any) {
+                        addLog(agent.id, `GitLab Sync Error: ${e.message}`);
+                        executionStatus = 'error';
                     }
-                    if (totalPrepared > 0) {
-                        preparedContentRef.current = { content: lastContent!, filePath: testDataFullGitPath };
-                        updatedContent = lastContent!;
-                        targetFilePath = testDataFullGitPath;
-                        extra = `${totalPrepared} Scenarios Prepared`;
-                    } else { executionStatus = 'error'; }
-                } else { executionStatus = 'error'; }
+                } else { 
+                    addLog(agent.id, "No test data file path detected in execution outputs.");
+                    executionStatus = 'error'; 
+                }
+            } else {
+                addLog(agent.id, "No data issues found to repair.");
             }
         } else if (agent.id === 6) {
             addLog(agent.id, "Initializing GitLab Data Sync...");
             if (preparedContentRef.current) {
                 try {
-                    const commitRes = await fetch('/api/gitlab/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: configData?.gitlabToken, projectId: configData?.gitlabProjectId, branch: configData?.gitlabBranch, filePath: preparedContentRef.current.filePath, content: preparedContentRef.current.content }) });
+                    const commitRes = await fetch('/api/gitlab/commit', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ 
+                            token: configData?.gitlabToken, 
+                            projectId: configData?.gitlabProjectId, 
+                            branch: configData?.gitlabBranch, 
+                            filePath: preparedContentRef.current.filePath, 
+                            content: preparedContentRef.current.content 
+                        }) 
+                    });
                     const result = await commitRes.json();
-                    if (commitRes.ok && result.success) { extra = "Data Synchronized"; updatedContent = preparedContentRef.current.content; }
-                    else executionStatus = 'error';
+                    if (commitRes.ok && result.success) { 
+                        addLog(agent.id, `Committed changes to ${preparedContentRef.current.filePath}. Hash: ${result.commitHash?.substring(0,8)}`);
+                        extra = "Data Synchronized"; 
+                        updatedContent = preparedContentRef.current.content; 
+                    } else {
+                        addLog(agent.id, `GitLab Commit Error: ${result.error}`);
+                        executionStatus = 'error';
+                    }
                 } catch (e) { executionStatus = 'error'; }
+            } else {
+                addLog(agent.id, "No prepared content found to sync.");
             }
         } else if (agent.id === 7) {
             addLog(agent.id, "Initializing Pipeline Orchestrator...");
@@ -748,10 +778,8 @@ export function AIAgentsPage() {
         return scenarioListView.scenarios.filter(s => {
             const matchesStatus = s.status === scenarioListView.status;
             if (!searchStr) return matchesStatus;
-            
             const matchesName = s.name.toLowerCase().includes(searchStr);
             const matchesTags = s.tags.some(tag => tag.toLowerCase().includes(searchStr));
-            
             return matchesStatus && (matchesName || matchesTags);
         });
     }, [scenarioListView, scenarioSearch]);
@@ -852,7 +880,6 @@ export function AIAgentsPage() {
                                                         </div>
                                                         <Button size="sm" className="h-8" onClick={handleAddFailureRule}><Plus className="h-3.5 w-3.5 mr-1" /> Add</Button>
                                                     </div>
-
                                                     <ScrollArea className="h-64 rounded-md border bg-card">
                                                         <Table>
                                                             <TableHeader className="bg-muted/30">
@@ -1031,7 +1058,6 @@ export function AIAgentsPage() {
                 </CardContent>
             </Card>
 
-            {/* Preview Dialog */}
             <Dialog open={!!previewReport} onOpenChange={(open) => !open && setPreviewReport(null)}>
                 <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-4 border-b"><DialogTitle>Data Preview: {previewReport?.name}</DialogTitle></DialogHeader>
@@ -1040,7 +1066,6 @@ export function AIAgentsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Scenario List Dialog */}
             <Dialog open={!!scenarioListView} onOpenChange={(open) => !open && setScenarioListView(null)}>
                 <DialogContent className="max-w-3xl h-[70vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-4 border-b"><DialogTitle>{scenarioListView?.title}</DialogTitle></DialogHeader>
@@ -1069,7 +1094,6 @@ export function AIAgentsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Classification List Dialog */}
             <Dialog open={!!classificationListView} onOpenChange={(open) => !open && setClassificationListView(null)}>
                 <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-4 border-b">
@@ -1080,7 +1104,7 @@ export function AIAgentsPage() {
                         <ScrollArea className="h-full w-full p-4">
                             <div className="space-y-4">
                                 {classificationListView?.items.map((item, i) => {
-                                    const scenario = scenariosRef.current.find(s => s.name === item.scenarioName);
+                                    const scenario = scenariosRef.current?.find(s => s.name === item.scenarioName);
                                     return (
                                         <div key={i} className="p-4 border rounded-lg bg-card space-y-3 shadow-sm">
                                             <div className="flex justify-between items-start">
@@ -1123,7 +1147,6 @@ export function AIAgentsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Steps Detail Dialog */}
             <Dialog open={!!selectedScenarioSteps} onOpenChange={(open) => !open && setSelectedScenarioSteps(null)}>
                 <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-4 border-b"><DialogTitle>Step Trace: {selectedScenarioSteps?.name}</DialogTitle></DialogHeader>

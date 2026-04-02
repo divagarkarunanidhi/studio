@@ -12,7 +12,7 @@ import type { FailureClassificationOutput } from '@/lib/types';
 
 /**
  * Uses Advanced AI Analytics to analyze failure logs and identify root cause categories.
- * Mimics machine learning Natural Language Processing (NLP) models.
+ * Mimics machine learning Natural Language Processing (NLP) models like spaCy and Scikit-Learn.
  */
 export async function classifyFailures(failuresJson: string): Promise<FailureClassificationOutput> {
     const result = await failureClassificationFlow(failuresJson);
@@ -26,16 +26,17 @@ const prompt = ai.definePrompt({
     prompt: `You are an expert Data Scientist specializing in Software Quality Assurance Analytics. 
     You have been provided with a JSON array containing failure logs for multiple test scenarios.
     
-    Your task is to apply Natural Language Processing (NLP) concepts to classify each failure into one of four categories based on the error signatures and patterns:
+    Your task is to apply Natural Language Processing (NLP) concepts—similar to those used in Scikit-Learn and spaCy—to classify each failure into one of four categories based on the semantic error signatures:
     
-    1. **Functional Issue**: The application logic failed. Business rule assertions failed. System level errors (500).
-    2. **Data Issue**: Missing/incorrect test data. "Element not found" when it implies data dependencies. "Expected value X but found Y" where X/Y are dynamic data.
+    1. **Functional Issue**: The application logic failed. Business rule assertions failed. System level errors (500). Examples: "Expected 5 but found 3", "AssertionError in Planning".
+    2. **Data Issue**: Missing/incorrect test data. "Element not found" when it implies data dependencies. "Expected value X but found Y" where X/Y are dynamic data records.
     3. **Environment Issue**: Infrastructure failures. Timeouts (Connection/Read), 503/504 errors, network resets, database unreachable.
     4. **Automation script issue**: The test script itself is brittle or broken. CSS/Xpath selector changed, driver sync issues, coding errors in the test steps.
     
     CRITICAL INSTRUCTIONS:
-    - Analyze the SEMANTIC meaning of the logs, not just keywords.
-    - For EVERY scenario provided, return the name, the classification, and a logical reasoning based on "Machine Learning" pattern matching.
+    - Perform a FEATURE EXTRACTION analysis on the logs (look for keywords, error codes, and stack trace signatures).
+    - Use SEMANTIC VECTOR CLUSTERING logic: group similar error meanings even if words differ.
+    - For EVERY scenario provided, return the name, the classification, and a logical reasoning based on pattern matching.
     - Provide a final summary count for each category.
     - The SUM of functionalCount + dataCount + environmentCount + automationCount MUST exactly equal the number of scenario objects provided in the input JSON.
     
