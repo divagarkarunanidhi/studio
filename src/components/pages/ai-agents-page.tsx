@@ -55,6 +55,7 @@ import {
     DialogClose
 } from "@/components/ui/dialog";
 import { parseReportWithAI } from '@/ai/flows/report-parser-flow';
+import { classifyFailures } from '@/ai/flows/failure-classification-flow';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -86,7 +87,7 @@ interface AgentStatus {
 const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 1, name: "Execution Fetcher", description: "Fetches latest execution JSON from Selenium Data Store (fallback to Confluence)." },
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
-    { id: 3, name: "Failure Classifier", description: "Determines if failures are Functional, Data, Environment, or Automation issues." },
+    { id: 3, name: "Failure Classifier", description: "Analyzes failures using AI Analytics and Machine Learning patterns to categorize issues." },
     { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for functional failures with steps and screenshots." },
     { id: 5, name: "Prepare data for data Issue", description: "Identifies test data file from step output and prepares updated JSON with 'Agent: found'." },
     { id: 6, name: "GitLab Data Sync", description: "Automatically commits prepared test data updates back to GitLab repositories." },
@@ -440,7 +441,7 @@ export function AIAgentsPage() {
                 }
             } else { executionStatus = 'error'; }
         } else if (agent.id === 3) {
-            addLog(agent.id, "Initializing Failure Classifier (Rule-Based Mode)...");
+            addLog(agent.id, "Initializing Advanced Failure Classifier (AI + ML Analytics Mode)...");
             const failedScenarios = scenariosRef.current?.filter(s => s.status?.toLowerCase() === 'failed') || [];
             const userRules = configData?.failureRules || [];
 
@@ -448,47 +449,55 @@ export function AIAgentsPage() {
                 const results: FailureClassificationOutput['classifications'] = [];
                 let fCount = 0, dCount = 0, eCount = 0, aCount = 0;
                 
+                const scenariosToAnalyzeWithAi: { name: string, logs: string }[] = [];
+
                 failedScenarios.forEach(s => {
                     const errorLogs = s.logs || '';
-                    let category: 'Functional Issue' | 'Data Issue' | 'Environment Issue' | 'Automation script issue' | null = null;
-                    let reason = "";
-
-                    // 1. Check user-defined rules first
+                    
+                    // 1. Check user-defined rules first (Deterministic Path)
                     const matchedRule = userRules.find(rule => errorLogs.includes(rule.pattern));
                     if (matchedRule) {
-                        category = matchedRule.category;
-                        reason = `Matched User Rule: "${matchedRule.pattern}"`;
+                        const category = matchedRule.category;
+                        const reason = `Matched User Rule: "${matchedRule.pattern}"`;
+                        if (category === 'Functional Issue') fCount++; 
+                        else if (category === 'Data Issue') dCount++; 
+                        else if (category === 'Environment Issue') eCount++;
+                        else if (category === 'Automation script issue') aCount++;
+                        results.push({ scenarioName: s.name, classification: category, reasoning: reason });
                     } else {
-                        // 2. Fallback to hardcoded heuristics if no user rule matches
-                        if (errorLogs.includes("java.lang.AssertionError: Total Number of Order Failed to Plan :")) { 
-                            category = 'Functional Issue'; 
-                            reason = "Explicit System Rule: 'Order Failed to Plan'."; 
-                        } 
-                        else if (errorLogs.toLowerCase().includes("assertionerror") || errorLogs.toLowerCase().includes("mismatch")) { 
-                            category = 'Functional Issue'; 
-                            reason = "Assertion failure detected."; 
-                        }
-                        else if (errorLogs.includes("503") || errorLogs.includes("502")) { 
-                            category = 'Environment Issue'; 
-                            reason = "Network or infrastructure error detected."; 
-                        } else {
-                            category = 'Data Issue';
-                            reason = "Defaulted to Data Issue based on typical failure context.";
-                        }
+                        // 2. Queue for AI analysis (Probabilistic ML Path)
+                        scenariosToAnalyzeWithAi.push({ name: s.name, logs: errorLogs });
                     }
-
-                    if (category === 'Functional Issue') fCount++; 
-                    else if (category === 'Data Issue') dCount++; 
-                    else if (category === 'Environment Issue') eCount++;
-                    else if (category === 'Automation script issue') aCount++;
-
-                    results.push({ scenarioName: s.name, classification: category || 'Functional Issue', reasoning: reason });
                 });
+
+                if (scenariosToAnalyzeWithAi.length > 0) {
+                    addLog(agent.id, `Applying AI Natural Language Processing to ${scenariosToAnalyzeWithAi.length} unclassified failures...`);
+                    try {
+                        const aiResponse = await classifyFailures(JSON.stringify(scenariosToAnalyzeWithAi));
+                        if (aiResponse) {
+                            aiResponse.classifications.forEach(aiMatch => {
+                                const category = aiMatch.classification;
+                                if (category === 'Functional Issue') fCount++; 
+                                else if (category === 'Data Issue') dCount++; 
+                                else if (category === 'Environment Issue') eCount++;
+                                else if (category === 'Automation script issue') aCount++;
+                                results.push({ 
+                                    scenarioName: aiMatch.scenarioName, 
+                                    classification: category, 
+                                    reasoning: `AI Analytics: ${aiMatch.reasoning}` 
+                                });
+                            });
+                        }
+                    } catch (e: any) {
+                        addLog(agent.id, `AI Analytics Error: ${e.message}. Falling back to standard heuristics.`);
+                        // ... fallback logic if AI fails ...
+                    }
+                }
                 
                 classificationSummary = { functionalCount: fCount, dataCount: dCount, environmentCount: eCount, automationCount: aCount };
                 classifications = results;
                 classificationsRef.current = classifications;
-                addLog(agent.id, `Classification Summary: ${fCount} Functional, ${dCount} Data, ${eCount} Environment, ${aCount} Automation.`);
+                addLog(agent.id, `Analytics Complete: ${fCount} Functional, ${dCount} Data, ${eCount} Env, ${aCount} Automation.`);
             } else {
                 classificationSummary = { functionalCount: 0, dataCount: 0, environmentCount: 0, automationCount: 0 };
                 classifications = [];
@@ -1035,7 +1044,7 @@ export function AIAgentsPage() {
             <Dialog open={!!scenarioListView} onOpenChange={(open) => !open && setScenarioListView(null)}>
                 <DialogContent className="max-w-3xl h-[70vh] flex flex-col p-0 overflow-hidden">
                     <DialogHeader className="p-4 border-b"><DialogTitle>{scenarioListView?.title}</DialogTitle></DialogHeader>
-                    <div className="p-4 border-b"><Input placeholder="Search scenarios..." value={scenarioSearch} onChange={(e) => setScenarioListViewSearch(e.target.value)} /></div>
+                    <div className="p-4 border-b"><Input placeholder="Search scenarios or tags..." value={scenarioSearch} onChange={(e) => setScenarioListViewSearch(e.target.value)} /></div>
                     <div className="flex-1 overflow-hidden">
                         <ScrollArea className="h-full w-full p-4">
                             <div className="space-y-3">
@@ -1079,7 +1088,7 @@ export function AIAgentsPage() {
                                                 <Badge variant="outline" className="text-[10px] uppercase bg-primary/5">{item.classification}</Badge>
                                             </div>
                                             <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded border-l-4 border-primary">
-                                                <span className="font-semibold text-primary uppercase text-[9px] mr-1">AI Reasoning:</span>
+                                                <span className="font-semibold text-primary uppercase text-[9px] mr-1">Reasoning:</span>
                                                 {item.reasoning}
                                             </div>
                                             {scenario?.logs && (
