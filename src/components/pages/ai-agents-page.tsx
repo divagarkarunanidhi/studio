@@ -541,10 +541,7 @@ export function AIAgentsPage() {
                         }
 
                         let description = "AI Automated Consolidated Failure Report\n\n";
-                        description += `This issue represents ${scenarioNames.length} failed scenario(s) with identical error signatures:\n`;
-                        scenarioNames.forEach((name, i) => description += `${i + 1}. ${name}\n`);
-                        
-                        description += "\n--- TEST STEPS (Representative Scenario) ---\n";
+                        description += "--- TEST STEPS (Representative Scenario) ---\n";
                         
                         let screenshotFile: File | null = null;
                         let failureLog = "";
@@ -577,6 +574,12 @@ export function AIAgentsPage() {
                         if (failureLog) {
                             description += `\n\n--- DETAILED FAILURE LOG ---\n${failureLog}`;
                         }
+
+                        // Add impacted test cases at the end as requested
+                        description += `\n\n--- IMPACTED TEST CASES (${scenarioNames.length}) ---\n`;
+                        scenarioNames.forEach((name, i) => {
+                            description += `${i + 1}. ${name}\n`;
+                        });
 
                         const isConsolidated = scenarioNames.length > 1;
                         const jiraSummary = `${isConsolidated ? '[Consolidated] ' : ''}AI FAILURE: ${representativeName}${isConsolidated ? ` (+${scenarioNames.length - 1} more)` : ''}`;
@@ -942,7 +945,7 @@ export function AIAgentsPage() {
                                                                                 <Badge variant="outline" className="text-[9px] uppercase px-1.5">{rule.category}</Badge>
                                                                             </TableCell>
                                                                             <TableCell className="py-2">
-                                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => handleRemoveFailureRule(i)}>
+                                                                                <Button variant="ghost" size="icon" className="text-destructive h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => handleRemoveFailureRule(i)}>
                                                                                     <Trash2 className="h-3.5 w-3.5" />
                                                                                 </Button>
                                                                             </TableCell>
