@@ -506,22 +506,43 @@ export function AIAgentsPage() {
             addLog(agent.id, "Initializing Jira Defect Scout...");
             const functionalFailures = classificationsRef.current?.filter(c => c.classification === 'Functional Issue') || [];
             if (functionalFailures.length > 0) {
-                const uniqueFailures = Array.from(new Set(functionalFailures.map(f => f.scenarioName)));
+                // 1. Group scenarios by their failure logs to consolidate duplicated issues
+                const failureGroups = new Map<string, string[]>(); // Map<log, scenarioNames[]>
+                
+                functionalFailures.forEach(f => {
+                    const scenarioSummary = scenariosRef.current?.find(s => s.name === f.scenarioName);
+                    // Use error log as the primary key for consolidation. Fallback to scenario name if log is empty.
+                    const logKey = (scenarioSummary?.logs || `NO_LOG_${f.scenarioName}`).trim();
+                    
+                    const existing = failureGroups.get(logKey) || [];
+                    failureGroups.set(logKey, [...existing, f.scenarioName]);
+                });
+
                 let successCount = 0;
-                for (const scenarioName of uniqueFailures) {
+                addLog(agent.id, `Consolidated ${functionalFailures.length} functional scenarios into ${failureGroups.size} unique Jira issues.`);
+
+                for (const [groupKey, scenarioNames] of Array.from(failureGroups.entries())) {
                     try {
+                        // Use the first scenario in the group as the representative for steps and screenshots
+                        const representativeName = scenarioNames[0];
+                        
                         let scenarioObj: any = null;
                         reportRef.current?.data?.test_results?.some((f: any) => {
-                            scenarioObj = f.elements?.find((s: any) => s.name === scenarioName);
+                            scenarioObj = f.elements?.find((s: any) => s.name === representativeName);
                             return !!scenarioObj;
                         });
 
                         if (!scenarioObj) {
-                            addLog(agent.id, `Warning: Detailed data for ${scenarioName} not found.`);
+                            addLog(agent.id, `Warning: Detailed data for representative ${representativeName} not found.`);
                             continue;
                         }
 
-                        let description = "AI Automated Failure Report\n\nTest Steps:\n";
+                        let description = "AI Automated Consolidated Failure Report\n\n";
+                        description += `This issue represents ${scenarioNames.length} failed scenario(s) with identical error signatures:\n`;
+                        scenarioNames.forEach((name, i) => description += `${i + 1}. ${name}\n`);
+                        
+                        description += "\n--- TEST STEPS (Representative Scenario) ---\n";
+                        
                         let screenshotFile: File | null = null;
                         let failureLog = "";
 
@@ -530,7 +551,7 @@ export function AIAgentsPage() {
                             description += `${sIdx + 1}. [${status}] ${step.keyword}${step.name}\n`;
                             
                             if (status === 'FAILED') {
-                                failureLog = step.result?.error_message || "No logs captured.";
+                                failureLog = step.result?.error_message || groupKey;
                                 const embeddings = [
                                     ...(step.embeddings || []), 
                                     ...(step.result?.embeddings || [])
@@ -545,14 +566,17 @@ export function AIAgentsPage() {
                                     }
                                     const byteArray = new Uint8Array(byteNumbers);
                                     const blob = new Blob([byteArray], { type: img.mime_type });
-                                    screenshotFile = new File([blob], `failure_${scenarioName.replace(/\W+/g, '_')}.png`, { type: img.mime_type });
+                                    screenshotFile = new File([blob], `failure_${representativeName.replace(/\W+/g, '_')}.png`, { type: img.mime_type });
                                 }
                             }
                         });
 
                         if (failureLog) {
-                            description += `\nDetailed Failure Logs:\n${failureLog}`;
+                            description += `\n\n--- DETAILED FAILURE LOG ---\n${failureLog}`;
                         }
+
+                        const isConsolidated = scenarioNames.length > 1;
+                        const jiraSummary = `${isConsolidated ? '[Consolidated] ' : ''}AI FAILURE: ${representativeName}${isConsolidated ? ` (+${scenarioNames.length - 1} more)` : ''}`;
 
                         const formData = new FormData();
                         formData.append('config', JSON.stringify({ 
@@ -563,7 +587,7 @@ export function AIAgentsPage() {
                             jiraIssueType: configData?.jiraIssueType || 'Bug'
                         }));
                         formData.append('issue', JSON.stringify({ 
-                            summary: `AI FAILURE: ${scenarioName}`, 
+                            summary: jiraSummary, 
                             description: description 
                         }));
                         if (screenshotFile) formData.append('screenshot', screenshotFile);
@@ -571,16 +595,16 @@ export function AIAgentsPage() {
                         const jiraRes = await fetch('/api/jira/create', { method: 'POST', body: formData });
                         const jiraResult = await jiraRes.json();
                         if (jiraRes.ok && jiraResult.success) { 
-                            addLog(agent.id, `Created Jira Ticket: ${jiraResult.key}`); 
+                            addLog(agent.id, `Created Jira Ticket: ${jiraResult.key} for ${scenarioNames.length} scenarios.`); 
                             successCount++; 
                         } else {
                             addLog(agent.id, `Jira API Error: ${jiraResult.error || 'Unknown'}`);
                         }
                     } catch (e: any) {
-                        addLog(agent.id, `Internal error creating Jira for ${scenarioName}: ${e.message}`);
+                        addLog(agent.id, `Internal error creating Jira for group: ${e.message}`);
                     }
                 }
-                extra = `${successCount} Tickets Created`;
+                extra = `${successCount} Consolidated Tickets Created`;
             } else { addLog(agent.id, "No functional failures identified."); }
         } else if (agent.id === 5) {
             addLog(agent.id, "Starting: Prepare data for data Issue...");
