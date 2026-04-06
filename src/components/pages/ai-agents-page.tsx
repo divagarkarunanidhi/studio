@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -510,24 +511,39 @@ export function AIAgentsPage() {
             const functionalFailures = classificationsRef.current?.filter(c => c.classification === 'Functional Issue') || [];
             if (functionalFailures.length > 0) {
                 // 1. Group scenarios by their failure logs to consolidate duplicated issues
-                const failureGroups = new Map<string, string[]>(); // Map<log, scenarioNames[]>
+                // Use robust normalization to handle timestamps, dynamic IDs, and numeric differences
+                const failureGroups = new Map<string, { representative: string, others: string[], originalLog: string }>(); 
                 
                 functionalFailures.forEach(f => {
                     const scenarioSummary = scenariosRef.current?.find(s => s.name === f.scenarioName);
-                    // Use error log as the primary key for consolidation. Fallback to scenario name if log is empty.
-                    const logKey = (scenarioSummary?.logs || `NO_LOG_${f.scenarioName}`).trim();
+                    const rawLog = (scenarioSummary?.logs || "").trim();
                     
-                    const existing = failureGroups.get(logKey) || [];
-                    failureGroups.set(logKey, [...existing, f.scenarioName]);
+                    // Normalize the log to create a consistent group key
+                    const normalizedKey = rawLog
+                        .replace(/\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<timestamp>') // Mask timestamps
+                        .replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '<uuid>') // Mask UUIDs
+                        .replace(/\d+/g, '#') // Mask ALL digits to group "plan : 1" and "plan : 5"
+                        .trim() || `SCENARIO_KEY_${f.scenarioName}`;
+
+                    const existing = failureGroups.get(normalizedKey);
+                    if (existing) {
+                        existing.others.push(f.scenarioName);
+                    } else {
+                        failureGroups.set(normalizedKey, { 
+                            representative: f.scenarioName, 
+                            others: [], 
+                            originalLog: rawLog 
+                        });
+                    }
                 });
 
                 let successCount = 0;
-                addLog(agent.id, `Consolidated ${functionalFailures.length} functional scenarios into ${failureGroups.size} unique Jira issues.`);
+                addLog(agent.id, `Consolidated ${functionalFailures.length} scenarios into ${failureGroups.size} unique root-cause issues.`);
 
-                for (const [groupKey, scenarioNames] of Array.from(failureGroups.entries())) {
+                for (const [groupKey, groupData] of Array.from(failureGroups.entries())) {
                     try {
-                        // Use the first scenario in the group as the representative for steps and screenshots
-                        const representativeName = scenarioNames[0];
+                        const representativeName = groupData.representative;
+                        const allAffectedNames = [representativeName, ...groupData.others];
                         
                         let scenarioObj: any = null;
                         reportRef.current?.data?.test_results?.some((f: any) => {
@@ -536,22 +552,21 @@ export function AIAgentsPage() {
                         });
 
                         if (!scenarioObj) {
-                            addLog(agent.id, `Warning: Detailed data for representative ${representativeName} not found.`);
+                            addLog(agent.id, `Warning: Detailed trace for representative ${representativeName} not found.`);
                             continue;
                         }
 
-                        let description = "AI Automated Consolidated Failure Report\n\n";
-                        description += "--- TEST STEPS (Representative Scenario) ---\n";
+                        let description = "AI Automated Failure Report (Consolidated)\n\n";
+                        description += "--- REPRODUCIBLE STEPS (Representative Scenario) ---\n";
                         
                         let screenshotFile: File | null = null;
-                        let failureLog = "";
+                        let failureLog = groupData.originalLog;
 
                         scenarioObj.steps?.forEach((step: any, sIdx: number) => {
                             const status = step.result?.status?.toUpperCase() || 'UNKNOWN';
                             description += `${sIdx + 1}. [${status}] ${step.keyword}${step.name}\n`;
                             
                             if (status === 'FAILED') {
-                                failureLog = step.result?.error_message || groupKey;
                                 const embeddings = [
                                     ...(step.embeddings || []), 
                                     ...(step.result?.embeddings || [])
@@ -575,14 +590,14 @@ export function AIAgentsPage() {
                             description += `\n\n--- DETAILED FAILURE LOG ---\n${failureLog}`;
                         }
 
-                        // Add impacted test cases at the end as requested
-                        description += `\n\n--- IMPACTED TEST CASES (${scenarioNames.length}) ---\n`;
-                        scenarioNames.forEach((name, i) => {
+                        // Listing all impacted test cases at the END as requested
+                        description += `\n\n--- IMPACTED TEST CASES (${allAffectedNames.length}) ---\n`;
+                        allAffectedNames.forEach((name, i) => {
                             description += `${i + 1}. ${name}\n`;
                         });
 
-                        const isConsolidated = scenarioNames.length > 1;
-                        const jiraSummary = `${isConsolidated ? '[Consolidated] ' : ''}AI FAILURE: ${representativeName}${isConsolidated ? ` (+${scenarioNames.length - 1} more)` : ''}`;
+                        const isConsolidated = allAffectedNames.length > 1;
+                        const jiraSummary = `${isConsolidated ? '[Consolidated] ' : ''}AI FAILURE: ${representativeName}${isConsolidated ? ` (+${allAffectedNames.length - 1} more)` : ''}`;
 
                         const formData = new FormData();
                         formData.append('config', JSON.stringify({ 
@@ -601,16 +616,16 @@ export function AIAgentsPage() {
                         const jiraRes = await fetch('/api/jira/create', { method: 'POST', body: formData });
                         const jiraResult = await jiraRes.json();
                         if (jiraRes.ok && jiraResult.success) { 
-                            addLog(agent.id, `Created Jira Ticket: ${jiraResult.key} for ${scenarioNames.length} scenarios.`); 
+                            addLog(agent.id, `Created Jira Ticket: ${jiraResult.key} for ${allAffectedNames.length} scenarios.`); 
                             successCount++; 
                         } else {
                             addLog(agent.id, `Jira API Error: ${jiraResult.error || 'Unknown'}`);
                         }
                     } catch (e: any) {
-                        addLog(agent.id, `Internal error creating Jira for group: ${e.message}`);
+                        addLog(agent.id, `Internal error during Jira creation: ${e.message}`);
                     }
                 }
-                extra = `${successCount} Consolidated Tickets Created`;
+                extra = `${successCount} Unique Tickets Created`;
             } else { addLog(agent.id, "No functional failures identified."); }
         } else if (agent.id === 5) {
             addLog(agent.id, "Starting: Prepare data for data Issue...");
