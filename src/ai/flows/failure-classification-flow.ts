@@ -2,19 +2,49 @@
 /**
  * @fileOverview An AI flow to classify test failures into Functional, Data, Environment, or Automation script issues.
  * 
- * - classifyFailures - Takes failure logs and returns structured classifications.
+ * This flow supports a Hybrid Intelligence model:
+ * 1. User Rules (Manual Heuristics)
+ * 2. Python Bridge (Native Data Science/ML logic)
+ * 3. Genkit AI (Advanced Natural Language fallback)
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { FailureClassificationOutputSchema } from '@/lib/types';
 import type { FailureClassificationOutput } from '@/lib/types';
+import { runPythonClassifier } from '@/lib/python-bridge';
 
 /**
- * Uses Advanced AI Analytics to analyze failure logs and identify root cause categories.
- * Mimics machine learning Natural Language Processing (NLP) models like spaCy and Scikit-Learn.
+ * Uses Advanced Hybrid Analytics to classify failure logs.
+ * Now leverages native Python scripts for core classification.
  */
 export async function classifyFailures(failuresJson: string): Promise<FailureClassificationOutput> {
+    const scenarios = JSON.parse(failuresJson);
+    
+    try {
+        // 1. Attempt to use the Python-based Analytics Engine
+        const pythonResults = await runPythonClassifier(scenarios);
+        
+        if (pythonResults && Array.isArray(pythonResults)) {
+            // Aggregate metrics from Python results
+            const summary = {
+                functionalCount: pythonResults.filter((r: any) => r.classification === 'Functional Issue').length,
+                dataCount: pythonResults.filter((r: any) => r.classification === 'Data Issue').length,
+                environmentCount: pythonResults.filter((r: any) => r.classification === 'Environment Issue').length,
+                automationCount: pythonResults.filter((r: any) => r.classification === 'Automation script issue').length,
+            };
+            
+            return {
+                classifications: pythonResults,
+                summary
+            };
+        }
+    } catch (e: any) {
+        // Log the error but fall back gracefully to Genkit AI
+        console.warn("Python Analytics Engine failed or not available. Falling back to Genkit AI:", e.message);
+    }
+
+    // 2. Fallback: Use Genkit AI for analysis if Python fails
     const result = await failureClassificationFlow(failuresJson);
     return result;
 }
@@ -39,9 +69,6 @@ const prompt = ai.definePrompt({
     - For EVERY scenario provided, return the name, the classification, and a logical reasoning based on pattern matching.
     - Provide a final summary count for each category.
     - The SUM of functionalCount + dataCount + environmentCount + automationCount MUST exactly equal the number of scenario objects provided in the input JSON.
-    
-    **SPECIFIC LOGIC RULE**: 
-    If a failure log contains "java.lang.AssertionError: Total Number of Order Failed to Plan :", you MUST classify it as a **Functional Issue**.
     
     Failure Data:
     {{{this}}}
