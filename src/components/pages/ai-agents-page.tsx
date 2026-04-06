@@ -62,6 +62,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
+import { Separator } from '../ui/separator';
 
 interface AgentMetrics {
     total: number;
