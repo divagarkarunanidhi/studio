@@ -48,8 +48,11 @@ export const AppConfigurationSchema = z.object({
     gitlabPipelineScheduleDescription: z.string().optional().nullable(),
     // Notification Settings
     teamsWebhookUrl: z.string().optional().nullable(),
-    // Failure Classifier Rules
+    // Failure Classifier Settings
     failureRules: z.array(FailureRuleSchema).optional().default([]),
+    enableTier1Rules: z.boolean().default(true),
+    enableTier2Python: z.boolean().default(true),
+    enableTier3Heuristics: z.boolean().default(true),
     // Session Settings
     autoLogoutEnabled: z.boolean().default(true),
     autoLogoutTime: z.number().min(1, 'Logout time must be at least 1 minute.').default(5),

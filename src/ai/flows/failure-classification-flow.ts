@@ -2,51 +2,66 @@
 /**
  * @fileOverview An optimized classification flow that uses native Python logic.
  * 
- * This flow now strictly implements the Python-first analytics model requested,
- * but includes a robust heuristic fallback if the Python environment is missing.
+ * This flow supports a multi-tiered architecture:
+ * - Tier 2: Python Scikit-Learn Engine (if enabled)
+ * - Tier 3: Standard Heuristics (if enabled and Tier 2 fails or is disabled)
  */
 
 import { z } from 'zod';
 import { FailureClassificationOutputSchema } from '@/lib/types';
-import type { FailureClassificationOutput } from '@/lib/types';
+import type { FailureClassificationOutput, AppConfiguration } from '@/lib/types';
 import { runPythonClassifier } from '@/lib/python-bridge';
+import { getFirestoreInstance } from '@/firebase/server-config';
+import { doc, getDoc } from 'firebase/firestore';
 
 /**
- * Uses the Optimized Python Analytics Engine to classify failure logs.
- * Handles the bridge to the native script and provides a heuristic fallback
- * if the environment lacks a functional Python runtime.
+ * Uses Optimized Analytical Engines to classify failure logs.
+ * Handles the bridge to the native script and provides a heuristic fallback.
+ * Respects enablement flags for Tiers 2 and 3 from global configuration.
  */
 export async function classifyFailures(failuresJson: string): Promise<FailureClassificationOutput> {
     const scenarios = JSON.parse(failuresJson);
     
+    // Fetch configuration to check tier enablement
+    let enableTier2 = true;
+    let enableTier3 = true;
+
     try {
-        // Strictly attempt to use the Python-based Analytics Engine
-        const pythonResults = await runPythonClassifier(scenarios);
-        
-        if (pythonResults && Array.isArray(pythonResults)) {
-            const summary = {
-                functionalCount: pythonResults.filter((r: any) => r.classification === 'Functional Issue').length,
-                dataCount: pythonResults.filter((r: any) => r.classification === 'Data Issue').length,
-                environmentCount: pythonResults.filter((r: any) => r.classification === 'Environment Issue').length,
-                automationCount: pythonResults.filter((r: any) => r.classification === 'Automation script issue').length,
-            };
-            
-            return {
-                classifications: pythonResults,
-                summary
-            };
+        const { firestore } = await getFirestoreInstance();
+        const configRef = doc(firestore, 'appConfiguration', 'global');
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+            const config = configSnap.data() as AppConfiguration;
+            enableTier2 = config.enableTier2Python ?? true;
+            enableTier3 = config.enableTier3Heuristics ?? true;
         }
-        
-        throw new Error("Python engine returned an invalid or empty response.");
-    } catch (e: any) {
-        // If Python is missing or failed, fall back to "Standard Heuristics" 
-        // to ensure the pipeline remains operational.
-        console.warn("Python Analytics Engine failed, falling back to standard heuristics:", e.message);
-        
-        const classifications = scenarios.map((s: any) => {
+    } catch (configError) {
+        console.warn("Failed to fetch classification config, defaulting to all tiers enabled.");
+    }
+
+    let classifications: any[] = [];
+
+    // Attempt Tier 2 (Python Scikit-Learn Engine) if enabled
+    if (enableTier2) {
+        try {
+            const pythonResults = await runPythonClassifier(scenarios);
+            if (pythonResults && Array.isArray(pythonResults)) {
+                classifications = pythonResults;
+            } else {
+                throw new Error("Python engine returned an invalid response.");
+            }
+        } catch (e: any) {
+            console.warn("Tier 2 (Python) failed or unavailable:", e.message);
+            // We only continue if Tier 3 is enabled as a fallback
+        }
+    }
+
+    // Attempt Tier 3 (Standard Heuristics) if enabled AND we don't have results yet
+    if (enableTier3 && classifications.length === 0) {
+        classifications = scenarios.map((s: any) => {
             const logs = (s.logs || "").toLowerCase();
             let classification: 'Functional Issue' | 'Data Issue' | 'Environment Issue' | 'Automation script issue' = 'Automation script issue';
-            let reasoning = `Standard Heuristics: Python engine missing or failed (${e.message}). Used internal pattern matching.`;
+            let reasoning = "Standard Heuristics: Pattern matching based on common error signatures.";
 
             if (logs.includes("assertion") || logs.includes("expected") || logs.includes("found") || logs.includes("mismatch")) {
                 classification = "Functional Issue";
@@ -65,17 +80,26 @@ export async function classifyFailures(failuresJson: string): Promise<FailureCla
                 reasoning 
             };
         });
-
-        const summary = {
-            functionalCount: classifications.filter((r: any) => r.classification === 'Functional Issue').length,
-            dataCount: classifications.filter((r: any) => r.classification === 'Data Issue').length,
-            environmentCount: classifications.filter((r: any) => r.classification === 'Environment Issue').length,
-            automationCount: classifications.filter((r: any) => r.classification === 'Automation script issue').length,
-        };
-
-        return {
-            classifications,
-            summary
-        };
     }
+
+    // If both disabled, return as Automation Issue (default)
+    if (classifications.length === 0) {
+        classifications = scenarios.map((s: any) => ({
+            scenarioName: s.name,
+            classification: 'Automation script issue',
+            reasoning: 'Engine Default: All analytical tiers (2 and 3) are disabled or failed.'
+        }));
+    }
+
+    const summary = {
+        functionalCount: classifications.filter((r: any) => r.classification === 'Functional Issue').length,
+        dataCount: classifications.filter((r: any) => r.classification === 'Data Issue').length,
+        environmentCount: classifications.filter((r: any) => r.classification === 'Environment Issue').length,
+        automationCount: classifications.filter((r: any) => r.classification === 'Automation script issue').length,
+    };
+
+    return {
+        classifications,
+        summary
+    };
 }

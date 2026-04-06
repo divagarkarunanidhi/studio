@@ -61,6 +61,7 @@ import { Label } from '../ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Switch } from '../ui/switch';
 
 interface AgentMetrics {
     total: number;
@@ -441,62 +442,63 @@ export function AIAgentsPage() {
                 }
             } else { executionStatus = 'error'; }
         } else if (agent.id === 3) {
-            addLog(agent.id, "Initializing Advanced Failure Classifier (AI + ML Analytics Mode)...");
+            addLog(agent.id, "Initializing Advanced Failure Classifier (Multi-Tier Engine)...");
             const failedScenarios = scenariosRef.current?.filter(s => s.status?.toLowerCase() === 'failed') || [];
             const userRules = configData?.failureRules || [];
+            const enableTier1 = configData?.enableTier1Rules ?? true;
 
             if (failedScenarios.length > 0) {
                 const results: FailureClassificationOutput['classifications'] = [];
                 let fCount = 0, dCount = 0, eCount = 0, aCount = 0;
                 
-                const scenariosToAnalyzeWithAi: { name: string, logs: string }[] = [];
+                const scenariosToAnalyzeByServer: { name: string, logs: string }[] = [];
 
                 failedScenarios.forEach(s => {
                     const errorLogs = s.logs || '';
                     
-                    // 1. Check user-defined rules first (Deterministic Path)
-                    const matchedRule = userRules.find(rule => errorLogs.includes(rule.pattern));
+                    // 1. Tier 1: Check user-defined rules first if enabled
+                    let matchedRule = null;
+                    if (enableTier1) {
+                        matchedRule = userRules.find(rule => errorLogs.includes(rule.pattern));
+                    }
+
                     if (matchedRule) {
                         const category = matchedRule.category;
-                        const reason = `Matched User Rule: "${matchedRule.pattern}"`;
+                        const reason = `Matched Tier 1 (Custom Rule): "${matchedRule.pattern}"`;
                         if (category === 'Functional Issue') fCount++; 
                         else if (category === 'Data Issue') dCount++; 
                         else if (category === 'Environment Issue') eCount++;
                         else if (category === 'Automation script issue') aCount++;
                         results.push({ scenarioName: s.name, classification: category, reasoning: reason });
                     } else {
-                        // 2. Queue for AI analysis (Probabilistic ML Path)
-                        scenariosToAnalyzeWithAi.push({ name: s.name, logs: errorLogs });
+                        // 2. Queue for Server-Side Tiers (Python ML / Heuristics)
+                        scenariosToAnalyzeByServer.push({ name: s.name, logs: errorLogs });
                     }
                 });
 
-                if (scenariosToAnalyzeWithAi.length > 0) {
-                    addLog(agent.id, `Applying AI Natural Language Processing to ${scenariosToAnalyzeWithAi.length} unclassified failures...`);
+                if (scenariosToAnalyzeByServer.length > 0) {
+                    addLog(agent.id, `Applying Tier 2/3 engines to ${scenariosToAnalyzeByServer.length} unclassified failures...`);
                     try {
-                        const aiResponse = await classifyFailures(JSON.stringify(scenariosToAnalyzeWithAi));
-                        if (aiResponse) {
-                            aiResponse.classifications.forEach(aiMatch => {
-                                const category = aiMatch.classification;
+                        const response = await classifyFailures(JSON.stringify(scenariosToAnalyzeByServer));
+                        if (response) {
+                            response.classifications.forEach(match => {
+                                const category = match.classification;
                                 if (category === 'Functional Issue') fCount++; 
                                 else if (category === 'Data Issue') dCount++; 
                                 else if (category === 'Environment Issue') eCount++;
                                 else if (category === 'Automation script issue') aCount++;
-                                results.push({ 
-                                    scenarioName: aiMatch.scenarioName, 
-                                    classification: category, 
-                                    reasoning: `AI Analytics: ${aiMatch.reasoning}` 
-                                });
+                                results.push(match);
                             });
                         }
                     } catch (e: any) {
-                        addLog(agent.id, `AI Analytics Error: ${e.message}. Falling back to standard heuristics.`);
+                        addLog(agent.id, `Server Analytics Error: ${e.message}.`);
                     }
                 }
                 
                 classificationSummary = { functionalCount: fCount, dataCount: dCount, environmentCount: eCount, automationCount: aCount };
                 classifications = results;
                 classificationsRef.current = classifications;
-                addLog(agent.id, `Analytics Complete: ${fCount} Functional, ${dCount} Data, ${eCount} Env, ${aCount} Automation.`);
+                addLog(agent.id, `Analysis Complete: ${fCount} Functional, ${dCount} Data, ${eCount} Env, ${aCount} Automation.`);
             } else {
                 classificationSummary = { functionalCount: 0, dataCount: 0, environmentCount: 0, automationCount: 0 };
                 classifications = [];
@@ -874,67 +876,86 @@ export function AIAgentsPage() {
                                             </DialogTrigger>
                                             <DialogContent className="max-w-2xl">
                                                 <DialogHeader>
-                                                    <DialogTitle>Failure Classification Rules</DialogTitle>
-                                                    <DialogDescription>Define patterns in error logs to automatically categorize test failures.</DialogDescription>
+                                                    <DialogTitle>Failure Classification Settings</DialogTitle>
+                                                    <DialogDescription>Configure the multi-tiered analysis engine.</DialogDescription>
                                                 </DialogHeader>
-                                                <div className="space-y-4 py-4">
-                                                    <div className="flex items-end gap-2 bg-muted/50 p-3 rounded-lg border">
-                                                        <div className="flex-1 space-y-1.5">
-                                                            <Label className="text-xs">Error Log Pattern (Substring)</Label>
-                                                            <Input 
-                                                                placeholder="e.g. timeout, 503, java.lang.AssertionError" 
-                                                                value={newPattern}
-                                                                onChange={(e) => setNewPattern(e.target.value)}
-                                                                className="h-8 text-xs"
-                                                            />
+                                                <div className="space-y-6 py-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                        <div className="flex items-center justify-between p-2 border rounded-md bg-muted/30">
+                                                            <div className="space-y-0.5"><Label className="text-xs">Tier 1: Rules</Label></div>
+                                                            <Switch checked={configData?.enableTier1Rules ?? true} onCheckedChange={(val) => handleUpdateConfig('enableTier1Rules', val)} />
                                                         </div>
-                                                        <div className="w-40 space-y-1.5">
-                                                            <Label className="text-xs">Assign Category</Label>
-                                                            <Select value={newCategory} onValueChange={(val: any) => setNewCategory(val)}>
-                                                                <SelectTrigger className="h-8 text-xs">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="Functional Issue">Functional Issue</SelectItem>
-                                                                    <SelectItem value="Data Issue">Data Issue</SelectItem>
-                                                                    <SelectItem value="Environment Issue">Environment Issue</SelectItem>
-                                                                    <SelectItem value="Automation script issue">Automation script issue</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
+                                                        <div className="flex items-center justify-between p-2 border rounded-md bg-muted/30">
+                                                            <div className="space-y-0.5"><Label className="text-xs">Tier 2: Python</Label></div>
+                                                            <Switch checked={configData?.enableTier2Python ?? true} onCheckedChange={(val) => handleUpdateConfig('enableTier2Python', val)} />
                                                         </div>
-                                                        <Button size="sm" className="h-8" onClick={handleAddFailureRule}><Plus className="h-3.5 w-3.5 mr-1" /> Add</Button>
+                                                        <div className="flex items-center justify-between p-2 border rounded-md bg-muted/30">
+                                                            <div className="space-y-0.5"><Label className="text-xs">Tier 3: Heuristics</Label></div>
+                                                            <Switch checked={configData?.enableTier3Heuristics ?? true} onCheckedChange={(val) => handleUpdateConfig('enableTier3Heuristics', val)} />
+                                                        </div>
                                                     </div>
-                                                    <ScrollArea className="h-64 rounded-md border bg-card">
-                                                        <Table>
-                                                            <TableHeader className="bg-muted/30">
-                                                                <TableRow>
-                                                                    <TableHead className="text-[10px] uppercase">Pattern</TableHead>
-                                                                    <TableHead className="text-[10px] uppercase">Target Category</TableHead>
-                                                                    <TableHead className="w-10"></TableHead>
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {(configData?.failureRules || []).map((rule, i) => (
-                                                                    <TableRow key={i} className="group">
-                                                                        <TableCell className="font-mono text-[10px] py-2">{rule.pattern}</TableCell>
-                                                                        <TableCell className="py-2">
-                                                                            <Badge variant="outline" className="text-[9px] uppercase px-1.5">{rule.category}</Badge>
-                                                                        </TableCell>
-                                                                        <TableCell className="py-2">
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => handleRemoveFailureRule(i)}>
-                                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                                            </Button>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                                {(configData?.failureRules || []).length === 0 && (
+
+                                                    <Separator />
+
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-end gap-2 bg-muted/50 p-3 rounded-lg border">
+                                                            <div className="flex-1 space-y-1.5">
+                                                                <Label className="text-xs">Error Log Pattern (Substring)</Label>
+                                                                <Input 
+                                                                    placeholder="e.g. timeout, 503, java.lang.AssertionError" 
+                                                                    value={newPattern}
+                                                                    onChange={(e) => setNewPattern(e.target.value)}
+                                                                    className="h-8 text-xs"
+                                                                />
+                                                            </div>
+                                                            <div className="w-40 space-y-1.5">
+                                                                <Label className="text-xs">Assign Category</Label>
+                                                                <Select value={newCategory} onValueChange={(val: any) => setNewCategory(val)}>
+                                                                    <SelectTrigger className="h-8 text-xs">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="Functional Issue">Functional Issue</SelectItem>
+                                                                        <SelectItem value="Data Issue">Data Issue</SelectItem>
+                                                                        <SelectItem value="Environment Issue">Environment Issue</SelectItem>
+                                                                        <SelectItem value="Automation script issue">Automation script issue</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <Button size="sm" className="h-8" onClick={handleAddFailureRule}><Plus className="h-3.5 w-3.5 mr-1" /> Add</Button>
+                                                        </div>
+                                                        <ScrollArea className="h-64 rounded-md border bg-card">
+                                                            <Table>
+                                                                <TableHeader className="bg-muted/30">
                                                                     <TableRow>
-                                                                        <TableCell colSpan={3} className="text-center text-xs text-muted-foreground py-8">No custom rules defined yet.</TableCell>
+                                                                        <TableHead className="text-[10px] uppercase">Pattern</TableHead>
+                                                                        <TableHead className="text-[10px] uppercase">Target Category</TableHead>
+                                                                        <TableHead className="w-10"></TableHead>
                                                                     </TableRow>
-                                                                )}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </ScrollArea>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {(configData?.failureRules || []).map((rule, i) => (
+                                                                        <TableRow key={i} className="group">
+                                                                            <TableCell className="font-mono text-[10px] py-2">{rule.pattern}</TableCell>
+                                                                            <TableCell className="py-2">
+                                                                                <Badge variant="outline" className="text-[9px] uppercase px-1.5">{rule.category}</Badge>
+                                                                            </TableCell>
+                                                                            <TableCell className="py-2">
+                                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => handleRemoveFailureRule(i)}>
+                                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                                </Button>
+                                                                            </TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                    {(configData?.failureRules || []).length === 0 && (
+                                                                        <TableRow>
+                                                                            <TableCell colSpan={3} className="text-center text-xs text-muted-foreground py-8">No custom rules defined yet.</TableCell>
+                                                                        </TableRow>
+                                                                    )}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </ScrollArea>
+                                                    </div>
                                                 </div>
                                             </DialogContent>
                                         </Dialog>

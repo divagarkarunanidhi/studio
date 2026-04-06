@@ -54,6 +54,9 @@ export function ConfigurationPage() {
       gitlabPipelineScheduleDescription: '',
       teamsWebhookUrl: '',
       failureRules: [],
+      enableTier1Rules: true,
+      enableTier2Python: true,
+      enableTier3Heuristics: true,
       autoLogoutEnabled: true,
       autoLogoutTime: 5
     },
@@ -126,9 +129,47 @@ export function ConfigurationPage() {
             <Separator />
 
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-amber-600" /> Failure Classifier Rules</h3>
-                <p className="text-sm text-muted-foreground">Define patterns in execution logs to automatically categorize failures.</p>
-                <div className="space-y-3">
+                <h3 className="text-lg font-semibold flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-amber-600" /> Failure Classifier Settings</h3>
+                <p className="text-sm text-muted-foreground">Enable or disable the three analytical tiers used to categorize failed scenarios.</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/20 p-4 rounded-lg border">
+                    <FormField control={form.control} name="enableTier1Rules" render={({ field }) => (
+                        <FormItem className="flex items-center justify-between space-x-2 rounded-lg border p-3 bg-card shadow-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel>Tier 1: Rules</FormLabel>
+                                <FormDescription className="text-[10px]">Deterministic patterns</FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="enableTier2Python" render={({ field }) => (
+                        <FormItem className="flex items-center justify-between space-x-2 rounded-lg border p-3 bg-card shadow-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel>Tier 2: Python ML</FormLabel>
+                                <FormDescription className="text-[10px]">Scikit-Learn engine</FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="enableTier3Heuristics" render={({ field }) => (
+                        <FormItem className="flex items-center justify-between space-x-2 rounded-lg border p-3 bg-card shadow-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel>Tier 3: Heuristics</FormLabel>
+                                <FormDescription className="text-[10px]">Pattern fallback</FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                        </FormItem>
+                    )} />
+                </div>
+
+                <div className="pt-4 space-y-3">
+                    <h4 className="text-sm font-medium">Custom Rule Patterns (Tier 1)</h4>
                     {fields.map((field, index) => (
                         <div key={field.id} className="flex items-end gap-3 p-3 border rounded-md bg-muted/20">
                             <FormField control={form.control} name={`failureRules.${index}.pattern`} render={({ field }) => (
