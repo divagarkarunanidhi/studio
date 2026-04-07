@@ -91,10 +91,10 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 1, name: "Execution Fetcher", description: "Fetches latest execution JSON from Selenium Data Store (fallback to Confluence)." },
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
     { id: 3, name: "Failure Classifier", description: "Analyzes failures using AI Analytics and Machine Learning patterns to categorize issues." },
-    { id: 4, name: "Jira Defect Scout", description: "Automates Jira ticket creation for functional failures with steps and screenshots." },
-    { id: 5, name: "Prepare data for data Issue", description: "Identifies test data file from step output and prepares updated JSON with 'Agent: found'." },
-    { id: 6, name: "GitLab Data Sync", description: "Automatically commits prepared test data updates back to GitLab repositories." },
-    { id: 7, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines by calling specified pipeline schedules." },
+    { id: 4, name: "Prepare data for data Issue", description: "Identifies test data file from step output and prepares updated JSON with 'Agent: found'." },
+    { id: 5, name: "GitLab Data Sync", description: "Automatically commits prepared test data updates back to GitLab repositories." },
+    { id: 6, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines by calling specified pipeline schedules." },
+    { id: 7, name: "Jira Defect Scout", description: "Automates Jira ticket creation for functional failures with steps and screenshots." },
     { id: 8, name: "Notification Trigger", description: "Sends comprehensive pipeline execution summary to Microsoft Teams channel." },
 ];
 
@@ -507,22 +507,121 @@ export function AIAgentsPage() {
                 classificationsRef.current = [];
             }
         } else if (agent.id === 4) {
+            addLog(agent.id, "Starting: Prepare data for data Issue...");
+            const dataFailures = classificationsRef.current?.filter(c => c.classification === 'Data Issue') || [];
+            if (dataFailures.length > 0) {
+                let testDataFullGitPath = null;
+                if (reportRef.current?.data) {
+                    reportRef.current.data.test_results?.some((feature: any) => {
+                        return feature.elements?.some((scenario: any) => {
+                            const firstStep = scenario.steps?.[0];
+                            if (firstStep && firstStep.output) {
+                                const outputLine = firstStep.output.find((line: string) => line.includes('testDataFile :'));
+                                if (outputLine) {
+                                    const match = outputLine.match(/testDataFile\s*:\s*(.*\/)?([^\/]+\.json)/);
+                                    if (match && match[2]) {
+                                        const prefix = configData?.gitlabFilePathPrefix || '';
+                                        testDataFullGitPath = prefix ? `${prefix.replace(/\/$/, '')}/${match[2]}` : match[2];
+                                        return true;
+                                    }
+                                }
+                            }
+                            return false;
+                        });
+                    });
+                }
+                if (testDataFullGitPath) {
+                    addLog(agent.id, `Targeting test data file: ${testDataFullGitPath}`);
+                    const scenarioNames = dataFailures.map(f => f.scenarioName);
+                    try {
+                        const prepRes = await fetch('/api/gitlab/update', { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' }, 
+                            body: JSON.stringify({ 
+                                token: configData?.gitlabToken, 
+                                projectId: configData?.gitlabProjectId, 
+                                branch: configData?.gitlabBranch, 
+                                filePath: testDataFullGitPath, 
+                                scenarioNames 
+                            }) 
+                        });
+                        const result = await prepRes.json();
+                        if (prepRes.ok && result.success) { 
+                            addLog(agent.id, `Successfully injected "Agent: found" for ${result.updateCount} scenarios.`);
+                            const contentStr = JSON.stringify(result.updatedContent, null, 2);
+                            preparedContentRef.current = { content: contentStr, filePath: testDataFullGitPath };
+                            updatedContent = contentStr;
+                            targetFilePath = testDataFullGitPath;
+                            extra = `${result.updateCount} Scenarios Prepared`;
+                        } else {
+                            addLog(agent.id, `Preparation Error: ${result.error || 'Scenarios not found in file.'}`);
+                            executionStatus = 'error';
+                        }
+                    } catch (e: any) {
+                        addLog(agent.id, `GitLab Sync Error: ${e.message}`);
+                        executionStatus = 'error';
+                    }
+                } else { 
+                    addLog(agent.id, "No test data file path detected in execution outputs.");
+                    executionStatus = 'error'; 
+                }
+            } else {
+                addLog(agent.id, "No data issues found to repair.");
+            }
+        } else if (agent.id === 5) {
+            addLog(agent.id, "Initializing GitLab Data Sync...");
+            if (preparedContentRef.current) {
+                try {
+                    const commitRes = await fetch('/api/gitlab/commit', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ 
+                            token: configData?.gitlabToken, 
+                            projectId: configData?.gitlabProjectId, 
+                            branch: configData?.gitlabBranch, 
+                            filePath: preparedContentRef.current.filePath, 
+                            content: preparedContentRef.current.content 
+                        }) 
+                    });
+                    const result = await commitRes.json();
+                    if (commitRes.ok && result.success) { 
+                        addLog(agent.id, `Committed changes to ${preparedContentRef.current.filePath}. Hash: ${result.commitHash?.substring(0,8)}`);
+                        extra = "Data Synchronized"; 
+                        updatedContent = preparedContentRef.current.content; 
+                    } else {
+                        addLog(agent.id, `GitLab Commit Error: ${result.error}`);
+                        executionStatus = 'error';
+                    }
+                } catch (e) { executionStatus = 'error'; }
+            } else {
+                addLog(agent.id, "No prepared content found to sync.");
+            }
+        } else if (agent.id === 6) {
+            addLog(agent.id, "Initializing Pipeline Orchestrator...");
+            const scheduleDesc = configData?.gitlabPipelineScheduleDescription;
+            if (scheduleDesc) {
+                try {
+                    const triggerRes = await fetch('/api/gitlab/trigger-schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: configData?.gitlabToken, projectId: configData?.gitlabProjectId, scheduleDescription: scheduleDesc }) });
+                    const result = await triggerRes.json();
+                    if (triggerRes.ok && result.success) extra = `Triggered: ${scheduleDesc}`;
+                    else executionStatus = 'error';
+                } catch (e) { executionStatus = 'error'; }
+            }
+        } else if (agent.id === 7) {
             addLog(agent.id, "Initializing Jira Defect Scout...");
             const functionalFailures = classificationsRef.current?.filter(c => c.classification === 'Functional Issue') || [];
             if (functionalFailures.length > 0) {
                 // 1. Group scenarios by their failure logs to consolidate duplicated issues
-                // Use robust normalization to handle timestamps, dynamic IDs, and numeric differences
                 const failureGroups = new Map<string, { representative: string, others: string[], originalLog: string }>(); 
                 
                 functionalFailures.forEach(f => {
                     const scenarioSummary = scenariosRef.current?.find(s => s.name === f.scenarioName);
                     const rawLog = (scenarioSummary?.logs || "").trim();
                     
-                    // Normalize the log to create a consistent group key
                     const normalizedKey = rawLog
-                        .replace(/\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<timestamp>') // Mask timestamps
-                        .replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '<uuid>') // Mask UUIDs
-                        .replace(/\d+/g, '#') // Mask ALL digits to group "plan : 1" and "plan : 5"
+                        .replace(/\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<timestamp>') 
+                        .replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '<uuid>') 
+                        .replace(/\d+/g, '#') 
                         .trim() || `SCENARIO_KEY_${f.scenarioName}`;
 
                     const existing = failureGroups.get(normalizedKey);
@@ -590,7 +689,6 @@ export function AIAgentsPage() {
                             description += `\n\n--- DETAILED FAILURE LOG ---\n${failureLog}`;
                         }
 
-                        // Listing all impacted test cases at the END as requested
                         description += `\n\n--- IMPACTED TEST CASES (${allAffectedNames.length}) ---\n`;
                         allAffectedNames.forEach((name, i) => {
                             description += `${i + 1}. ${name}\n`;
@@ -627,107 +725,6 @@ export function AIAgentsPage() {
                 }
                 extra = `${successCount} Unique Tickets Created`;
             } else { addLog(agent.id, "No functional failures identified."); }
-        } else if (agent.id === 5) {
-            addLog(agent.id, "Starting: Prepare data for data Issue...");
-            const dataFailures = classificationsRef.current?.filter(c => c.classification === 'Data Issue') || [];
-            if (dataFailures.length > 0) {
-                let testDataFullGitPath = null;
-                if (reportRef.current?.data) {
-                    reportRef.current.data.test_results?.some((feature: any) => {
-                        return feature.elements?.some((scenario: any) => {
-                            const firstStep = scenario.steps?.[0];
-                            if (firstStep && firstStep.output) {
-                                const outputLine = firstStep.output.find((line: string) => line.includes('testDataFile :'));
-                                if (outputLine) {
-                                    const match = outputLine.match(/testDataFile\s*:\s*(.*\/)?([^\/]+\.json)/);
-                                    if (match && match[2]) {
-                                        const prefix = configData?.gitlabFilePathPrefix || '';
-                                        testDataFullGitPath = prefix ? `${prefix.replace(/\/$/, '')}/${match[2]}` : match[2];
-                                        return true;
-                                    }
-                                }
-                            }
-                            return false;
-                        });
-                    });
-                }
-                if (testDataFullGitPath) {
-                    addLog(agent.id, `Targeting test data file: ${testDataFullGitPath}`);
-                    const scenarioNames = dataFailures.map(f => f.scenarioName);
-                    try {
-                        const prepRes = await fetch('/api/gitlab/update', { 
-                            method: 'POST', 
-                            headers: { 'Content-Type': 'application/json' }, 
-                            body: JSON.stringify({ 
-                                token: configData?.gitlabToken, 
-                                projectId: configData?.gitlabProjectId, 
-                                branch: configData?.gitlabBranch, 
-                                filePath: testDataFullGitPath, 
-                                scenarioNames 
-                            }) 
-                        });
-                        const result = await prepRes.json();
-                        if (prepRes.ok && result.success) { 
-                            addLog(agent.id, `Successfully injected "Agent: found" for ${result.updateCount} scenarios.`);
-                            const contentStr = JSON.stringify(result.updatedContent, null, 2);
-                            preparedContentRef.current = { content: contentStr, filePath: testDataFullGitPath };
-                            updatedContent = contentStr;
-                            targetFilePath = testDataFullGitPath;
-                            extra = `${result.updateCount} Scenarios Prepared`;
-                        } else {
-                            addLog(agent.id, `Preparation Error: ${result.error || 'Scenarios not found in file.'}`);
-                            executionStatus = 'error';
-                        }
-                    } catch (e: any) {
-                        addLog(agent.id, `GitLab Sync Error: ${e.message}`);
-                        executionStatus = 'error';
-                    }
-                } else { 
-                    addLog(agent.id, "No test data file path detected in execution outputs.");
-                    executionStatus = 'error'; 
-                }
-            } else {
-                addLog(agent.id, "No data issues found to repair.");
-            }
-        } else if (agent.id === 6) {
-            addLog(agent.id, "Initializing GitLab Data Sync...");
-            if (preparedContentRef.current) {
-                try {
-                    const commitRes = await fetch('/api/gitlab/commit', { 
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify({ 
-                            token: configData?.gitlabToken, 
-                            projectId: configData?.gitlabProjectId, 
-                            branch: configData?.gitlabBranch, 
-                            filePath: preparedContentRef.current.filePath, 
-                            content: preparedContentRef.current.content 
-                        }) 
-                    });
-                    const result = await commitRes.json();
-                    if (commitRes.ok && result.success) { 
-                        addLog(agent.id, `Committed changes to ${preparedContentRef.current.filePath}. Hash: ${result.commitHash?.substring(0,8)}`);
-                        extra = "Data Synchronized"; 
-                        updatedContent = preparedContentRef.current.content; 
-                    } else {
-                        addLog(agent.id, `GitLab Commit Error: ${result.error}`);
-                        executionStatus = 'error';
-                    }
-                } catch (e) { executionStatus = 'error'; }
-            } else {
-                addLog(agent.id, "No prepared content found to sync.");
-            }
-        } else if (agent.id === 7) {
-            addLog(agent.id, "Initializing Pipeline Orchestrator...");
-            const scheduleDesc = configData?.gitlabPipelineScheduleDescription;
-            if (scheduleDesc) {
-                try {
-                    const triggerRes = await fetch('/api/gitlab/trigger-schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: configData?.gitlabToken, projectId: configData?.gitlabProjectId, scheduleDescription: scheduleDesc }) });
-                    const result = await triggerRes.json();
-                    if (triggerRes.ok && result.success) extra = `Triggered: ${scheduleDesc}`;
-                    else executionStatus = 'error';
-                } catch (e) { executionStatus = 'error'; }
-            }
         } else if (agent.id === 8) {
             addLog(agent.id, "Initializing Notification Trigger...");
             if (configData?.teamsWebhookUrl) {
@@ -737,9 +734,9 @@ export function AIAgentsPage() {
                     total: agents.find(a => a.id === 2)?.metrics?.total,
                     passed: agents.find(a => a.id === 2)?.metrics?.passed,
                     failed: agents.find(a => a.id === 2)?.metrics?.failed,
-                    jiraStatus: agents.find(a => a.id === 4)?.extraInfo,
-                    gitlabUpdates: parseInt(agents.find(a => a.id === 5)?.extraInfo || "0"),
-                    orchestratorStatus: agents.find(a => a.id === 7)?.extraInfo
+                    jiraStatus: agents.find(a => a.id === 7)?.extraInfo,
+                    gitlabUpdates: parseInt(agents.find(a => a.id === 4)?.extraInfo || "0"),
+                    orchestratorStatus: agents.find(a => a.id === 6)?.extraInfo
                 };
                 try {
                     const res = await fetch('/api/notifications/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ webhookUrl: configData.teamsWebhookUrl, summary }) });
@@ -876,17 +873,17 @@ export function AIAgentsPage() {
                         <CardHeader className="p-4 pb-2">
                             <div className="flex justify-between items-start">
                                 <div className="bg-primary/10 p-2 rounded-lg">
-                                    {idx === 0 && <Database className="h-4 w-4 text-primary" />}
-                                    {idx === 1 && <FileJson className="h-4 w-4 text-primary" />}
-                                    {idx === 2 && <ShieldAlert className="h-4 w-4 text-primary" />}
-                                    {idx === 3 && <Bug className="h-4 w-4 text-primary" />}
-                                    {idx === 4 && <ListChecks className="h-4 w-4 text-primary" />}
-                                    {idx === 5 && <GitBranch className="h-4 w-4 text-primary" />}
-                                    {idx === 6 && <RefreshCcw className="h-4 w-4 text-primary" />}
-                                    {idx === 7 && <MessageSquare className="h-4 w-4 text-primary" />}
+                                    {agent.id === 1 && <Database className="h-4 w-4 text-primary" />}
+                                    {agent.id === 2 && <FileJson className="h-4 w-4 text-primary" />}
+                                    {agent.id === 3 && <ShieldAlert className="h-4 w-4 text-primary" />}
+                                    {agent.id === 4 && <ListChecks className="h-4 w-4 text-primary" />}
+                                    {agent.id === 5 && <GitBranch className="h-4 w-4 text-primary" />}
+                                    {agent.id === 6 && <RefreshCcw className="h-4 w-4 text-primary" />}
+                                    {agent.id === 7 && <Bug className="h-4 w-4 text-primary" />}
+                                    {agent.id === 8 && <MessageSquare className="h-4 w-4 text-primary" />}
                                 </div>
                                 <div className="flex gap-1">
-                                    {idx === 2 && (
+                                    {agent.id === 3 && (
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
@@ -979,7 +976,7 @@ export function AIAgentsPage() {
                                             </DialogContent>
                                         </Dialog>
                                     )}
-                                    {idx === 3 && (
+                                    {agent.id === 7 && (
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
@@ -1002,7 +999,7 @@ export function AIAgentsPage() {
                                             </DialogContent>
                                         </Dialog>
                                     )}
-                                    {(idx === 4 || idx === 5) && (
+                                    {(agent.id === 4 || agent.id === 5) && (
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
@@ -1024,7 +1021,7 @@ export function AIAgentsPage() {
                                             </DialogContent>
                                         </Dialog>
                                     )}
-                                    {idx === 6 && (
+                                    {agent.id === 6 && (
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
@@ -1039,7 +1036,7 @@ export function AIAgentsPage() {
                                             </DialogContent>
                                         </Dialog>
                                     )}
-                                    {idx === 7 && (
+                                    {agent.id === 8 && (
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-6 w-6 text-primary">
@@ -1067,19 +1064,19 @@ export function AIAgentsPage() {
                             <CardDescription className="text-[11px] leading-tight h-8 overflow-hidden">{agent.description}</CardDescription>
                         </CardHeader>
                         <CardContent className="px-4 py-2 flex-1">
-                            {idx === 0 && agent.extraInfo && (
+                            {agent.id === 1 && agent.extraInfo && (
                                 <div className="space-y-2">
                                     <div className="p-1.5 bg-primary/5 border border-primary/10 rounded text-[9px] font-mono flex items-center gap-1.5"><FileCode className="h-3 w-3 text-primary shrink-0" /><span className="truncate text-primary font-bold">{agent.extraInfo}</span></div>
                                     <Button variant="outline" size="sm" className="h-6 text-[10px] w-full" onClick={() => handleViewReport(agent.extraInfo!)}><Eye className="h-3 w-3 mr-1" /> View Fetched JSON</Button>
                                 </div>
                             )}
-                            {idx === 1 && agent.metrics && (
+                            {agent.id === 2 && agent.metrics && (
                                 <div className="grid grid-cols-2 gap-2">
                                     <button className="bg-green-500/10 border border-green-200 rounded p-1 text-center" onClick={() => handleOpenScenarioList('Passed Scenarios', 'passed', agent.metrics?.scenarios)}><div className="text-[8px] text-green-600 font-semibold uppercase">Passed</div><div className="text-xs font-bold text-green-700">{agent.metrics.passed}</div></button>
                                     <button className="bg-red-500/10 border border-red-200 rounded p-1 text-center" onClick={() => handleOpenScenarioList('Failed Scenarios', 'failed', agent.metrics?.scenarios)}><div className="text-[8px] text-red-600 font-semibold uppercase">Failed</div><div className="text-xs font-bold text-red-700">{agent.metrics.failed}</div></button>
                                 </div>
                             )}
-                            {idx === 2 && agent.classificationSummary && (
+                            {agent.id === 3 && agent.classificationSummary && (
                                 <div className="grid grid-cols-2 gap-1.5">
                                     <button className="bg-red-500/10 border border-red-200 rounded p-1 text-center" onClick={() => handleOpenClassificationList('Functional Issues', 'Functional Issue', agent.classifications)}><div className="text-[7px] text-red-600 font-semibold uppercase">Func</div><div className="text-xs font-bold text-red-700">{agent.classificationSummary.functionalCount}</div></button>
                                     <button className="bg-amber-500/10 border border-amber-200 rounded p-1 text-center" onClick={() => handleOpenClassificationList('Data Issues', 'Data Issue', agent.classifications)}><div className="text-[7px] text-amber-600 font-semibold uppercase">Data</div><div className="text-xs font-bold text-amber-700">{agent.classificationSummary.dataCount}</div></button>
@@ -1087,10 +1084,10 @@ export function AIAgentsPage() {
                                     <button className="bg-purple-500/10 border border-purple-200 rounded p-1 text-center" onClick={() => handleOpenClassificationList('Automation Issues', 'Automation script issue', agent.classifications)}><div className="text-[7px] text-purple-600 font-semibold uppercase">Auto</div><div className="text-xs font-bold text-purple-700">{agent.classificationSummary.automationCount}</div></button>
                                 </div>
                             )}
-                            {(idx >= 3) && agent.extraInfo && (
+                            {(agent.id >= 4) && agent.extraInfo && (
                                 <div className="p-2 bg-primary/5 border border-primary/10 rounded-md text-center flex flex-col gap-2">
                                     <span className="text-[10px] font-bold text-primary truncate">{agent.extraInfo}</span>
-                                    {(idx === 4 || idx === 5) && agent.updatedContent && (
+                                    {(agent.id === 4 || agent.id === 5) && agent.updatedContent && (
                                         <Button variant="outline" size="sm" className="h-6 text-[10px] w-full" onClick={() => setPreviewReport({ name: "Updated JSON", content: agent.updatedContent! })}><Eye className="h-3 w-3 mr-1" /> View JSON</Button>
                                     )}
                                 </div>
