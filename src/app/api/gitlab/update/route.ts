@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 /**
  * POST /api/gitlab/update
  * Fetches a JSON file from GitLab and updates specific scenarios' data in memory.
- * Now supports an array of scenarioNames to handle multiple repairs in one file.
+ * Supports an array of scenarioNames to handle multiple repairs in one file.
+ * Enhanced: Performs automated date-gap healing for OTM pick-up and delivery fields.
  */
 export async function POST(request: Request) {
     try {
@@ -38,28 +39,94 @@ export async function POST(request: Request) {
         }
 
         let totalUpdated = 0;
+        let totalDatesHealed = 0;
         const normalizedTargetNames = scenarioNames.map(n => n.toLowerCase().trim());
+
+        // Fields to check for the minimum 4-day gap sequence
+        const dateFields = ["EARLYPICKUPDATE", "LATEPICKUPDATE", "EARLYDELIVERYDATE", "LATEDELIVERYDATE"];
+
+        /**
+         * Helper to recursively check and heal date gaps within a matched scenario object.
+         */
+        const healDatesInScenario = (obj: any) => {
+            if (typeof obj !== 'object' || obj === null) return;
+
+            if (Array.isArray(obj)) {
+                // Check if this array contains OTM "KEY=VAL" strings
+                let currentMinVal = -99999; 
+                
+                dateFields.forEach((field, fIdx) => {
+                    const foundIdx = obj.findIndex((item: any) => typeof item === 'string' && (item.startsWith(field + "=") || item.startsWith(field + " =")));
+                    if (foundIdx !== -1) {
+                        const parts = obj[foundIdx].split('=');
+                        const prefix = parts[0] + "=";
+                        const val = parseInt(parts[1]);
+                        
+                        if (!isNaN(val)) {
+                            if (fIdx === 0) {
+                                currentMinVal = val;
+                            } else {
+                                const targetVal = currentMinVal + 4;
+                                if (val < targetVal) {
+                                    obj[foundIdx] = prefix + String(targetVal);
+                                    totalDatesHealed++;
+                                    currentMinVal = targetVal;
+                                } else {
+                                    currentMinVal = val;
+                                }
+                            }
+                        }
+                    }
+                });
+                // Recurse into array items
+                obj.forEach(item => healDatesInScenario(item));
+            } else {
+                // Check direct object keys
+                let currentMinVal = -99999;
+                dateFields.forEach((field, fIdx) => {
+                    if (obj[field] !== undefined) {
+                        const rawVal = obj[field];
+                        const valStr = String(rawVal);
+                        
+                        let numericPart = valStr;
+                        let prefix = "";
+                        if (valStr.includes('=')) {
+                            const parts = valStr.split('=');
+                            prefix = parts[0] + "=";
+                            numericPart = parts[1];
+                        }
+
+                        const val = parseInt(numericPart);
+                        if (!isNaN(val)) {
+                            if (fIdx === 0) {
+                                currentMinVal = val;
+                            } else {
+                                const targetVal = currentMinVal + 4;
+                                if (val < targetVal) {
+                                    obj[field] = prefix + String(targetVal);
+                                    totalDatesHealed++;
+                                    currentMinVal = targetVal;
+                                } else {
+                                    currentMinVal = val;
+                                }
+                            }
+                        }
+                    }
+                });
+                // Recurse into nested objects
+                for (const key in obj) {
+                    if (typeof obj[key] === 'object') healDatesInScenario(obj[key]);
+                }
+            }
+        };
 
         // Recursive search and update function
         const updateAgentKey = (obj: any): boolean => {
             let localFound = false;
             if (Array.isArray(obj)) {
                 for (let i = 0; i < obj.length; i++) {
-                    const item = obj[i];
-                    const nameInJson = (item.scenarioName || item.name || item.Scenario || "").toLowerCase().trim();
-                    
-                    const isMatch = normalizedTargetNames.some(target => 
-                        nameInJson === target || (target.includes(nameInJson) && nameInJson.length > 5)
-                    );
-
-                    if (nameInJson && isMatch) {
-                        if (obj[i].Agent !== "found") {
-                            obj[i] = { ...item, Agent: "found" };
-                            totalUpdated++;
-                        }
-                        localFound = true;
-                    } else if (typeof item === 'object') {
-                        if (updateAgentKey(item)) localFound = true;
+                    if (typeof obj[i] === 'object' && obj[i] !== null) {
+                        if (updateAgentKey(obj[i])) localFound = true;
                     }
                 }
             } else if (typeof obj === 'object' && obj !== null) {
@@ -73,22 +140,15 @@ export async function POST(request: Request) {
                         obj.Agent = "found";
                         totalUpdated++;
                     }
+                    
+                    // Perform Date Gap Healing for the matched scenario
+                    healDatesInScenario(obj);
+                    
                     localFound = true;
                 }
 
                 for (const key in obj) {
-                    const keyLower = key.toLowerCase().trim();
-                    const isKeyMatch = normalizedTargetNames.some(target => keyLower === target);
-
-                    if (isKeyMatch) {
-                        if (typeof obj[key] === 'object' && obj[key] !== null) {
-                            if (obj[key].Agent !== "found") {
-                                obj[key].Agent = "found";
-                                totalUpdated++;
-                            }
-                            localFound = true;
-                        }
-                    } else if (typeof obj[key] === 'object') {
+                    if (typeof obj[key] === 'object' && obj[key] !== null) {
                         if (updateAgentKey(obj[key])) localFound = true;
                     }
                 }
@@ -110,6 +170,7 @@ export async function POST(request: Request) {
             success: true, 
             updated: true, 
             updateCount: totalUpdated,
+            datesHealedCount: totalDatesHealed,
             filePath,
             updatedContent: jsonContent 
         });

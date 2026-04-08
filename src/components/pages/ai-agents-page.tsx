@@ -91,7 +91,7 @@ const AGENTS_CONFIG: Omit<AgentStatus, 'status' | 'lastRun' | 'logs'>[] = [
     { id: 1, name: "Execution Fetcher", description: "Fetches latest execution JSON from Selenium Data Store (fallback to Confluence)." },
     { id: 2, name: "JSON Report Parser", description: "Analyzes Agent 1 JSON data to identify pass and failure counts using AI." },
     { id: 3, name: "Failure Classifier", description: "Analyzes failures using AI Analytics and Machine Learning patterns to categorize issues." },
-    { id: 4, name: "Prepare data for data Issue", description: "Identifies test data file from step output and prepares updated JSON with 'Agent: found'." },
+    { id: 4, name: "Prepare data for data Issue", description: "Identifies test data file and performs OTM date gap auto-healing (Min 4-day gap)." },
     { id: 5, name: "GitLab Data Sync", description: "Automatically commits prepared test data updates back to GitLab repositories." },
     { id: 6, name: "Pipeline Orchestrator", description: "Triggers targeted reruns in GitLab pipelines by calling specified pipeline schedules." },
     { id: 7, name: "Jira Defect Scout", description: "Automates Jira ticket creation for functional failures with steps and screenshots." },
@@ -507,7 +507,7 @@ export function AIAgentsPage() {
                 classificationsRef.current = [];
             }
         } else if (agent.id === 4) {
-            addLog(agent.id, "Starting: Prepare data for data Issue...");
+            addLog(agent.id, "Starting OTM Data & Date Sequence Analysis...");
             const dataFailures = classificationsRef.current?.filter(c => c.classification === 'Data Issue') || [];
             if (dataFailures.length > 0) {
                 let testDataFullGitPath = null;
@@ -547,12 +547,16 @@ export function AIAgentsPage() {
                         });
                         const result = await prepRes.json();
                         if (prepRes.ok && result.success) { 
-                            addLog(agent.id, `Successfully injected "Agent: found" for ${result.updateCount} scenarios.`);
+                            let msg = `Successfully injected "Agent: found" for ${result.updateCount} scenarios.`;
+                            if (result.datesHealedCount && result.datesHealedCount > 0) {
+                                msg += ` Healed ${result.datesHealedCount} OTM date gaps (enforced 4-day minimum).`;
+                            }
+                            addLog(agent.id, msg);
                             const contentStr = JSON.stringify(result.updatedContent, null, 2);
                             preparedContentRef.current = { content: contentStr, filePath: testDataFullGitPath };
                             updatedContent = contentStr;
                             targetFilePath = testDataFullGitPath;
-                            extra = `${result.updateCount} Scenarios Prepared`;
+                            extra = `${result.updateCount} Repaired | ${result.datesHealedCount || 0} Dates Healed`;
                         } else {
                             addLog(agent.id, `Preparation Error: ${result.error || 'Scenarios not found in file.'}`);
                             executionStatus = 'error';
@@ -611,16 +615,17 @@ export function AIAgentsPage() {
             addLog(agent.id, "Initializing Jira Defect Scout...");
             const functionalFailures = classificationsRef.current?.filter(c => c.classification === 'Functional Issue') || [];
             if (functionalFailures.length > 0) {
-                // 1. Group scenarios by their failure logs to consolidate duplicated issues
+                // Group scenarios by their normalized failure logs to consolidate duplicated issues
                 const failureGroups = new Map<string, { representative: string, others: string[], originalLog: string }>(); 
                 
                 functionalFailures.forEach(f => {
                     const scenarioSummary = scenariosRef.current?.find(s => s.name === f.scenarioName);
                     const rawLog = (scenarioSummary?.logs || "").trim();
                     
+                    // Normalize logs by masking timestamps, UUIDs, and numbers to identify root causes
                     const normalizedKey = rawLog
                         .replace(/\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, '<timestamp>') 
-                        .replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '<uuid>') 
+                        .replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '<uuid>') 
                         .replace(/\d+/g, '#') 
                         .trim() || `SCENARIO_KEY_${f.scenarioName}`;
 
@@ -689,6 +694,7 @@ export function AIAgentsPage() {
                             description += `\n\n--- DETAILED FAILURE LOG ---\n${failureLog}`;
                         }
 
+                        // Mention impacted test cases at the end of the description
                         description += `\n\n--- IMPACTED TEST CASES (${allAffectedNames.length}) ---\n`;
                         allAffectedNames.forEach((name, i) => {
                             description += `${i + 1}. ${name}\n`;
