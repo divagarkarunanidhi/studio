@@ -40,7 +40,22 @@ export async function POST(request: Request) {
 
         let totalUpdated = 0;
         let totalDatesHealed = 0;
-        const normalizedTargetNames = scenarioNames.map(n => n.toLowerCase().trim());
+        
+        // Clean and prepare target names for robust matching
+        const cleanName = (name: string) => name.toLowerCase().replace(/^scenario\s+\d+:\s*/, '').trim();
+        const normalizedTargetNames = scenarioNames.map(n => cleanName(n));
+
+        const isMatch = (jsonName: any) => {
+            if (typeof jsonName !== 'string') return false;
+            const target = cleanName(jsonName);
+            if (!target) return false;
+            
+            return normalizedTargetNames.some(reportName => {
+                return target === reportName || 
+                       (target.length > 5 && reportName.includes(target)) ||
+                       (reportName.length > 5 && target.includes(reportName));
+            });
+        };
 
         // Fields to check for the minimum 4-day gap sequence
         const dateFields = ["EARLYPICKUPDATE", "LATEPICKUPDATE", "EARLYDELIVERYDATE", "LATEDELIVERYDATE"];
@@ -115,41 +130,50 @@ export async function POST(request: Request) {
                 });
                 // Recurse into nested objects
                 for (const key in obj) {
-                    if (typeof obj[key] === 'object') healDatesInScenario(obj[key]);
+                    if (key !== 'Agent' && typeof obj[key] === 'object') healDatesInScenario(obj[key]);
                 }
             }
         };
 
-        // Recursive search and update function
+        // Recursive search and update function with fuzzy key support
         const updateAgentKey = (obj: any): boolean => {
             let localFound = false;
+            if (!obj || typeof obj !== 'object') return false;
+
             if (Array.isArray(obj)) {
                 for (let i = 0; i < obj.length; i++) {
-                    if (typeof obj[i] === 'object' && obj[i] !== null) {
-                        if (updateAgentKey(obj[i])) localFound = true;
-                    }
+                    if (updateAgentKey(obj[i])) localFound = true;
                 }
-            } else if (typeof obj === 'object' && obj !== null) {
-                const nameInJson = (obj.scenarioName || obj.name || obj.Scenario || "").toLowerCase().trim();
-                const isMatch = normalizedTargetNames.some(target => 
-                    nameInJson === target || (target.includes(nameInJson) && nameInJson.length > 5)
-                );
-
-                if (nameInJson && isMatch) {
+            } else {
+                // 1. Check if this object itself has matching scenario-related fields
+                const nameInJson = obj.scenarioName || obj.name || obj.Scenario || obj.ID || "";
+                if (isMatch(nameInJson)) {
                     if (obj.Agent !== "found") {
                         obj.Agent = "found";
                         totalUpdated++;
                     }
-                    
-                    // Perform Date Gap Healing for the matched scenario
                     healDatesInScenario(obj);
-                    
                     localFound = true;
                 }
 
+                // 2. Check keys of this object (Common OTM JSON structure where Scenario Name is the Key)
                 for (const key in obj) {
-                    if (typeof obj[key] === 'object' && obj[key] !== null) {
-                        if (updateAgentKey(obj[key])) localFound = true;
+                    const value = obj[key];
+                    
+                    if (isMatch(key)) {
+                        if (typeof value === 'object' && value !== null) {
+                            if (value.Agent !== "found") {
+                                value.Agent = "found";
+                                totalUpdated++;
+                            }
+                            healDatesInScenario(value);
+                            localFound = true;
+                        }
+                    }
+                    
+                    // Recursively check inner objects/arrays
+                    if (typeof value === 'object' && value !== null) {
+                        if (updateAgentKey(value)) localFound = true;
                     }
                 }
             }
@@ -160,7 +184,7 @@ export async function POST(request: Request) {
 
         if (totalUpdated === 0) {
             return NextResponse.json({ 
-                error: `None of the scenarios were found or updated in the test data file.`, 
+                error: `None of the scenarios were found or updated in the test data file. (Searched for: ${normalizedTargetNames.join(', ')})`, 
                 updated: false,
                 content: jsonContent 
             });
