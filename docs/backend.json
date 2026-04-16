@@ -32,30 +32,17 @@
       },
       "required": ["userId", "eventType", "timestamp"]
     },
-    "AgentTask": {
-      "title": "AgentTask",
+    "AutoTriggerLog": {
+      "title": "AutoTriggerLog",
       "type": "object",
-      "description": "Represents a single automated agent pipeline execution.",
+      "description": "History of pipelines triggered via email monitoring.",
       "properties": {
-        "id": { "type": "string" },
-        "startTime": { "type": "string", "format": "date-time" },
-        "endTime": { "type": ["string", "null"], "format": "date-time" },
-        "status": { "enum": ["in-progress", "completed", "failed"] },
-        "resultsSummary": { "type": ["string", "null"] }
-      }
-    },
-    "AgentActivity": {
-      "title": "AgentActivity",
-      "type": "object",
-      "description": "Individual logs for each agent within a task.",
-      "properties": {
-        "taskId": { "type": "string" },
-        "agentId": { "type": "number" },
-        "agentName": { "type": "string" },
-        "status": { "enum": ["pending", "running", "success", "error"] },
-        "message": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "data": { "type": ["object", "null"] }
+        "emailId": { "type": "string" },
+        "sender": { "type": "string" },
+        "subject": { "type": "string" },
+        "triggeredAt": { "type": "string", "format": "date-time" },
+        "gitlabStatus": { "type": "string" },
+        "message": { "type": "string" }
       }
     },
     "AppConfiguration": {
@@ -70,33 +57,15 @@
         "geminiRetryModel": { "type": "string" },
         "jiraLink": { "type": "string" },
         "reusabilityLabels": { "type": ["string", "null"] },
-        "seleniumDomainDateRanges": { "type": "object" },
-        "confluencePath": { "type": ["string", "null"] },
-        "confluencePageId": { "type": ["string", "null"] },
-        "confluenceUser": { "type": ["string", "null"] },
-        "confluencePassword": { "type": ["string", "null"] },
+        "outlookClientId": { "type": ["string", "null"] },
+        "outlookTenantId": { "type": ["string", "null"] },
+        "outlookClientSecret": { "type": ["string", "null"] },
+        "outlookUserEmail": { "type": ["string", "null"] },
+        "outlookSenderFilter": { "type": ["string", "null"] },
+        "outlookSubjectFilter": { "type": ["string", "null"] },
+        "autoTriggerEnabled": { "type": "boolean" },
         "autoLogoutEnabled": { "type": "boolean" },
         "autoLogoutTime": { "type": "number" }
-      }
-    },
-    "SavedPrediction": {
-      "title": "SavedPrediction",
-      "type": "object",
-      "description": "Expert validated feedback for AI training.",
-      "properties": {
-        "defect": { "$ref": "#/backend/entities/Defect" },
-        "prediction": { "type": "object" },
-        "savedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "user": {
-      "title": "user",
-      "type": "object",
-      "description": "User profile data.",
-      "properties": {
-        "username": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "role": { "enum": ["admin", "taas", "view", "newuser"] }
       }
     }
   },
@@ -108,29 +77,13 @@
       "schema": { "$ref": "#/backend/entities/user" },
       "description": "User profiles."
     },
-    "/users/{userId}/defects/{defectId}": {
-      "schema": { "$ref": "#/backend/entities/Defect" },
-      "description": "User-specific defect uploads."
-    },
-    "/usageEvents/{eventId}": {
-      "schema": { "$ref": "#/backend/entities/UsageEvent" },
-      "description": "Application usage logs."
-    },
-    "/agentTasks/{taskId}": {
-      "schema": { "$ref": "#/backend/entities/AgentTask" },
-      "description": "History of agent pipeline runs."
-    },
-    "/agentTasks/{taskId}/activities/{activityId}": {
-      "schema": { "$ref": "#/backend/entities/AgentActivity" },
-      "description": "Detailed logs for each step in a task."
-    },
     "/appConfiguration/global": {
       "schema": { "$ref": "#/backend/entities/AppConfiguration" },
       "description": "Global settings singleton."
     },
-    "/sharedFeedback/{feedbackId}": {
-      "schema": { "$ref": "#/backend/entities/SavedPrediction" },
-      "description": "Expert feedback examples."
+    "/autoTriggerLogs/{logId}": {
+      "schema": { "$ref": "#/backend/entities/AutoTriggerLog" },
+      "description": "Historical logs of email-triggered pipelines."
     }
   }
 }

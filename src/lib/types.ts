@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export const DefectSchema = z.object({
@@ -35,32 +36,33 @@ export const AppConfigurationSchema = z.object({
     jiraIssueType: z.string().optional().nullable().default('Bug'),
     reusabilityLabels: z.string().optional().nullable(),
     seleniumDomainDateRanges: z.record(z.any()).optional(),
-    // Confluence Fetcher Configuration
     confluencePath: z.string().optional().nullable(),
     confluencePageId: z.string().optional().nullable(),
     confluenceUser: z.string().optional().nullable(),
     confluencePassword: z.string().optional().nullable(),
-    // GitLab Configuration
     gitlabToken: z.string().optional().nullable(),
     gitlabProjectId: z.string().optional().nullable(),
     gitlabBranch: z.string().optional().nullable().default('main'),
     gitlabFilePathPrefix: z.string().optional().nullable().default(''),
     gitlabPipelineScheduleDescription: z.string().optional().nullable(),
-    // Notification Settings
     teamsWebhookUrl: z.string().optional().nullable(),
-    // Failure Classifier Settings
+    outlookClientId: z.string().optional().nullable(),
+    outlookTenantId: z.string().optional().nullable(),
+    outlookClientSecret: z.string().optional().nullable(),
+    outlookUserEmail: z.string().optional().nullable(),
+    outlookSenderFilter: z.string().optional().nullable().default('mareeswari'),
+    outlookSubjectFilter: z.string().optional().nullable().default('Trigger cox regression'),
+    autoTriggerEnabled: z.boolean().default(false),
     failureRules: z.array(FailureRuleSchema).optional().default([]),
     enableTier1Rules: z.boolean().default(true),
     enableTier2Python: z.boolean().default(true),
     enableTier3Heuristics: z.boolean().default(true),
-    // Session Settings
     autoLogoutEnabled: z.boolean().default(true),
     autoLogoutTime: z.number().min(1, 'Logout time must be at least 1 minute.').default(5),
 });
   
 export type AppConfiguration = z.infer<typeof AppConfigurationSchema>;
 
-// Usage Tracking Schema
 export const UsageEventSchema = z.object({
     userId: z.string(),
     username: z.string().optional().nullable(),
@@ -70,64 +72,77 @@ export const UsageEventSchema = z.object({
 });
 export type UsageEvent = z.infer<typeof UsageEventSchema>;
 
-// Agent Schemas
-export const AgentTaskSchema = z.object({
-    id: z.string(),
-    startTime: z.string(),
-    endTime: z.string().optional().nullable(),
-    status: z.enum(['in-progress', 'completed', 'failed']),
-    resultsSummary: z.string().optional().nullable(),
-});
-export type AgentTask = z.infer<typeof AgentTaskSchema>;
-
-export const AgentActivitySchema = z.object({
-    taskId: z.string(),
-    agentId: z.number(),
-    agentName: z.string(),
-    status: z.enum(['pending', 'running', 'success', 'error']),
+export const AutoTriggerLogSchema = z.object({
+    id: z.string().optional(),
+    emailId: z.string(),
+    sender: z.string(),
+    subject: z.string(),
+    triggeredAt: z.string(),
+    gitlabStatus: z.string(),
     message: z.string(),
-    timestamp: z.string(),
-    data: z.any().optional().nullable(),
 });
-export type AgentActivity = z.infer<typeof AgentActivitySchema>;
+export type AutoTriggerLog = z.infer<typeof AutoTriggerLogSchema>;
 
-// AI Flow Schemas
-export const DefectAnalysisInputSchema = z.object({
-    defects: z.array(DefectSchema),
-  });
-  
-export type DefectAnalysisInput = z.infer<typeof DefectAnalysisInputSchema>;
+export const ReportParserOutputSchema = z.object({
+    total: z.number(),
+    passed: z.number(),
+    failed: z.number(),
+    scenarios: z.array(z.object({
+        name: z.string(),
+        status: z.enum(['passed', 'failed']),
+        tags: z.array(z.string()),
+        logs: z.string().optional().nullable()
+    }))
+});
+export type ReportParserOutput = z.infer<typeof ReportParserOutputSchema>;
+
+export const FailureClassificationOutputSchema = z.object({
+    classifications: z.array(z.object({
+        scenarioName: z.string(),
+        classification: z.enum(['Functional Issue', 'Data Issue', 'Environment Issue', 'Automation script issue']),
+        reasoning: z.string(),
+    })),
+    summary: z.object({
+        functionalCount: z.number(),
+        dataCount: z.number(),
+        environmentCount: z.number(),
+        automationCount: z.number()
+    })
+});
+export type FailureClassificationOutput = z.infer<typeof FailureClassificationOutputSchema>;
+
+export const TestCaseAnalysisInputSchema = z.object({
+    distributionData: z.string(),
+    reusabilityData: z.string(),
+});
+export type TestCaseAnalysisInput = z.infer<typeof TestCaseAnalysisInputSchema>;
+
+export const TestCaseAnalysisOutputSchema = z.object({
+    analysis: z.string(),
+});
+export type TestCaseAnalysisOutput = z.infer<typeof TestCaseAnalysisOutputSchema>;
 
 export const DefectAnalysisOutputSchema = z.object({
-    defectCause: z.string().describe("An analysis of the root causes of the recurring defects."),
-    defectSuggestions: z.string().describe("Actionable suggestions for engineering teams to reduce future defects."),
-    majorRootCauses: z.array(z.string()).describe("Top 3 major recurring root causes identified in the dataset, with detailed explanations."),
-    majorReductionSuggestions: z.array(z.string()).describe("Top 3 most impactful actionable suggestions for defect reduction, with comprehensive details."),
+    defectCause: z.string(),
+    defectSuggestions: z.string(),
+    majorRootCauses: z.array(z.string()),
+    majorReductionSuggestions: z.array(z.string()),
 });
-
 export type DefectAnalysisOutput = z.infer<typeof DefectAnalysisOutputSchema>;
 
-// Prediction Flow Schemas
 export const DefectPredictionSchema = z.object({
-    predictedSeverity: z.string().describe("The predicted severity of the defect (Critical, High, Medium, Low)."),
-    predictedPriority: z.string().describe("The predicted priority of the defect (Highest, High, Medium, Low, Lowest)."),
-    predictedRootCause: z.string().describe("A brief, one or two-word potential root cause for the defect (e.g., 'Data Integrity', 'Configuration', 'UI/UX')."),
-    predictedFunctionalArea: z.string().describe("A short, one or two-word category for the functional area affected (e.g., 'User Auth', 'Billing', 'Search', 'Reporting', 'Checkout')."),
-    predictedDefectSuggestions: z.string().describe("A concise, actionable suggestion to engineering teams to prevent this type of defect in the future."),
+    predictedSeverity: z.string(),
+    predictedPriority: z.string(),
+    predictedRootCause: z.string(),
+    predictedFunctionalArea: z.string(),
+    predictedDefectSuggestions: z.string(),
 });
-
 export type DefectPrediction = z.infer<typeof DefectPredictionSchema> & { id: string };
 
 export const DefectPredictionOutputSchema = z.object({
-    predictions: z.array(
-        DefectPredictionSchema.extend({
-            id: z.string(),
-        })
-    ),
+    predictions: z.array(DefectPredictionSchema.extend({ id: z.string() })),
 });
-
 export type DefectPredictionOutput = z.infer<typeof DefectPredictionOutputSchema>;
-
 
 export const SavedPredictionSchema = z.object({
     defect: DefectSchema,
@@ -136,7 +151,6 @@ export const SavedPredictionSchema = z.object({
 });
 export type SavedPrediction = z.infer<typeof SavedPredictionSchema>;
 
-// Summary Flow Schemas
 const ChartDataPointSchema = z.object({
     name: z.string(),
     count: z.number(),
@@ -144,58 +158,7 @@ const ChartDataPointSchema = z.object({
 });
 
 export const DefectSummaryOutputSchema = z.object({
-    rootCause: z.array(ChartDataPointSchema).describe("An array of objects representing defect counts and IDs grouped by their predicted root cause."),
-    defectArea: z.array(ChartDataPointSchema).describe("An array of objects representing defect counts and IDs grouped by their predicted functional area."),
+    rootCause: z.array(ChartDataPointSchema),
+    defectArea: z.array(ChartDataPointSchema),
 });
-
 export type DefectSummaryOutput = z.infer<typeof DefectSummaryOutputSchema>;
-
-export const DefectSummaryInputSchema = z.object({
-    defects: z.array(DefectSchema),
-});
-
-export type DefectSummaryInput = z.infer<typeof DefectSummaryInputSchema>;
-
-// Test Case Analysis Flow Schemas
-export const TestCaseAnalysisInputSchema = z.object({
-    distributionData: z.string().describe("JSON string of test case distribution data."),
-    reusabilityData: z.string().describe("JSON string of test case reusability data."),
-});
-export type TestCaseAnalysisInput = z.infer<typeof TestCaseAnalysisInputSchema>;
-
-export const TestCaseAnalysisOutputSchema = z.object({
-    analysis: z.string().describe("A concise summary of the test case portfolio, including distribution and reusability insights."),
-});
-export type TestCaseAnalysisOutput = z.infer<typeof TestCaseAnalysisOutputSchema>;
-
-// Agent 2 Report Parser Schema
-export const ReportParserOutputSchema = z.object({
-    total: z.number().describe("The total number of scenarios identified."),
-    passed: z.number().describe("The number of passed scenarios."),
-    failed: z.number().describe("The number of failed scenarios."),
-    scenarios: z.array(z.object({
-        name: z.string().describe("The name of the test scenario."),
-        status: z.enum(['passed', 'failed']).describe("The final status of the test scenario."),
-        tags: z.array(z.string()).describe("A list of name tags or identifiers associated with the scenario (e.g. @TC_101)."),
-        logs: z.string().optional().nullable().describe("The failure message or error logs if the scenario failed.")
-    })).describe("A detailed list of scenarios found in the report.")
-});
-export type ReportParserOutput = z.infer<typeof ReportParserOutputSchema>;
-
-// Agent 3 Failure Classifier Schema
-export const FailureClassificationSchema = z.object({
-    scenarioName: z.string().describe("The name of the failed test scenario."),
-    classification: z.enum(['Functional Issue', 'Data Issue', 'Environment Issue', 'Automation script issue']).describe("The categorized cause of the failure."),
-    reasoning: z.string().describe("The explanation for why the failure was categorized this way."),
-});
-
-export const FailureClassificationOutputSchema = z.object({
-    classifications: z.array(FailureClassificationSchema),
-    summary: z.object({
-        functionalCount: z.number().describe("Total number of functional issues identified."),
-        dataCount: z.number().describe("Total number of data-related issues identified."),
-        environmentCount: z.number().describe("Total number of environment-related issues identified."),
-        automationCount: z.number().describe("Total number of automation script-related issues identified.")
-    })
-});
-export type FailureClassificationOutput = z.infer<typeof FailureClassificationOutputSchema>;

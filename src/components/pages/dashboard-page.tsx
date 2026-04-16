@@ -37,6 +37,7 @@ import {
   FilterX,
   BarChart3,
   Bot,
+  Zap,
 } from 'lucide-react';
 import { FileUploader } from '../dashboard/file-uploader';
 import { StatCard } from '../dashboard/stat-card';
@@ -82,9 +83,10 @@ import { SeleniumDashboardPage } from './selenium-dashboard-page';
 import { useUsageTracking } from '@/hooks/use-usage-tracking';
 import { UsageDetailsPage } from './usage-details-page';
 import { AIAgentsPage } from './ai-agents-page';
+import { AutoTriggerPage } from './auto-trigger-page';
 
 
-type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard' | 'usage-details' | 'ai-agents';
+type View = 'dashboard' | 'all-defects' | 'analysis' | 'prediction' | 'resolution-time' | 'trend-analysis' | 'summary' | 'required-attention' | 'user-management' | 'configuration' | 'feedback-management' | 'test-case-summary' | 'selenium-dashboard' | 'usage-details' | 'ai-agents' | 'auto-trigger';
 
 const RECORDS_PER_PAGE = 50;
 
@@ -458,6 +460,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'selenium-dashboard': 'Selenium Dashboard',
     'usage-details': 'Application Usage Details',
     'ai-agents': 'AI Agents Dashboard',
+    'auto-trigger': 'AutoTrigger Pipeline'
   };
   
   const viewDescriptions: Record<View, string> = {
@@ -476,6 +479,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     'selenium-dashboard': 'Visualize results from Selenium test runs.',
     'usage-details': 'Monitor application engagement and feature popularity.',
     'ai-agents': 'Unattended AI agents for automated failure analysis and self-healing.',
+    'auto-trigger': 'Monitor Outlook for trigger emails to start pipeline jobs.'
   };
 
   const uniqueDomains = useMemo(() => {
@@ -712,7 +716,6 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
     );
   }
   
-  // Only show the global uploader for dashboard and all-defects views
   const displayUploader = showUploader && (activeView === 'dashboard' || activeView === 'all-defects');
 
   return (
@@ -735,6 +738,12 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
               <SidebarMenuButton tooltip="AI Agents" isActive={activeView === 'ai-agents'} onClick={() => handleViewChange('ai-agents')}>
                 <Bot />
                 AI Agents
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton tooltip="AutoTrigger Pipeline" isActive={activeView === 'auto-trigger'} onClick={() => handleViewChange('auto-trigger')}>
+                <Zap className="text-primary" />
+                AutoTrigger Pipeline
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -939,6 +948,10 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
 
             {activeView === 'ai-agents' && (
                 <AIAgentsPage />
+            )}
+
+            {activeView === 'auto-trigger' && (
+                <AutoTriggerPage />
             )}
 
             {activeView === 'trend-analysis' && (
