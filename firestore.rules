@@ -58,5 +58,10 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isStaff();
     }
+
+    // AutoTrigger Logs: Allow staff to view and log pipeline events.
+    match /autoTriggerLogs/{logId} {
+      allow read, list, create: if isStaff();
+    }
   }
 }
