@@ -11,53 +11,47 @@ jobs:
 
     defaults:
       run:
-        shell: powershell
+        shell: cmd
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Add Node.js to PATH
-        run: |
-          echo "C:\Program Files\nodejs" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "C:\Windows\system32\config\systemprofile\AppData\Roaming\npm" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "C:\Users\dkarunan\AppData\Roaming\npm" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
       - name: Verify Node.js version
         run: |
-          Write-Host "Node version: $(node -v)"
-          Write-Host "NPM version: $(npm -v)"
+          "C:\Program Files\nodejs\node.exe" -v
+          "C:\Program Files\nodejs\npm.cmd" -v
 
-      - name: Copy .env.local
+      - name: Copy env file
+        shell: powershell
         run: |
-          if (Test-Path "${{ github.workspace }}\.env.local.deploy") {
-            Copy-Item "${{ github.workspace }}\.env.local.deploy" "${{ github.workspace }}\.env.local"
-          } elseif (-not (Test-Path "${{ github.workspace }}\.env.local")) {
-            Write-Warning ".env.local not found — app may fail at runtime"
+          if (-not (Test-Path "${{ github.workspace }}\.env.local")) {
+            if (Test-Path "${{ github.workspace }}\.env.local.deploy") {
+              Copy-Item "${{ github.workspace }}\.env.local.deploy" "${{ github.workspace }}\.env.local"
+            } else {
+              Write-Warning ".env.local not found - app may fail at runtime"
+            }
           }
 
       - name: Install dependencies
-        run: npm ci
+        run: "C:\Program Files\nodejs\npm.cmd" ci
 
       - name: Build application
-        run: npx next build
+        run: "C:\Program Files\nodejs\npx.cmd" next build
         env:
           NODE_ENV: production
 
-      - name: Install PM2 globally (if not present)
-        run: |
-          $pm2 = Get-Command pm2 -ErrorAction SilentlyContinue
-          if (-not $pm2) { npm install -g pm2 }
+      - name: Install PM2 globally
+        run: "C:\Program Files\nodejs\npm.cmd" list -g pm2 || "C:\Program Files\nodejs\npm.cmd" install -g pm2
 
       - name: Stop existing app (if running)
-        run: |
-          try { pm2 stop ecosystem.config.cjs } catch { Write-Host "No existing process to stop" }
+        run: npx pm2 stop ecosystem.config.cjs || echo "No existing process to stop"
 
       - name: Start application with PM2
-        run: pm2 start ecosystem.config.cjs --env production
+        run: npx pm2 start ecosystem.config.cjs --env production
 
       - name: Save PM2 process list
-        run: pm2 save
+        run: npx pm2 save
 
       - name: Show deployment status
-        run: pm2 list
+        run: npx pm2 list
