@@ -2,7 +2,7 @@ name: Deploy to Local Machine
 
 on:
   push:
-    branches: [main]
+    branches: [mongo]
   workflow_dispatch:
 
 jobs:
