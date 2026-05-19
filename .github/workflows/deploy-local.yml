@@ -34,24 +34,31 @@ jobs:
           }
 
       - name: Install dependencies
-        run: "C:\Program Files\nodejs\npm.cmd" ci
+        run: |
+          "C:\Program Files\nodejs\npm.cmd" ci
 
       - name: Build application
-        run: "C:\Program Files\nodejs\npx.cmd" next build
+        run: |
+          "C:\Program Files\nodejs\npx.cmd" next build
         env:
           NODE_ENV: production
 
       - name: Install PM2 globally
-        run: "C:\Program Files\nodejs\npm.cmd" list -g pm2 || "C:\Program Files\nodejs\npm.cmd" install -g pm2
+        run: |
+          "C:\Program Files\nodejs\npm.cmd" list -g pm2 || "C:\Program Files\nodejs\npm.cmd" install -g pm2
 
       - name: Stop existing app (if running)
-        run: npx pm2 stop ecosystem.config.cjs || echo "No existing process to stop"
+        run: |
+          "C:\Program Files\nodejs\npx.cmd" pm2 stop ecosystem.config.cjs || echo "No existing process to stop"
 
       - name: Start application with PM2
-        run: npx pm2 start ecosystem.config.cjs --env production
+        run: |
+          "C:\Program Files\nodejs\npx.cmd" pm2 start ecosystem.config.cjs --env production
 
       - name: Save PM2 process list
-        run: npx pm2 save
+        run: |
+          "C:\Program Files\nodejs\npx.cmd" pm2 save
 
       - name: Show deployment status
-        run: npx pm2 list
+        run: |
+          "C:\Program Files\nodejs\npx.cmd" pm2 list
