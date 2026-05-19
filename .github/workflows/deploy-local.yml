@@ -23,15 +23,18 @@ jobs:
           "C:\Program Files\nodejs\npm.cmd" -v
 
       - name: Copy env file
-        shell: powershell
+        continue-on-error: true
         run: |
-          if (-not (Test-Path "${{ github.workspace }}\.env.local")) {
-            if (Test-Path "${{ github.workspace }}\.env.local.deploy") {
-              Copy-Item "${{ github.workspace }}\.env.local.deploy" "${{ github.workspace }}\.env.local"
-            } else {
-              Write-Warning ".env.local not found - app may fail at runtime"
-            }
-          }
+          if not exist ".env.local" (
+            if exist "C:\Code base\bugsense apr 24\studio\.env.local" (
+              copy "C:\Code base\bugsense apr 24\studio\.env.local" ".env.local"
+              echo Copied .env.local from project root
+            ) else (
+              echo WARNING: .env.local not found - app may fail at runtime
+            )
+          ) else (
+            echo .env.local already exists
+          )
 
       - name: Install dependencies
         run: |
