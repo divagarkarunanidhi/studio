@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc } from '@/firebase/firestore-shim';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { AppConfiguration } from '@/lib/types';
 import * as XLSX from 'xlsx';

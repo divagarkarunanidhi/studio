@@ -3,13 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser } from '@/firebase';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useUser } from '@/firebase';
+import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -24,15 +19,12 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Bug } from 'lucide-react';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const auth = useAuth();
-  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
@@ -45,38 +37,43 @@ export default function LoginPage() {
 
   const handleSignUp = async () => {
     if (!username) {
-        toast({
-            variant: 'destructive',
-            title: 'Sign Up Failed',
-            description: 'Please enter a username.',
-        });
-        return;
+      toast({
+        variant: 'destructive',
+        title: 'Sign Up Failed',
+        description: 'Please enter a username.',
+      });
+      return;
     }
     if (!email.endsWith('@dhl.com')) {
-        toast({
-            variant: 'destructive',
-            title: 'Invalid Email',
-            description: 'Only @dhl.com email addresses are allowed.',
-        });
-        return;
+      toast({
+        variant: 'destructive',
+        title: 'Invalid Email',
+        description: 'Only @dhl.com email addresses are allowed.',
+      });
+      return;
     }
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const user = userCredential.user;
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, username }),
+      });
 
-      // Create user profile in Firestore without blocking
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userProfile = {
-        username: username,
-        email: user.email,
-        role: 'view', // Default role
-      };
-      setDocumentNonBlocking(userDocRef, userProfile, { merge: false });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || 'Failed to create account.');
+      }
+
+      const result = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+      });
+
+      if (!result || result.error) {
+        throw new Error(result?.error || 'Failed to establish session.');
+      }
 
       toast({ title: 'Account Created!', description: 'You have been signed in.' });
       router.push('/');
@@ -94,7 +91,16 @@ export default function LoginPage() {
   const handleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const result = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+      });
+
+      if (!result || result.error) {
+        throw new Error(result?.error || 'Invalid email or password.');
+      }
+
       toast({ title: 'Signed In!', description: 'Welcome back.' });
       router.push('/');
     } catch (error: any) {
@@ -107,7 +113,7 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-  
+
   if (isUserLoading || user) {
     return (
         <div className="flex h-screen w-full items-center justify-center">

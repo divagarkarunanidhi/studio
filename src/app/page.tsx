@@ -2,22 +2,17 @@
 'use client';
 
 import { DashboardPage } from '@/components/pages/dashboard-page';
-import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Bug, LogOut } from 'lucide-react';
-import { doc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 
 function WelcomePage() {
-  const auth = useAuth();
-  
   const handleLogout = async () => {
-    if (auth) {
-      await signOut(auth);
-    }
+    await signOut({ redirect: false });
   };
 
   return (
@@ -55,13 +50,6 @@ export interface UserProfile {
 export default function Home() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const firestore = useFirestore();
-
-  const userProfileRef = useMemoFirebase(
-    () => (user ? doc(firestore, 'users', user.uid) : null),
-    [firestore, user]
-  );
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -69,7 +57,7 @@ export default function Home() {
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading || (user && isProfileLoading)) {
+  if (isUserLoading) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <div className="flex flex-col items-center gap-4">
@@ -79,18 +67,20 @@ export default function Home() {
         </div>
     );
   }
-  
-  if (userProfile?.role && (userProfile.role === 'admin' || userProfile.role === 'taas' || userProfile.role === 'view')) {
-      return <DashboardPage userProfile={userProfile} />;
-  }
 
-  // Fallback for when the user is authenticated but has no profile or role assigned yet.
-  // Only show this if a user is actually logged in.
   if (user) {
+    const role = user.role;
+    if (role === 'admin' || role === 'taas' || role === 'view') {
+      const userProfile: UserProfile = {
+        username: user.username || user.email || 'User',
+        email: user.email || '',
+        role,
+      };
+      return <DashboardPage userProfile={userProfile} />;
+    }
     return <WelcomePage />;
   }
 
-  // Otherwise, we are likely logging out or in an intermediate state, so show loading.
   return (
     <div className="flex h-screen w-full items-center justify-center">
         <div className="flex flex-col items-center gap-4">

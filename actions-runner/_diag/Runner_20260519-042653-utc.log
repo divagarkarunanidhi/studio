@@ -1,0 +1,119 @@
+[2026-05-19 04:26:53Z INFO HostContext] No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO HostContext] Well known config file 'Credentials': 'C:\Code base\bugsense apr 24\studio\actions-runner\.credentials'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO HostContext] Well known config file 'Runner': 'C:\Code base\bugsense apr 24\studio\actions-runner\.runner'
+[2026-05-19 04:26:53Z INFO Listener] Runner is built for Windows (X64) - win-x64.
+[2026-05-19 04:26:53Z INFO Listener] RuntimeInformation: Microsoft Windows 10.0.26100.
+[2026-05-19 04:26:53Z INFO Listener] Version: 2.322.0
+[2026-05-19 04:26:53Z INFO Listener] Commit: 0edc478ca75d0a753dcbcec7405f3f26db67b1ac
+[2026-05-19 04:26:53Z INFO Listener] Culture: en-US
+[2026-05-19 04:26:53Z INFO Listener] UI Culture: en-US
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO Listener] Validating directory permissions for: 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO CommandLineParser] Parse
+[2026-05-19 04:26:53Z INFO CommandLineParser] Parsing 1 args
+[2026-05-19 04:26:53Z INFO CommandLineParser] parsing argument
+[2026-05-19 04:26:53Z INFO CommandLineParser] HasArgs: False
+[2026-05-19 04:26:53Z INFO CommandLineParser] Adding Command: run
+[2026-05-19 04:26:53Z INFO Listener] Arguments parsed
+[2026-05-19 04:26:53Z INFO Runner] ExecuteCommand
+[2026-05-19 04:26:53Z INFO ConfigurationStore] currentAssemblyLocation: C:\Code base\bugsense apr 24\studio\actions-runner\bin\Runner.Listener.dll
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO ConfigurationStore] binPath: C:\Code base\bugsense apr 24\studio\actions-runner\bin
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO ConfigurationStore] RootFolder: C:\Code base\bugsense apr 24\studio\actions-runner
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO HostContext] Well known config file 'Runner': 'C:\Code base\bugsense apr 24\studio\actions-runner\.runner'
+[2026-05-19 04:26:53Z INFO ConfigurationStore] ConfigFilePath: C:\Code base\bugsense apr 24\studio\actions-runner\.runner
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO HostContext] Well known config file 'Credentials': 'C:\Code base\bugsense apr 24\studio\actions-runner\.credentials'
+[2026-05-19 04:26:53Z INFO ConfigurationStore] CredFilePath: C:\Code base\bugsense apr 24\studio\actions-runner\.credentials
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO HostContext] Well known config file 'MigratedCredentials': 'C:\Code base\bugsense apr 24\studio\actions-runner\.credentials_migrated'
+[2026-05-19 04:26:53Z INFO ConfigurationStore] MigratedCredFilePath: C:\Code base\bugsense apr 24\studio\actions-runner\.credentials_migrated
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO HostContext] Well known config file 'Service': 'C:\Code base\bugsense apr 24\studio\actions-runner\.service'
+[2026-05-19 04:26:53Z INFO ConfigurationStore] ServiceConfigFilePath: C:\Code base\bugsense apr 24\studio\actions-runner\.service
+[2026-05-19 04:26:53Z INFO CommandSettings] Flag 'help': 'False'
+[2026-05-19 04:26:53Z INFO CommandSettings] Flag 'version': 'False'
+[2026-05-19 04:26:53Z INFO CommandSettings] Flag 'commit': 'False'
+[2026-05-19 04:26:53Z INFO CommandSettings] Flag 'check': 'False'
+[2026-05-19 04:26:53Z INFO CommandSettings] Command 'configure': 'False'
+[2026-05-19 04:26:53Z INFO CommandSettings] Command 'remove': 'False'
+[2026-05-19 04:26:53Z INFO CommandSettings] Command 'warmup': 'False'
+[2026-05-19 04:26:53Z INFO ConfigurationManager] LoadSettings
+[2026-05-19 04:26:53Z INFO ConfigurationStore] IsConfigured()
+[2026-05-19 04:26:53Z INFO ConfigurationStore] IsConfigured: True
+[2026-05-19 04:26:53Z INFO ConfigurationManager] Is configured: True
+[2026-05-19 04:26:53Z INFO ConfigurationStore] Read setting file: 316 chars
+[2026-05-19 04:26:53Z INFO ConfigurationManager] Settings Loaded
+[2026-05-19 04:26:53Z INFO ConfigurationStore] IsServiceConfigured()
+[2026-05-19 04:26:53Z INFO ConfigurationStore] IsServiceConfigured: False
+[2026-05-19 04:26:53Z INFO CommandSettings] Command 'run': 'True'
+[2026-05-19 04:26:53Z INFO ConfigurationStore] IsConfigured()
+[2026-05-19 04:26:53Z INFO ConfigurationStore] IsConfigured: True
+[2026-05-19 04:26:53Z INFO ConfigurationManager] Is configured: True
+[2026-05-19 04:26:53Z INFO Runner] Could not parse the argument value '' for StartupType. Defaulting to Manual
+[2026-05-19 04:26:53Z INFO Runner] Set runner startup type - Manual
+[2026-05-19 04:26:53Z INFO CommandSettings] Flag 'once': 'False'
+[2026-05-19 04:26:53Z INFO CommandSettings] Flag 'once': 'False'
+[2026-05-19 04:26:53Z INFO Runner] RunAsync
+[2026-05-19 04:26:53Z INFO ConfigurationManager] LoadSettings
+[2026-05-19 04:26:53Z INFO ConfigurationStore] IsConfigured()
+[2026-05-19 04:26:53Z INFO ConfigurationStore] IsConfigured: True
+[2026-05-19 04:26:53Z INFO ConfigurationManager] Is configured: True
+[2026-05-19 04:26:53Z INFO ConfigurationManager] Settings Loaded
+[2026-05-19 04:26:53Z INFO MessageListener] {
+  "AgentId": 21,
+  "AgentName": "INMAAWNE5848254",
+  "PoolId": 1,
+  "PoolName": "Default",
+  "ServerUrl": "https://pipelinesghubeus24.actions.githubusercontent.com/SNzDohezFLF3lKEZ9AokH3SLxLXqnb0VEf0L671YcUj2WpGtDE/",
+  "GitHubUrl": "https://github.com/divagarkarunanidhi/studio",
+  "WorkFolder": "_work"
+}
+[2026-05-19 04:26:53Z INFO MessageListener] Loading Credentials
+[2026-05-19 04:26:53Z INFO ConfigurationStore] HasCredentials()
+[2026-05-19 04:26:53Z INFO ConfigurationStore] stored True
+[2026-05-19 04:26:53Z INFO CredentialManager] GetCredentialProvider
+[2026-05-19 04:26:53Z INFO CredentialManager] Creating type OAuth
+[2026-05-19 04:26:53Z INFO CredentialManager] Creating credential type: OAuth
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 04:26:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 04:26:53Z INFO HostContext] Well known config file 'RSACredentials': 'C:\Code base\bugsense apr 24\studio\actions-runner\.credentials_rsaparams'
+[2026-05-19 04:26:53Z INFO RSAEncryptedFileKeyManager] Loading RSA key parameters from file C:\Code base\bugsense apr 24\studio\actions-runner\.credentials_rsaparams
+[2026-05-19 04:26:54Z INFO MessageListener] Attempt to create session.
+[2026-05-19 04:26:54Z INFO MessageListener] Connecting to the Runner Server...
+[2026-05-19 04:26:54Z INFO RunnerServer] EstablishVssConnection
+[2026-05-19 04:26:54Z INFO RunnerServer] Establish connection with 100 seconds timeout.
+[2026-05-19 04:26:59Z INFO GitHubActionsService] Starting operation Location.GetConnectionData
+[2026-05-19 04:27:00Z INFO RunnerServer] EstablishVssConnection
+[2026-05-19 04:27:00Z INFO RunnerServer] Establish connection with 60 seconds timeout.
+[2026-05-19 04:27:00Z INFO GitHubActionsService] Starting operation Location.GetConnectionData
+[2026-05-19 04:27:00Z INFO RunnerServer] EstablishVssConnection
+[2026-05-19 04:27:00Z INFO RunnerServer] Establish connection with 60 seconds timeout.
+[2026-05-19 04:27:00Z INFO GitHubActionsService] Starting operation Location.GetConnectionData
+[2026-05-19 04:27:06Z INFO GitHubActionsService] Finished operation Location.GetConnectionData
+[2026-05-19 04:27:06Z INFO GitHubActionsService] Finished operation Location.GetConnectionData
+[2026-05-19 04:27:06Z INFO GitHubActionsService] Finished operation Location.GetConnectionData
+[2026-05-19 04:27:06Z INFO MessageListener] VssConnection created
+[2026-05-19 04:27:06Z INFO Terminal] WRITE LINE: 
+[2026-05-19 04:27:06Z INFO Terminal] WRITE LINE: 
+[2026-05-19 04:27:07Z INFO RSAEncryptedFileKeyManager] Loading RSA key parameters from file C:\Code base\bugsense apr 24\studio\actions-runner\.credentials_rsaparams
+[2026-05-19 04:27:07Z INFO RSAEncryptedFileKeyManager] Loading RSA key parameters from file C:\Code base\bugsense apr 24\studio\actions-runner\.credentials_rsaparams
+[2026-05-19 04:27:09Z INFO GitHubActionsService] AAD Correlation ID for this token request: Unknown
+[2026-05-19 04:27:09Z INFO MessageListener] Session created.
+[2026-05-19 04:27:09Z INFO Terminal] WRITE LINE: Current runner version: '2.322.0'
+[2026-05-19 04:27:09Z INFO Terminal] WRITE LINE: 2026-05-19 04:27:09Z: Listening for Jobs
+[2026-05-19 04:27:09Z INFO JobDispatcher] Set runner/worker IPC timeout to 30 seconds.
+[2026-05-19 04:27:10Z INFO RSAEncryptedFileKeyManager] Loading RSA key parameters from file C:\Code base\bugsense apr 24\studio\actions-runner\.credentials_rsaparams
+[2026-05-19 04:27:11Z INFO GitHubActionsService] AAD Correlation ID for this token request: Unknown

@@ -3,7 +3,7 @@
  * @fileOverview An AI flow to summarize defects into categories for visualization.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getAiModelConfig } from '@/ai/genkit';
 import {
   DefectSchema,
   DefectSummaryInputSchema,
@@ -16,8 +16,7 @@ import {
   type SavedPrediction,
 } from '@/lib/types';
 import { z } from 'zod';
-import { getFirestore, doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { getFirestoreInstance } from '@/firebase/server-config';
+import { getGlobalAppConfig, getSharedFeedbackExamples } from '@/lib/app-config';
 
 const SingleDefectSummarySchema = z.object({
     rootCause: z.string().describe("A short, one or two-word category for the defect's root cause within an OTM context (e.g., 'Agent Logic', 'Integration', 'Saved Query', 'UI Config')."),
@@ -84,31 +83,18 @@ const defectSummaryFlow = ai.defineFlow(
     }
   },
   async ({ defects, userId }) => {
-    // Use the server-side firestore instance for all Firestore operations in the flow.
-    const { firestore } = await getFirestoreInstance();
-    const configRef = doc(firestore, 'appConfiguration', 'global');
-    
-    const configSnap = await getDoc(configRef);
-
-    if (!configSnap.exists()) {
+    // Read app config + recent shared feedback examples from MongoDB.
+    const config = (await getGlobalAppConfig()) as AppConfiguration | null;
+    if (!config) {
         throw new Error("App configuration not found.");
     }
-    const config = configSnap.data() as AppConfiguration;
-    const retryModel = config.geminiRetryModel;
-    
-    const examplesRef = collection(firestore, 'sharedFeedback');
-    // Fetch more examples for better matching
-    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(15));
-    
-    const examplesSnap = await getDocs(examplesQuery);
+    const { retryModel } = await getAiModelConfig();
 
-    const examples = examplesSnap.docs.map(doc => {
-        const data = doc.data() as SavedPrediction;
-        return {
-            input: data.defect,
-            output: data.prediction,
-        };
-    });
+    const examplesData = await getSharedFeedbackExamples(15);
+    const examples = examplesData.map((data: any) => ({
+        input: (data as SavedPrediction).defect,
+        output: (data as SavedPrediction).prediction,
+    }));
 
     const summaries = await Promise.all(
       defects.map(async (defect) => {
@@ -120,9 +106,9 @@ const defectSummaryFlow = ai.defineFlow(
             }
             return { id: defect.id, ...output };
         } catch (e: any) {
-             if (e.message && (e.message.includes('429 Too Many Requests') || e.message.includes('503 Service Unavailable'))) {
+             if (e.message && retryModel && (e.message.includes('429 Too Many Requests') || e.message.includes('503 Service Unavailable'))) {
                 console.warn(`Rate limit or availability error, retrying with ${retryModel}...`);
-                const { output } = await summaryPrompt({ defect, examples }, { model: `googleai/${retryModel}` });
+                const { output } = await summaryPrompt({ defect, examples }, { model: retryModel });
                 if (!output) {
                     return { id: defect.id, rootCause: 'Unknown', functionalArea: 'Unknown' };
                 }

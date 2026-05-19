@@ -1,37 +1,78 @@
 
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { getFirestoreInstance } from '@/firebase/server-config';
+import { genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
+import openAI from 'genkitx-openai';
+import { getGlobalAppConfig } from '@/lib/app-config';
+
+type AiProvider = 'googleai' | 'dhl';
+
+const DEFAULT_GOOGLEAI_MODEL = 'gemini-1.5-flash';
+const DEFAULT_DHL_MODEL = 'gpt-4';
 
 
-async function getGlobalConfig() {
-    const { firestore } = await getFirestoreInstance();
-    const configDocRef = doc(firestore, 'appConfiguration', 'global');
-    const configSnap = await getDoc(configDocRef);
+function stripPrefix(model: string, prefix: string): string {
+    return model.replace(new RegExp(`^${prefix}/`, 'i'), '');
+}
 
-    if (!configSnap.exists()) {
-        console.warn("App configuration not found in Firestore. AI features may not work.");
+/** Resolve provider, primary model, and retry model from stored config. */
+export async function getAiModelConfig() {
+    const cfg = (await getGlobalAppConfig()) || {};
+    const provider: AiProvider = cfg.aiProvider === 'dhl' ? 'dhl' : 'googleai';
+
+    if (provider === 'dhl') {
+        const primary = stripPrefix(cfg.dhlModel || DEFAULT_DHL_MODEL, 'openai');
+        const retry = stripPrefix(cfg.dhlRetryModel || cfg.dhlModel || DEFAULT_DHL_MODEL, 'openai');
         return {
-            apiKey: process.env.GEMINI_API_KEY,
-            model: 'googleai/gemini-1.5-flash',
+            provider,
+            primaryModel: `openai/${primary}`,
+            retryModel: `openai/${retry}`,
         };
     }
-    const configData = configSnap.data();
+
+    const primary = stripPrefix(cfg.geminiModel || DEFAULT_GOOGLEAI_MODEL, 'googleai');
+    const retry = stripPrefix(cfg.geminiRetryModel || cfg.geminiModel || DEFAULT_GOOGLEAI_MODEL, 'googleai');
     return {
-        apiKey: configData.geminiApiKey,
-        model: configData.geminiModel || 'googleai/gemini-1.5-flash',
+        provider,
+        primaryModel: `googleai/${primary}`,
+        retryModel: `googleai/${retry}`,
     };
 }
 
-const config = await getGlobalConfig();
+async function buildGenkitConfig() {
+    const cfg = (await getGlobalAppConfig()) || {};
+    const provider: AiProvider = cfg.aiProvider === 'dhl' ? 'dhl' : 'googleai';
+
+    if (provider === 'dhl') {
+        const apiKey = cfg.dhlApiKey ?? process.env.DHL_API_KEY;
+        const baseURL = cfg.dhlEndpoint || process.env.DHL_ENDPOINT || '';
+        const model = `openai/${stripPrefix(cfg.dhlModel || DEFAULT_DHL_MODEL, 'openai')}`;
+        if (!apiKey) {
+            console.warn('DHL API key missing. Set dhlApiKey in app config or DHL_API_KEY env var.');
+        }
+        if (!baseURL) {
+            console.warn('DHL endpoint missing. Set dhlEndpoint in app config or DHL_ENDPOINT env var.');
+        }
+        return {
+            plugins: [openAI({ apiKey: apiKey || 'missing', baseURL })],
+            model,
+        };
+    }
+
+    const apiKey = cfg.geminiApiKey ?? process.env.GEMINI_API_KEY;
+    const model = `googleai/${stripPrefix(cfg.geminiModel || DEFAULT_GOOGLEAI_MODEL, 'googleai')}`;
+    if (!apiKey) {
+        console.warn('Gemini API key missing. Set geminiApiKey in app config or GEMINI_API_KEY env var.');
+    }
+    return {
+        plugins: [googleAI({ apiKey })],
+        model,
+    };
+}
+
+const genkitConfig = await buildGenkitConfig();
 
 export const ai = genkit({
-  plugins: [
-    googleAI({
-      apiKey: config.apiKey,
-    }),
-  ],
-  model: config.model,
-  disableTelemetry: true,
+    plugins: genkitConfig.plugins,
+    model: genkitConfig.model,
+    disableTelemetry: true,
 });

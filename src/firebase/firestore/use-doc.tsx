@@ -1,47 +1,31 @@
 'use client';
-    
+
 import { useState, useEffect } from 'react';
-import {
-  DocumentReference,
-  onSnapshot,
-  DocumentData,
-  FirestoreError,
-  DocumentSnapshot,
-} from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import {
+  DocumentReference,
+  DocumentData,
+  FirestoreError,
+  __mongoFetch,
+} from '@/firebase/firestore-shim';
 
-/** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
 
-/**
- * Interface for the return value of the useDoc hook.
- * @template T Type of the document data.
- */
 export interface UseDocResult<T> {
-  data: WithId<T> | null; // Document data with ID, or null.
-  isLoading: boolean;       // True if loading.
-  error: FirestoreError | Error | null; // Error object, or null.
+  data: WithId<T> | null;
+  isLoading: boolean;
+  error: FirestoreError | Error | null;
 }
 
 /**
- * React hook to subscribe to a single Firestore document in real-time.
- * Handles nullable references.
- * 
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedDocRef or BAD THINGS WILL HAPPEN
- * use useMemoFirebase to memoize it per React guidance.
- *
- * @template T Optional type for document data. Defaults to any.
- * @param {DocumentReference<DocumentData> | null | undefined} memoizedDocRef -
- * The Firestore DocumentReference. Waits if null/undefined.
- * @returns {UseDocResult<T>} Object with data, isLoading, error.
+ * Mongo-backed replacement for the legacy Firestore `useDoc` hook.
+ * Performs a one-shot fetch on mount and whenever the (memoized) ref changes.
  */
 export function useDoc<T = any>(
-  memoizedDocRef: (DocumentReference<DocumentData> & {__memo?: boolean}) | null | undefined,
+  memoizedDocRef: (DocumentReference<DocumentData> & { __memo?: boolean }) | null | undefined,
 ): UseDocResult<T> {
-  type StateDataType = WithId<T> | null;
-
-  const [data, setData] = useState<StateDataType>(null);
+  const [data, setData] = useState<WithId<T> | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
@@ -53,39 +37,45 @@ export function useDoc<T = any>(
       return;
     }
 
+    let cancelled = false;
     setIsLoading(true);
     setError(null);
 
-    const unsubscribe = onSnapshot(
-      memoizedDocRef,
-      (snapshot: DocumentSnapshot<DocumentData>) => {
-        if (snapshot.exists()) {
-          setData({ ...(snapshot.data() as T), id: snapshot.id });
+    fetch(__mongoFetch.getDocPath(memoizedDocRef), { cache: 'no-store' })
+      .then(async (res) => {
+        const body = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (!res.ok) {
+          const permErr = new FirestorePermissionError({
+            operation: 'get',
+            path: memoizedDocRef.path,
+          });
+          setError(permErr);
+          setData(null);
+          errorEmitter.emit('permission-error', permErr);
+        } else if (body?.data) {
+          const { id, ...rest } = body.data;
+          setData({ ...(rest as T), id: id ?? memoizedDocRef.id });
+          setError(null);
         } else {
           setData(null);
+          setError(null);
         }
-        setError(null);
         setIsLoading(false);
-      },
-      (error: FirestoreError) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'get',
-          path: memoizedDocRef.path,
-        })
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err : new Error(String(err)));
+        setData(null);
+        setIsLoading(false);
+      });
 
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
-
-        // trigger global error propagation
-        errorEmitter.emit('permission-error', contextualError);
-      }
-    );
-
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+    };
   }, [memoizedDocRef]);
 
-  if(memoizedDocRef && !memoizedDocRef.__memo) {
+  if (memoizedDocRef && !memoizedDocRef.__memo) {
     throw new Error(memoizedDocRef.path + ' was not properly memoized using useMemoFirebase');
   }
 

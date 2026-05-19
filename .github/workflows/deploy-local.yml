@@ -1,0 +1,43 @@
+name: Deploy to Local Machine
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Install PM2 globally (if not present)
+        run: npm list -g pm2 || npm install -g pm2
+
+      - name: Stop existing app (if running)
+        run: pm2 stop ecosystem.config.cjs --silent || true
+
+      - name: Start application with PM2
+        run: pm2 start ecosystem.config.cjs --env production
+
+      - name: Save PM2 process list
+        run: pm2 save
+
+      - name: Show deployment status
+        run: pm2 list
