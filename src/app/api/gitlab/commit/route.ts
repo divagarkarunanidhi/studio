@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { getGitlabDispatcher } from '@/lib/gitlab-fetch';
 
 /**
  * POST /api/gitlab/commit
@@ -8,13 +9,16 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { token, projectId, branch, filePath, content, commitMessage } = body;
+        const { token, projectId, branch, filePath, content, commitMessage, baseUrl: rawBaseUrl, insecureTls } = body;
 
         if (!token || !projectId || !filePath || !content) {
             return NextResponse.json({ error: "Missing required GitLab details for commit." }, { status: 400 });
         }
 
-        const baseUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(projectId)}`;
+        const host = (rawBaseUrl && typeof rawBaseUrl === 'string' && rawBaseUrl.trim())
+            ? rawBaseUrl.trim().replace(/\/+$/, '')
+            : 'https://gitlab.com';
+        const baseUrl = `${host}/api/v4/projects/${encodeURIComponent(projectId)}`;
         const commitUrl = `${baseUrl}/repository/commits`;
         
         const commitPayload = {
@@ -35,7 +39,9 @@ export async function POST(request: Request) {
                 'PRIVATE-TOKEN': token,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(commitPayload)
+            body: JSON.stringify(commitPayload),
+            // @ts-expect-error - undici dispatcher is supported by Node fetch
+            dispatcher: getGitlabDispatcher({ insecureTls: !!insecureTls }),
         });
 
         if (!commitRes.ok) {

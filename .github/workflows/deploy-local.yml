@@ -1,0 +1,57 @@
+name: Deploy to Local Machine
+
+on:
+  push:
+    branches: [mongo]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    defaults:
+      run:
+        shell: powershell
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify Node.js version
+        run: |
+          Write-Host "Node version: $(node -v)"
+          Write-Host "NPM version: $(npm -v)"
+
+      - name: Copy .env.local
+        run: |
+          if (Test-Path "${{ github.workspace }}\.env.local.deploy") {
+            Copy-Item "${{ github.workspace }}\.env.local.deploy" "${{ github.workspace }}\.env.local"
+          } elseif (-not (Test-Path "${{ github.workspace }}\.env.local")) {
+            Write-Warning ".env.local not found — app may fail at runtime"
+          }
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npx next build
+        env:
+          NODE_ENV: production
+
+      - name: Install PM2 globally (if not present)
+        run: |
+          $pm2 = Get-Command pm2 -ErrorAction SilentlyContinue
+          if (-not $pm2) { npm install -g pm2 }
+
+      - name: Stop existing app (if running)
+        run: |
+          try { pm2 stop ecosystem.config.cjs } catch { Write-Host "No existing process to stop" }
+
+      - name: Start application with PM2
+        run: pm2 start ecosystem.config.cjs --env production
+
+      - name: Save PM2 process list
+        run: pm2 save
+
+      - name: Show deployment status
+        run: pm2 list

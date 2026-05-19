@@ -58,8 +58,8 @@ import {
   } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ClientTimestamp } from '../dashboard/client-timestamp';
-import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { signOut } from 'firebase/auth';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { signOut } from 'next-auth/react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -76,7 +76,7 @@ import type { UserProfile } from '@/app/page';
 import { ConfigurationPage } from './configuration-page';
 import { FeedbackManagementPage } from './feedback-management-page';
 import * as XLSX from 'xlsx';
-import { doc } from 'firebase/firestore';
+import { doc } from '@/firebase/firestore-shim';
 import { TestCaseSummaryPage } from './test-case-summary-page';
 import { SeleniumDashboardPage } from './selenium-dashboard-page';
 import { useUsageTracking } from '@/hooks/use-usage-tracking';
@@ -217,7 +217,6 @@ interface DashboardPageProps {
 
 export function DashboardPage({ userProfile }: DashboardPageProps) {
   const { user } = useUser();
-  const auth = useAuth();
   const firestore = useFirestore();
   const userRole = userProfile?.role;
   
@@ -411,7 +410,7 @@ export function DashboardPage({ userProfile }: DashboardPageProps) {
   
   const handleLogout = async () => {
     logEvent('logout');
-    await signOut(auth);
+    await signOut({ redirect: false });
   };
 
   const handleViewChange = (view: View) => {

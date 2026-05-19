@@ -1,0 +1,12 @@
+﻿{
+  "repositoryName": "divagarkarunanidhi/studio",
+  "pipelineDirectory": "studio",
+  "workspaceDirectory": "studio\\studio",
+  "repositories": {
+    "divagarkarunanidhi/studio": {
+      "repositoryPath": "studio\\studio",
+      "lastRunOn": "05/19/2026 10:38:34 +05:30"
+    }
+  },
+  "lastRunOn": "05/19/2026 10:50:08 +05:30"
+}

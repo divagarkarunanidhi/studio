@@ -1,0 +1,3976 @@
+[2026-05-19 05:08:31Z INFO HostContext] No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:31Z INFO HostContext] Well known config file 'Credentials': 'C:\Code base\bugsense apr 24\studio\actions-runner\.credentials'
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:31Z INFO HostContext] Well known config file 'Runner': 'C:\Code base\bugsense apr 24\studio\actions-runner\.runner'
+[2026-05-19 05:08:31Z INFO Worker] Version: 2.322.0
+[2026-05-19 05:08:31Z INFO Worker] Commit: 0edc478ca75d0a753dcbcec7405f3f26db67b1ac
+[2026-05-19 05:08:31Z INFO Worker] Culture: en-US
+[2026-05-19 05:08:31Z INFO Worker] UI Culture: en-US
+[2026-05-19 05:08:31Z INFO Worker] Waiting to receive the job message from the channel.
+[2026-05-19 05:08:31Z INFO ProcessChannel] Receiving message of length 23780, with hash '16919c1aedfb0b3621273f5c1d82f5e5a921c4f8df078e6e8ed2379b2ff7609e'
+[2026-05-19 05:08:31Z INFO Worker] Message received.
+[2026-05-19 05:08:31Z INFO Worker] Job message:
+ {
+  "fileTable": [
+    ".github/workflows/deploy-local.yml"
+  ],
+  "mask": [
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    },
+    {
+      "type": "regex",
+      "value": "***"
+    }
+  ],
+  "steps": [
+    {
+      "type": "action",
+      "reference": {
+        "type": "repository",
+        "name": "actions/checkout",
+        "ref": "v4",
+        "repositoryType": "GitHub"
+      },
+      "displayNameToken": {
+        "type": 0,
+        "file": 1,
+        "line": 13,
+        "col": 15,
+        "lit": "Checkout code"
+      },
+      "contextName": "__actions_checkout",
+      "condition": "success()",
+      "id": "d7d0baba-73bc-445e-a5a1-e8dca91fbbcd",
+      "name": "__actions_checkout"
+    },
+    {
+      "type": "action",
+      "reference": {
+        "type": "repository",
+        "name": "actions/setup-node",
+        "ref": "v4",
+        "repositoryType": "GitHub"
+      },
+      "displayNameToken": {
+        "type": 0,
+        "file": 1,
+        "line": 16,
+        "col": 15,
+        "lit": "Setup Node.js"
+      },
+      "contextName": "__actions_setup-node",
+      "inputs": {
+        "type": 2,
+        "file": 1,
+        "line": 19,
+        "col": 11,
+        "map": [
+          {
+            "key": {
+              "type": 0,
+              "file": 1,
+              "line": 19,
+              "col": 11,
+              "lit": "node-version"
+            },
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 19,
+              "col": 25,
+              "lit": "20"
+            }
+          },
+          {
+            "key": {
+              "type": 0,
+              "file": 1,
+              "line": 20,
+              "col": 11,
+              "lit": "cache"
+            },
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 20,
+              "col": 18,
+              "lit": "npm"
+            }
+          }
+        ]
+      },
+      "condition": "success()",
+      "id": "37fd58e1-7043-4627-af5d-56c87dd40edb",
+      "name": "__actions_setup-node"
+    },
+    {
+      "type": "action",
+      "reference": {
+        "type": "script"
+      },
+      "displayNameToken": {
+        "type": 0,
+        "file": 1,
+        "line": 22,
+        "col": 15,
+        "lit": "Install dependencies"
+      },
+      "contextName": "__run",
+      "inputs": {
+        "type": 2,
+        "map": [
+          {
+            "key": "script",
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 23,
+              "col": 14,
+              "lit": "npm ci"
+            }
+          }
+        ]
+      },
+      "condition": "success()",
+      "id": "ad1e6ad9-a03e-4cc7-a37b-281e5460ed84",
+      "name": "__run"
+    },
+    {
+      "type": "action",
+      "reference": {
+        "type": "script"
+      },
+      "displayNameToken": {
+        "type": 0,
+        "file": 1,
+        "line": 25,
+        "col": 15,
+        "lit": "Build application"
+      },
+      "contextName": "__run_2",
+      "environment": {
+        "type": 2,
+        "file": 1,
+        "line": 28,
+        "col": 11,
+        "map": [
+          {
+            "key": {
+              "type": 0,
+              "file": 1,
+              "line": 28,
+              "col": 11,
+              "lit": "NODE_ENV"
+            },
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 28,
+              "col": 21,
+              "lit": "production"
+            }
+          }
+        ]
+      },
+      "inputs": {
+        "type": 2,
+        "map": [
+          {
+            "key": "script",
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 26,
+              "col": 14,
+              "lit": "npm run build"
+            }
+          }
+        ]
+      },
+      "condition": "success()",
+      "id": "6ce0cc15-b888-4dbc-aeab-6e07d31a8e29",
+      "name": "__run_2"
+    },
+    {
+      "type": "action",
+      "reference": {
+        "type": "script"
+      },
+      "displayNameToken": {
+        "type": 0,
+        "file": 1,
+        "line": 30,
+        "col": 15,
+        "lit": "Install PM2 globally (if not present)"
+      },
+      "contextName": "__run_3",
+      "inputs": {
+        "type": 2,
+        "map": [
+          {
+            "key": "script",
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 31,
+              "col": 14,
+              "lit": "npm list -g pm2 || npm install -g pm2"
+            }
+          }
+        ]
+      },
+      "condition": "success()",
+      "id": "edc5cd8c-a7ee-4fde-a466-0cf9462c6e77",
+      "name": "__run_3"
+    },
+    {
+      "type": "action",
+      "reference": {
+        "type": "script"
+      },
+      "displayNameToken": {
+        "type": 0,
+        "file": 1,
+        "line": 33,
+        "col": 15,
+        "lit": "Stop existing app (if running)"
+      },
+      "contextName": "__run_4",
+      "inputs": {
+        "type": 2,
+        "map": [
+          {
+            "key": "script",
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 34,
+              "col": 14,
+              "lit": "pm2 stop ecosystem.config.cjs --silent || true"
+            }
+          }
+        ]
+      },
+      "condition": "success()",
+      "id": "d266a436-d707-4cb8-a030-87d489227ab5",
+      "name": "__run_4"
+    },
+    {
+      "type": "action",
+      "reference": {
+        "type": "script"
+      },
+      "displayNameToken": {
+        "type": 0,
+        "file": 1,
+        "line": 36,
+        "col": 15,
+        "lit": "Start application with PM2"
+      },
+      "contextName": "__run_5",
+      "inputs": {
+        "type": 2,
+        "map": [
+          {
+            "key": "script",
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 37,
+              "col": 14,
+              "lit": "pm2 start ecosystem.config.cjs --env production"
+            }
+          }
+        ]
+      },
+      "condition": "success()",
+      "id": "f4a5c117-4aaf-4501-bc95-095fc50ea783",
+      "name": "__run_5"
+    },
+    {
+      "type": "action",
+      "reference": {
+        "type": "script"
+      },
+      "displayNameToken": {
+        "type": 0,
+        "file": 1,
+        "line": 39,
+        "col": 15,
+        "lit": "Save PM2 process list"
+      },
+      "contextName": "__run_6",
+      "inputs": {
+        "type": 2,
+        "map": [
+          {
+            "key": "script",
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 40,
+              "col": 14,
+              "lit": "pm2 save"
+            }
+          }
+        ]
+      },
+      "condition": "success()",
+      "id": "1bd23fe4-0536-42b2-b969-a3cb56dba104",
+      "name": "__run_6"
+    },
+    {
+      "type": "action",
+      "reference": {
+        "type": "script"
+      },
+      "displayNameToken": {
+        "type": 0,
+        "file": 1,
+        "line": 42,
+        "col": 15,
+        "lit": "Show deployment status"
+      },
+      "contextName": "__run_7",
+      "inputs": {
+        "type": 2,
+        "map": [
+          {
+            "key": "script",
+            "value": {
+              "type": 0,
+              "file": 1,
+              "line": 43,
+              "col": 14,
+              "lit": "pm2 list"
+            }
+          }
+        ]
+      },
+      "condition": "success()",
+      "id": "dfc7a2c4-f77f-40c5-9b05-9feb21ba8791",
+      "name": "__run_7"
+    }
+  ],
+  "variables": {
+    "Actions.EnableHttpRedirects": {
+      "value": "true"
+    },
+    "DistributedTask.AddWarningToNode12Action": {
+      "value": "true"
+    },
+    "DistributedTask.AddWarningToNode16Action": {
+      "value": "true"
+    },
+    "DistributedTask.AllowRunnerContainerHooks": {
+      "value": "true"
+    },
+    "DistributedTask.DeprecateStepOutputCommands": {
+      "value": "true"
+    },
+    "DistributedTask.DetailUntarFailure": {
+      "value": "true"
+    },
+    "DistributedTask.EnableCompositeActions": {
+      "value": "true"
+    },
+    "DistributedTask.EnableJobServerQueueTelemetry": {
+      "value": "true"
+    },
+    "DistributedTask.EnhancedAnnotations": {
+      "value": "true"
+    },
+    "DistributedTask.ForceGithubJavascriptActionsToNode16": {
+      "value": "true"
+    },
+    "DistributedTask.ForceGithubJavascriptActionsToNode20": {
+      "value": "true"
+    },
+    "DistributedTask.LogTemplateErrorsAsDebugMessages": {
+      "value": "true"
+    },
+    "DistributedTask.MarkJobAsFailedOnWorkerCrash": {
+      "value": "true"
+    },
+    "DistributedTask.NewActionMetadata": {
+      "value": "true"
+    },
+    "DistributedTask.UploadStepSummary": {
+      "value": "true"
+    },
+    "DistributedTask.UseActionArchiveCache": {
+      "value": "true"
+    },
+    "DistributedTask.UseWhich2": {
+      "value": "true"
+    },
+    "RunService.FixEmbeddedIssues": {
+      "value": "true"
+    },
+    "actions.runner.requirenode24": {
+      "value": "false"
+    },
+    "actions.runner.usenode24bydefault": {
+      "value": "false"
+    },
+    "actions.runner.warnonnode20": {
+      "value": "true"
+    },
+    "actions_add_check_run_id_to_job_context": {
+      "value": "true"
+    },
+    "actions_batch_action_resolution": {
+      "value": "false"
+    },
+    "actions_container_action_runner_temp": {
+      "value": "true"
+    },
+    "actions_display_helpful_actions_download_errors": {
+      "value": "true"
+    },
+    "actions_runner_compare_workflow_parser": {
+      "value": "false"
+    },
+    "actions_runner_deprecate_linux_arm32": {
+      "value": "false"
+    },
+    "actions_runner_emit_composite_markers": {
+      "value": "false"
+    },
+    "actions_runner_kill_linux_arm32": {
+      "value": "false"
+    },
+    "actions_runner_node20_removal_date": {
+      "value": ""
+    },
+    "actions_runner_node24_default_date": {
+      "value": ""
+    },
+    "actions_service_container_command": {
+      "value": "true"
+    },
+    "actions_set_orchestration_id_env_for_actions": {
+      "value": "true"
+    },
+    "actions_skip_retry_complete_job_upon_known_errors": {
+      "value": "true"
+    },
+    "actions_snapshot_preflight_hosted_runner_check": {
+      "value": "false"
+    },
+    "actions_snapshot_preflight_image_gen_pool_check": {
+      "value": "false"
+    },
+    "actions_use_bearer_token_for_codeload": {
+      "value": "false"
+    },
+    "actions_uses_cache_service_v2": {
+      "value": "true"
+    },
+    "github_token": {
+      "value": "***",
+      "isSecret": true
+    },
+    "system.from_run_service": {
+      "value": "true"
+    },
+    "system.github.job": {
+      "value": "deploy"
+    },
+    "system.github.launch_endpoint": {
+      "value": "https://launch.actions.githubusercontent.com"
+    },
+    "system.github.results_endpoint": {
+      "value": "https://results-receiver.actions.githubusercontent.com/"
+    },
+    "system.github.results_upload_with_sdk": {
+      "value": "true"
+    },
+    "system.github.token": {
+      "value": "***",
+      "isSecret": true
+    },
+    "system.github.token.permissions": {
+      "value": "{\"Contents\":\"read\",\"Metadata\":\"read\",\"Packages\":\"read\"}"
+    },
+    "system.orchestrationId": {
+      "value": "10b9ad14-9f26-4afd-a5b0-092a54758c3f.deploy.__default"
+    },
+    "system.phaseDisplayName": {
+      "value": "deploy"
+    },
+    "system.runner.lowdiskspacethreshold": {
+      "value": "100"
+    },
+    "system.runnerEnvironment": {
+      "value": "self-hosted"
+    },
+    "system.runnerGroupName": {
+      "value": "Default"
+    }
+  },
+  "messageType": "RunnerJobRequest",
+  "plan": {
+    "scopeIdentifier": "00000000-0000-0000-0000-000000000000",
+    "planType": "actions",
+    "version": 0,
+    "planId": "10b9ad14-9f26-4afd-a5b0-092a54758c3f",
+    "planGroup": null,
+    "artifactUri": null,
+    "artifactLocation": null,
+    "definition": null,
+    "owner": null
+  },
+  "timeline": {
+    "id": "10b9ad14-9f26-4afd-a5b0-092a54758c3f",
+    "changeId": 0,
+    "location": null
+  },
+  "jobId": "ba56f393-5731-59ef-ac98-bb6d6810089a",
+  "jobDisplayName": "deploy",
+  "jobName": "__default",
+  "requestId": 0,
+  "lockedUntil": "0001-01-01T00:00:00",
+  "resources": {
+    "endpoints": [
+      {
+        "data": {
+          "ServerId": "",
+          "ServerName": "",
+          "CacheServerUrl": "https://artifactcache.actions.githubusercontent.com/SNzDohezFLF3lKEZ9AokH3SLxLXqnb0VEf0L671YcUj2WpGtDE/",
+          "FeedStreamUrl": "wss://results-receiver.actions.githubusercontent.com/_ws/ingest.sock",
+          "ResultsServiceUrl": "https://results-receiver.actions.githubusercontent.com/",
+          "PipelinesServiceUrl": "https://pipelinesghubeus24.actions.githubusercontent.com/SNzDohezFLF3lKEZ9AokH3SLxLXqnb0VEf0L671YcUj2WpGtDE/",
+          "GenerateIdTokenUrl": "",
+          "ConnectivityChecks": "[\"https://broker.actions.githubusercontent.com/health\",\"https://token.actions.githubusercontent.com/ready\",\"https://run.actions.githubusercontent.com/health\"]"
+        },
+        "name": "SystemVssConnection",
+        "url": "https://run-actions-3-azure-eastus.actions.githubusercontent.com/139/",
+        "authorization": {
+          "parameters": {
+            "AccessToken": "***"
+          },
+          "scheme": "OAuth"
+        },
+        "isShared": false,
+        "isReady": true
+      }
+    ]
+  },
+  "contextData": {
+    "github": {
+      "t": 2,
+      "d": [
+        {
+          "k": "ref",
+          "v": "refs/heads/mongo"
+        },
+        {
+          "k": "sha",
+          "v": "7d9215e86e8572583f6378446b6f9416496347de"
+        },
+        {
+          "k": "repository",
+          "v": "divagarkarunanidhi/studio"
+        },
+        {
+          "k": "repository_owner",
+          "v": "divagarkarunanidhi"
+        },
+        {
+          "k": "repository_owner_id",
+          "v": "15382573"
+        },
+        {
+          "k": "repositoryUrl",
+          "v": "git://github.com/divagarkarunanidhi/studio.git"
+        },
+        {
+          "k": "run_id",
+          "v": "26077491535"
+        },
+        {
+          "k": "run_number",
+          "v": "1"
+        },
+        {
+          "k": "retention_days",
+          "v": "90"
+        },
+        {
+          "k": "run_attempt",
+          "v": "1"
+        },
+        {
+          "k": "artifact_cache_size_limit",
+          "v": "10"
+        },
+        {
+          "k": "repository_visibility",
+          "v": "public"
+        },
+        {
+          "k": "actor_id",
+          "v": "15382573"
+        },
+        {
+          "k": "actor",
+          "v": "divagarkarunanidhi"
+        },
+        {
+          "k": "workflow",
+          "v": "Deploy to Local Machine"
+        },
+        {
+          "k": "head_ref",
+          "v": ""
+        },
+        {
+          "k": "base_ref",
+          "v": ""
+        },
+        {
+          "k": "event_name",
+          "v": "push"
+        },
+        {
+          "k": "server_url",
+          "v": "https://github.com"
+        },
+        {
+          "k": "api_url",
+          "v": "https://api.github.com"
+        },
+        {
+          "k": "graphql_url",
+          "v": "https://api.github.com/graphql"
+        },
+        {
+          "k": "ref_name",
+          "v": "mongo"
+        },
+        {
+          "k": "ref_protected",
+          "v": false
+        },
+        {
+          "k": "ref_type",
+          "v": "branch"
+        },
+        {
+          "k": "secret_source",
+          "v": "Actions"
+        },
+        {
+          "k": "event",
+          "v": {
+            "t": 2,
+            "d": [
+              {
+                "k": "after",
+                "v": "7d9215e86e8572583f6378446b6f9416496347de"
+              },
+              {
+                "k": "base_ref",
+                "v": null
+              },
+              {
+                "k": "before",
+                "v": "f4e93d2b25731a16e1add5a549fe4ff6e992c42d"
+              },
+              {
+                "k": "commits",
+                "v": {
+                  "t": 1,
+                  "a": [
+                    {
+                      "t": 2,
+                      "d": [
+                        {
+                          "k": "author",
+                          "v": {
+                            "t": 2,
+                            "d": [
+                              {
+                                "k": "email",
+                                "v": "divagar.karunanidhi@dhl.com"
+                              },
+                              {
+                                "k": "name",
+                                "v": "dkarunan"
+                              },
+                              {
+                                "k": "username",
+                                "v": "Divagar-Karunanidhi"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "k": "committer",
+                          "v": {
+                            "t": 2,
+                            "d": [
+                              {
+                                "k": "email",
+                                "v": "divagar.karunanidhi@dhl.com"
+                              },
+                              {
+                                "k": "name",
+                                "v": "dkarunan"
+                              },
+                              {
+                                "k": "username",
+                                "v": "Divagar-Karunanidhi"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "k": "distinct",
+                          "v": true
+                        },
+                        {
+                          "k": "id",
+                          "v": "7d9215e86e8572583f6378446b6f9416496347de"
+                        },
+                        {
+                          "k": "message",
+                          "v": "runner1"
+                        },
+                        {
+                          "k": "timestamp",
+                          "v": "2026-05-19T10:37:34+05:30"
+                        },
+                        {
+                          "k": "tree_id",
+                          "v": "54ee6417b82c79c3e66559f94aebc73e19933191"
+                        },
+                        {
+                          "k": "url",
+                          "v": "https://github.com/divagarkarunanidhi/studio/commit/7d9215e86e8572583f6378446b6f9416496347de"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "k": "compare",
+                "v": "https://github.com/divagarkarunanidhi/studio/compare/f4e93d2b2573...7d9215e86e85"
+              },
+              {
+                "k": "created",
+                "v": false
+              },
+              {
+                "k": "deleted",
+                "v": false
+              },
+              {
+                "k": "forced",
+                "v": false
+              },
+              {
+                "k": "head_commit",
+                "v": {
+                  "t": 2,
+                  "d": [
+                    {
+                      "k": "author",
+                      "v": {
+                        "t": 2,
+                        "d": [
+                          {
+                            "k": "email",
+                            "v": "divagar.karunanidhi@dhl.com"
+                          },
+                          {
+                            "k": "name",
+                            "v": "dkarunan"
+                          },
+                          {
+                            "k": "username",
+                            "v": "Divagar-Karunanidhi"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "k": "committer",
+                      "v": {
+                        "t": 2,
+                        "d": [
+                          {
+                            "k": "email",
+                            "v": "divagar.karunanidhi@dhl.com"
+                          },
+                          {
+                            "k": "name",
+                            "v": "dkarunan"
+                          },
+                          {
+                            "k": "username",
+                            "v": "Divagar-Karunanidhi"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "k": "distinct",
+                      "v": true
+                    },
+                    {
+                      "k": "id",
+                      "v": "7d9215e86e8572583f6378446b6f9416496347de"
+                    },
+                    {
+                      "k": "message",
+                      "v": "runner1"
+                    },
+                    {
+                      "k": "timestamp",
+                      "v": "2026-05-19T10:37:34+05:30"
+                    },
+                    {
+                      "k": "tree_id",
+                      "v": "54ee6417b82c79c3e66559f94aebc73e19933191"
+                    },
+                    {
+                      "k": "url",
+                      "v": "https://github.com/divagarkarunanidhi/studio/commit/7d9215e86e8572583f6378446b6f9416496347de"
+                    }
+                  ]
+                }
+              },
+              {
+                "k": "pusher",
+                "v": {
+                  "t": 2,
+                  "d": [
+                    {
+                      "k": "email",
+                      "v": "divagarask@gmail.com"
+                    },
+                    {
+                      "k": "name",
+                      "v": "divagarkarunanidhi"
+                    }
+                  ]
+                }
+              },
+              {
+                "k": "ref",
+                "v": "refs/heads/mongo"
+              },
+              {
+                "k": "repository",
+                "v": {
+                  "t": 2,
+                  "d": [
+                    {
+                      "k": "allow_forking",
+                      "v": true
+                    },
+                    {
+                      "k": "archive_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/{archive_format}{/ref}"
+                    },
+                    {
+                      "k": "archived",
+                      "v": false
+                    },
+                    {
+                      "k": "assignees_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/assignees{/user}"
+                    },
+                    {
+                      "k": "blobs_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/git/blobs{/sha}"
+                    },
+                    {
+                      "k": "branches_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/branches{/branch}"
+                    },
+                    {
+                      "k": "clone_url",
+                      "v": "https://github.com/divagarkarunanidhi/studio.git"
+                    },
+                    {
+                      "k": "collaborators_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/collaborators{/collaborator}"
+                    },
+                    {
+                      "k": "comments_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/comments{/number}"
+                    },
+                    {
+                      "k": "commits_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/commits{/sha}"
+                    },
+                    {
+                      "k": "compare_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/compare/{base}...{head}"
+                    },
+                    {
+                      "k": "contents_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/contents/{+path}"
+                    },
+                    {
+                      "k": "contributors_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/contributors"
+                    },
+                    {
+                      "k": "created_at",
+                      "v": 1762252576.0
+                    },
+                    {
+                      "k": "default_branch",
+                      "v": "main"
+                    },
+                    {
+                      "k": "deployments_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/deployments"
+                    },
+                    {
+                      "k": "description",
+                      "v": null
+                    },
+                    {
+                      "k": "disabled",
+                      "v": false
+                    },
+                    {
+                      "k": "downloads_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/downloads"
+                    },
+                    {
+                      "k": "events_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/events"
+                    },
+                    {
+                      "k": "fork",
+                      "v": false
+                    },
+                    {
+                      "k": "forks",
+                      "v": 0.0
+                    },
+                    {
+                      "k": "forks_count",
+                      "v": 0.0
+                    },
+                    {
+                      "k": "forks_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/forks"
+                    },
+                    {
+                      "k": "full_name",
+                      "v": "divagarkarunanidhi/studio"
+                    },
+                    {
+                      "k": "git_commits_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/git/commits{/sha}"
+                    },
+                    {
+                      "k": "git_refs_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/git/refs{/sha}"
+                    },
+                    {
+                      "k": "git_tags_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/git/tags{/sha}"
+                    },
+                    {
+                      "k": "git_url",
+                      "v": "git://github.com/divagarkarunanidhi/studio.git"
+                    },
+                    {
+                      "k": "has_discussions",
+                      "v": false
+                    },
+                    {
+                      "k": "has_downloads",
+                      "v": true
+                    },
+                    {
+                      "k": "has_issues",
+                      "v": true
+                    },
+                    {
+                      "k": "has_pages",
+                      "v": false
+                    },
+                    {
+                      "k": "has_projects",
+                      "v": true
+                    },
+                    {
+                      "k": "has_pull_requests",
+                      "v": true
+                    },
+                    {
+                      "k": "has_wiki",
+                      "v": true
+                    },
+                    {
+                      "k": "homepage",
+                      "v": null
+                    },
+                    {
+                      "k": "hooks_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/hooks"
+                    },
+                    {
+                      "k": "html_url",
+                      "v": "https://github.com/divagarkarunanidhi/studio"
+                    },
+                    {
+                      "k": "id",
+                      "v": 1089432258.0
+                    },
+                    {
+                      "k": "is_template",
+                      "v": false
+                    },
+                    {
+                      "k": "issue_comment_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/issues/comments{/number}"
+                    },
+                    {
+                      "k": "issue_events_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/issues/events{/number}"
+                    },
+                    {
+                      "k": "issues_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/issues{/number}"
+                    },
+                    {
+                      "k": "keys_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/keys{/key_id}"
+                    },
+                    {
+                      "k": "labels_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/labels{/name}"
+                    },
+                    {
+                      "k": "language",
+                      "v": "TypeScript"
+                    },
+                    {
+                      "k": "languages_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/languages"
+                    },
+                    {
+                      "k": "license",
+                      "v": null
+                    },
+                    {
+                      "k": "master_branch",
+                      "v": "main"
+                    },
+                    {
+                      "k": "merges_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/merges"
+                    },
+                    {
+                      "k": "milestones_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/milestones{/number}"
+                    },
+                    {
+                      "k": "mirror_url",
+                      "v": null
+                    },
+                    {
+                      "k": "name",
+                      "v": "studio"
+                    },
+                    {
+                      "k": "node_id",
+                      "v": "R_kgDOQO9qwg"
+                    },
+                    {
+                      "k": "notifications_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/notifications{?since,all,participating}"
+                    },
+                    {
+                      "k": "open_issues",
+                      "v": 0.0
+                    },
+                    {
+                      "k": "open_issues_count",
+                      "v": 0.0
+                    },
+                    {
+                      "k": "owner",
+                      "v": {
+                        "t": 2,
+                        "d": [
+                          {
+                            "k": "avatar_url",
+                            "v": "https://avatars.githubusercontent.com/u/15382573?v=4"
+                          },
+                          {
+                            "k": "email",
+                            "v": "divagarask@gmail.com"
+                          },
+                          {
+                            "k": "events_url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi/events{/privacy}"
+                          },
+                          {
+                            "k": "followers_url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi/followers"
+                          },
+                          {
+                            "k": "following_url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi/following{/other_user}"
+                          },
+                          {
+                            "k": "gists_url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi/gists{/gist_id}"
+                          },
+                          {
+                            "k": "gravatar_id",
+                            "v": ""
+                          },
+                          {
+                            "k": "html_url",
+                            "v": "https://github.com/divagarkarunanidhi"
+                          },
+                          {
+                            "k": "id",
+                            "v": 15382573.0
+                          },
+                          {
+                            "k": "login",
+                            "v": "divagarkarunanidhi"
+                          },
+                          {
+                            "k": "name",
+                            "v": "divagarkarunanidhi"
+                          },
+                          {
+                            "k": "node_id",
+                            "v": "MDQ6VXNlcjE1MzgyNTcz"
+                          },
+                          {
+                            "k": "organizations_url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi/orgs"
+                          },
+                          {
+                            "k": "received_events_url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi/received_events"
+                          },
+                          {
+                            "k": "repos_url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi/repos"
+                          },
+                          {
+                            "k": "site_admin",
+                            "v": false
+                          },
+                          {
+                            "k": "starred_url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi/starred{/owner}{/repo}"
+                          },
+                          {
+                            "k": "subscriptions_url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi/subscriptions"
+                          },
+                          {
+                            "k": "type",
+                            "v": "User"
+                          },
+                          {
+                            "k": "url",
+                            "v": "https://api.github.com/users/divagarkarunanidhi"
+                          },
+                          {
+                            "k": "user_view_type",
+                            "v": "public"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "k": "private",
+                      "v": false
+                    },
+                    {
+                      "k": "pull_request_creation_policy",
+                      "v": "all"
+                    },
+                    {
+                      "k": "pulls_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/pulls{/number}"
+                    },
+                    {
+                      "k": "pushed_at",
+                      "v": 1779167262.0
+                    },
+                    {
+                      "k": "releases_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/releases{/id}"
+                    },
+                    {
+                      "k": "size",
+                      "v": 2556.0
+                    },
+                    {
+                      "k": "ssh_url",
+                      "v": "git@github.com:divagarkarunanidhi/studio.git"
+                    },
+                    {
+                      "k": "stargazers",
+                      "v": 0.0
+                    },
+                    {
+                      "k": "stargazers_count",
+                      "v": 0.0
+                    },
+                    {
+                      "k": "stargazers_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/stargazers"
+                    },
+                    {
+                      "k": "statuses_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/statuses/{sha}"
+                    },
+                    {
+                      "k": "subscribers_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/subscribers"
+                    },
+                    {
+                      "k": "subscription_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/subscription"
+                    },
+                    {
+                      "k": "svn_url",
+                      "v": "https://github.com/divagarkarunanidhi/studio"
+                    },
+                    {
+                      "k": "tags_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/tags"
+                    },
+                    {
+                      "k": "teams_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/teams"
+                    },
+                    {
+                      "k": "topics",
+                      "v": {
+                        "t": 1
+                      }
+                    },
+                    {
+                      "k": "trees_url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio/git/trees{/sha}"
+                    },
+                    {
+                      "k": "updated_at",
+                      "v": "2025-11-07T09:58:13Z"
+                    },
+                    {
+                      "k": "url",
+                      "v": "https://api.github.com/repos/divagarkarunanidhi/studio"
+                    },
+                    {
+                      "k": "visibility",
+                      "v": "public"
+                    },
+                    {
+                      "k": "watchers",
+                      "v": 0.0
+                    },
+                    {
+                      "k": "watchers_count",
+                      "v": 0.0
+                    },
+                    {
+                      "k": "web_commit_signoff_required",
+                      "v": false
+                    }
+                  ]
+                }
+              },
+              {
+                "k": "sender",
+                "v": {
+                  "t": 2,
+                  "d": [
+                    {
+                      "k": "avatar_url",
+                      "v": "https://avatars.githubusercontent.com/u/15382573?v=4"
+                    },
+                    {
+                      "k": "events_url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi/events{/privacy}"
+                    },
+                    {
+                      "k": "followers_url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi/followers"
+                    },
+                    {
+                      "k": "following_url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi/following{/other_user}"
+                    },
+                    {
+                      "k": "gists_url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi/gists{/gist_id}"
+                    },
+                    {
+                      "k": "gravatar_id",
+                      "v": ""
+                    },
+                    {
+                      "k": "html_url",
+                      "v": "https://github.com/divagarkarunanidhi"
+                    },
+                    {
+                      "k": "id",
+                      "v": 15382573.0
+                    },
+                    {
+                      "k": "login",
+                      "v": "divagarkarunanidhi"
+                    },
+                    {
+                      "k": "node_id",
+                      "v": "MDQ6VXNlcjE1MzgyNTcz"
+                    },
+                    {
+                      "k": "organizations_url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi/orgs"
+                    },
+                    {
+                      "k": "received_events_url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi/received_events"
+                    },
+                    {
+                      "k": "repos_url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi/repos"
+                    },
+                    {
+                      "k": "site_admin",
+                      "v": false
+                    },
+                    {
+                      "k": "starred_url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi/starred{/owner}{/repo}"
+                    },
+                    {
+                      "k": "subscriptions_url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi/subscriptions"
+                    },
+                    {
+                      "k": "type",
+                      "v": "User"
+                    },
+                    {
+                      "k": "url",
+                      "v": "https://api.github.com/users/divagarkarunanidhi"
+                    },
+                    {
+                      "k": "user_view_type",
+                      "v": "public"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "k": "workflow_ref",
+          "v": "divagarkarunanidhi/studio/.github/workflows/deploy-local.yml@refs/heads/mongo"
+        },
+        {
+          "k": "workflow_sha",
+          "v": "7d9215e86e8572583f6378446b6f9416496347de"
+        },
+        {
+          "k": "repository_id",
+          "v": "1089432258"
+        },
+        {
+          "k": "triggering_actor",
+          "v": "divagarkarunanidhi"
+        }
+      ]
+    },
+    "inputs": {
+      "t": 2
+    },
+    "job": {
+      "t": 2,
+      "d": [
+        {
+          "k": "check_run_id",
+          "v": 76671431959.0
+        },
+        {
+          "k": "workflow_ref",
+          "v": "divagarkarunanidhi/studio/.github/workflows/deploy-local.yml@refs/heads/mongo"
+        },
+        {
+          "k": "workflow_sha",
+          "v": "7d9215e86e8572583f6378446b6f9416496347de"
+        },
+        {
+          "k": "workflow_repository",
+          "v": "divagarkarunanidhi/studio"
+        },
+        {
+          "k": "workflow_file_path",
+          "v": ".github/workflows/deploy-local.yml"
+        }
+      ]
+    },
+    "matrix": null,
+    "needs": {
+      "t": 2
+    },
+    "strategy": {
+      "t": 2,
+      "d": [
+        {
+          "k": "fail-fast",
+          "v": true
+        },
+        {
+          "k": "job-index",
+          "v": 0.0
+        },
+        {
+          "k": "job-total",
+          "v": 1.0
+        },
+        {
+          "k": "max-parallel",
+          "v": 1.0
+        }
+      ]
+    },
+    "vars": {
+      "t": 2
+    }
+  }
+}
+[2026-05-19 05:08:31Z INFO JobRunner] Job ID ba56f393-5731-59ef-ac98-bb6d6810089a
+[2026-05-19 05:08:31Z INFO ConfigurationStore] currentAssemblyLocation: C:\Code base\bugsense apr 24\studio\actions-runner\bin\Runner.Worker.dll
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:31Z INFO ConfigurationStore] binPath: C:\Code base\bugsense apr 24\studio\actions-runner\bin
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:31Z INFO ConfigurationStore] RootFolder: C:\Code base\bugsense apr 24\studio\actions-runner
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:31Z INFO HostContext] Well known config file 'Runner': 'C:\Code base\bugsense apr 24\studio\actions-runner\.runner'
+[2026-05-19 05:08:31Z INFO ConfigurationStore] ConfigFilePath: C:\Code base\bugsense apr 24\studio\actions-runner\.runner
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:31Z INFO HostContext] Well known config file 'Credentials': 'C:\Code base\bugsense apr 24\studio\actions-runner\.credentials'
+[2026-05-19 05:08:31Z INFO ConfigurationStore] CredFilePath: C:\Code base\bugsense apr 24\studio\actions-runner\.credentials
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:31Z INFO HostContext] Well known config file 'MigratedCredentials': 'C:\Code base\bugsense apr 24\studio\actions-runner\.credentials_migrated'
+[2026-05-19 05:08:31Z INFO ConfigurationStore] MigratedCredFilePath: C:\Code base\bugsense apr 24\studio\actions-runner\.credentials_migrated
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:31Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:31Z INFO HostContext] Well known config file 'Service': 'C:\Code base\bugsense apr 24\studio\actions-runner\.service'
+[2026-05-19 05:08:31Z INFO ConfigurationStore] ServiceConfigFilePath: C:\Code base\bugsense apr 24\studio\actions-runner\.service
+[2026-05-19 05:08:31Z INFO ConfigurationStore] Read setting file: 316 chars
+[2026-05-19 05:08:31Z INFO JobRunner] Initializing launch client
+[2026-05-19 05:08:31Z INFO JobServerQueue] Initializing results client
+[2026-05-19 05:08:33Z INFO ResultServer] Creating websocket client ...wss://results-receiver.actions.githubusercontent.com/_ws/ingest.sock
+[2026-05-19 05:08:33Z INFO ResultServer] Attempting to start websocket client with delay 00:00:00.
+[2026-05-19 05:08:34Z INFO JobServerQueue] Start process web console line queue.
+[2026-05-19 05:08:34Z INFO JobServerQueue] Start process file upload queue.
+[2026-05-19 05:08:34Z INFO JobServerQueue] Start results file upload queue.
+[2026-05-19 05:08:34Z INFO JobServerQueue] Starting results-based upload queue...
+[2026-05-19 05:08:34Z INFO JobServerQueue] Start process timeline update queue.
+[2026-05-19 05:08:34Z INFO ExecutionContext] Initialize GitHub context
+[2026-05-19 05:08:34Z INFO ExecutionContext] Initialize Env context
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:34Z INFO JobRunner] Starting the job execution context.
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:34Z INFO JobRunner] Validating directory permissions for: 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Tools': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_tool'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Temp': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp'
+[2026-05-19 05:08:34Z INFO JobRunner] Getting job extension.
+[2026-05-19 05:08:34Z INFO JobRunner] Initialize job. Getting all job steps.
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known config file 'Credentials': 'C:\Code base\bugsense apr 24\studio\actions-runner\.credentials'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known config file 'SetupInfo': 'C:\Code base\bugsense apr 24\studio\actions-runner\.setup_info'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:34Z INFO JobServerQueue] Job timeline record has been updated for the first time.
+[2026-05-19 05:08:34Z INFO PipelineDirectoryManager] Loading tracking config if exists: C:\Code base\bugsense apr 24\studio\actions-runner\_work\_PipelineMapping\divagarkarunanidhi/studio\PipelineFolder.json
+[2026-05-19 05:08:34Z INFO PipelineDirectoryManager] Creating a new tracking config file.
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:34Z INFO PipelineDirectoryManager] Creating pipeline directory.
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:34Z INFO PipelineDirectoryManager] Creating workspace directory.
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:34Z INFO JobExtension] Downloading actions
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:34Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:35Z INFO Worker] Listening for cancel message from the channel.
+[2026-05-19 05:08:35Z INFO Worker] Waiting for the job to complete or for a cancel message from the channel.
+[2026-05-19 05:08:35Z INFO ResultServer] Successfully started websocket client.
+[2026-05-19 05:08:36Z INFO JobServerQueue] Try to append 1 batches web console lines for record '1d489512-eb3a-4cf5-9182-8816f1fb4f05', success rate: 1/1.
+[2026-05-19 05:08:36Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:36Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:36Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:36Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:36Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:36Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:36Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:36Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:36Z INFO ActionManager] Save archive 'https://codeload.github.com/actions/checkout/zip/34e114876b0b11c390a56381ad16ebd13914f8d5' into C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions\_temp_7a1f18a8-7fb5-4299-a89a-6a8754c9713e\47df5202-748e-400d-9bba-ebd9220aadac.zip.
+[2026-05-19 05:08:36Z INFO JobServerQueue] Try to append 1 batches web console lines for record '1d489512-eb3a-4cf5-9182-8816f1fb4f05', success rate: 1/1.
+[2026-05-19 05:08:37Z INFO ActionManager] Request URL: https://codeload.github.com/actions/checkout/zip/34e114876b0b11c390a56381ad16ebd13914f8d5 X-GitHub-Request-Id: E7FD:1001F6:810A:654A2:6A0BF054 Http Status: OK
+[2026-05-19 05:08:38Z INFO ActionManager] Finished getting action repository.
+[2026-05-19 05:08:38Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:38Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:38Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:38Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:38Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:38Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:38Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:38Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:38Z INFO ActionManager] Save archive 'https://codeload.github.com/actions/setup-node/zip/49933ea5288caeca8642d1e84afbd3f7d6820020' into C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions\_temp_e262e357-f03c-439a-a511-7f33e5d1db95\1a7ca81c-e40c-4b27-90de-15225142bf67.zip.
+[2026-05-19 05:08:38Z INFO JobServerQueue] Try to append 1 batches web console lines for record '1d489512-eb3a-4cf5-9182-8816f1fb4f05', success rate: 1/1.
+[2026-05-19 05:08:39Z INFO ActionManager] Request URL: https://codeload.github.com/actions/setup-node/zip/49933ea5288caeca8642d1e84afbd3f7d6820020 X-GitHub-Request-Id: E7FD:1001F6:810E:654BF:6A0BF055 Http Status: OK
+[2026-05-19 05:08:40Z INFO ActionManager] Finished getting action repository.
+[2026-05-19 05:08:40Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:40Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:40Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:40Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:40Z INFO ActionManifestManager] Load schema file with definitions: [
+  "null",
+  "boolean",
+  "number",
+  "string",
+  "sequence",
+  "mapping",
+  "any",
+  "action-root",
+  "inputs",
+  "input",
+  "outputs",
+  "output-definition",
+  "runs",
+  "container-runs",
+  "container-runs-args",
+  "container-runs-env",
+  "node-runs",
+  "plugin-runs",
+  "composite-runs",
+  "composite-steps",
+  "composite-step",
+  "run-step",
+  "uses-step",
+  "container-runs-context",
+  "output-value",
+  "input-default-context",
+  "non-empty-string",
+  "string-steps-context",
+  "boolean-steps-context",
+  "step-env",
+  "step-if",
+  "step-with"
+]
+[2026-05-19 05:08:40Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:40Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:40Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:40Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:42Z INFO ActionManifestManager] Loaded action.yml file: {
+  "name": "Checkout",
+  "description": "Checkout a Git repository at a particular version",
+  "inputs": {
+    "type": 2,
+    "map": [
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 4,
+          "col": 3,
+          "lit": "repository"
+        },
+        "value": {
+          "type": 3,
+          "file": 2,
+          "line": 6,
+          "col": 14,
+          "expr": "github.repository"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 7,
+          "col": 3,
+          "lit": "ref"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 12,
+          "col": 3,
+          "lit": "token"
+        },
+        "value": {
+          "type": 3,
+          "file": 2,
+          "line": 24,
+          "col": 14,
+          "expr": "github.token"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 25,
+          "col": 3,
+          "lit": "ssh-key"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 37,
+          "col": 3,
+          "lit": "ssh-known-hosts"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 42,
+          "col": 3,
+          "lit": "ssh-strict"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 47,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 48,
+          "col": 3,
+          "lit": "ssh-user"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 51,
+          "col": 14,
+          "lit": "git"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 52,
+          "col": 3,
+          "lit": "persist-credentials"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 54,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 55,
+          "col": 3,
+          "lit": "path"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 57,
+          "col": 3,
+          "lit": "clean"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 59,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 60,
+          "col": 3,
+          "lit": "filter"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 64,
+          "col": 14,
+          "lit": ""
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 65,
+          "col": 3,
+          "lit": "sparse-checkout"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 69,
+          "col": 14,
+          "lit": ""
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 70,
+          "col": 3,
+          "lit": "sparse-checkout-cone-mode"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 73,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 74,
+          "col": 3,
+          "lit": "fetch-depth"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 76,
+          "col": 14,
+          "lit": "1"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 77,
+          "col": 3,
+          "lit": "fetch-tags"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 79,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 80,
+          "col": 3,
+          "lit": "show-progress"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 82,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 83,
+          "col": 3,
+          "lit": "lfs"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 85,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 86,
+          "col": 3,
+          "lit": "submodules"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 94,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 95,
+          "col": 3,
+          "lit": "set-safe-directory"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 97,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 98,
+          "col": 3,
+          "lit": "github-server-url"
+        },
+        "value": ""
+      }
+    ]
+  },
+  "execution": {
+    "executionType": "nodeJS",
+    "hasPre": false,
+    "hasPost": true,
+    "script": "dist/index.js",
+    "pre": null,
+    "post": "dist/index.js",
+    "nodeVersion": "node20",
+    "cleanupCondition": "always()",
+    "initCondition": "always()"
+  },
+  "deprecated": null
+}
+[2026-05-19 05:08:42Z INFO ActionManager] Action node.js file: dist/index.js, no more preparation.
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:42Z INFO ActionManager] Load action that reference repository from 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions\actions\checkout\v4'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:42Z INFO ActionManifestManager] Loaded action.yml file: {
+  "name": "Checkout",
+  "description": "Checkout a Git repository at a particular version",
+  "inputs": {
+    "type": 2,
+    "map": [
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 4,
+          "col": 3,
+          "lit": "repository"
+        },
+        "value": {
+          "type": 3,
+          "file": 2,
+          "line": 6,
+          "col": 14,
+          "expr": "github.repository"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 7,
+          "col": 3,
+          "lit": "ref"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 12,
+          "col": 3,
+          "lit": "token"
+        },
+        "value": {
+          "type": 3,
+          "file": 2,
+          "line": 24,
+          "col": 14,
+          "expr": "github.token"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 25,
+          "col": 3,
+          "lit": "ssh-key"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 37,
+          "col": 3,
+          "lit": "ssh-known-hosts"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 42,
+          "col": 3,
+          "lit": "ssh-strict"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 47,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 48,
+          "col": 3,
+          "lit": "ssh-user"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 51,
+          "col": 14,
+          "lit": "git"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 52,
+          "col": 3,
+          "lit": "persist-credentials"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 54,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 55,
+          "col": 3,
+          "lit": "path"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 57,
+          "col": 3,
+          "lit": "clean"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 59,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 60,
+          "col": 3,
+          "lit": "filter"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 64,
+          "col": 14,
+          "lit": ""
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 65,
+          "col": 3,
+          "lit": "sparse-checkout"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 69,
+          "col": 14,
+          "lit": ""
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 70,
+          "col": 3,
+          "lit": "sparse-checkout-cone-mode"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 73,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 74,
+          "col": 3,
+          "lit": "fetch-depth"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 76,
+          "col": 14,
+          "lit": "1"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 77,
+          "col": 3,
+          "lit": "fetch-tags"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 79,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 80,
+          "col": 3,
+          "lit": "show-progress"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 82,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 83,
+          "col": 3,
+          "lit": "lfs"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 85,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 86,
+          "col": 3,
+          "lit": "submodules"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 94,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 95,
+          "col": 3,
+          "lit": "set-safe-directory"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 97,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 98,
+          "col": 3,
+          "lit": "github-server-url"
+        },
+        "value": ""
+      }
+    ]
+  },
+  "execution": {
+    "executionType": "nodeJS",
+    "hasPre": false,
+    "hasPost": true,
+    "script": "dist/index.js",
+    "pre": null,
+    "post": "dist/index.js",
+    "nodeVersion": "node20",
+    "cleanupCondition": "always()",
+    "initCondition": "always()"
+  },
+  "deprecated": null
+}
+[2026-05-19 05:08:42Z INFO ActionManager] Action pre node.js file: N/A.
+[2026-05-19 05:08:42Z INFO ActionManager] Action node.js file: dist/index.js.
+[2026-05-19 05:08:42Z INFO ActionManager] Action post node.js file: dist/index.js.
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:42Z INFO ActionManifestManager] Ignore action property author.
+[2026-05-19 05:08:42Z INFO ActionManifestManager] Loaded action.yml file: {
+  "name": "Setup Node.js environment",
+  "description": "Setup a Node.js environment by adding problem matchers and optionally downloading and adding it to the PATH.",
+  "inputs": {
+    "type": 2,
+    "map": [
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 5,
+          "col": 3,
+          "lit": "always-auth"
+        },
+        "value": {
+          "type": 0,
+          "file": 3,
+          "line": 7,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 8,
+          "col": 3,
+          "lit": "node-version"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 10,
+          "col": 3,
+          "lit": "node-version-file"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 12,
+          "col": 3,
+          "lit": "architecture"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 14,
+          "col": 3,
+          "lit": "check-latest"
+        },
+        "value": {
+          "type": 0,
+          "file": 3,
+          "line": 16,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 17,
+          "col": 3,
+          "lit": "registry-url"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 19,
+          "col": 3,
+          "lit": "scope"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 21,
+          "col": 3,
+          "lit": "token"
+        },
+        "value": {
+          "type": 3,
+          "file": 3,
+          "line": 23,
+          "col": 14,
+          "expr": "github.server_url == 'https://github.com' && github.token || ''"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 24,
+          "col": 3,
+          "lit": "cache"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 26,
+          "col": 3,
+          "lit": "cache-dependency-path"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 28,
+          "col": 3,
+          "lit": "mirror"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 30,
+          "col": 3,
+          "lit": "mirror-token"
+        },
+        "value": ""
+      }
+    ]
+  },
+  "execution": {
+    "executionType": "nodeJS",
+    "hasPre": false,
+    "hasPost": true,
+    "script": "dist/setup/index.js",
+    "pre": null,
+    "post": "dist/cache-save/index.js",
+    "nodeVersion": "node20",
+    "cleanupCondition": "success()",
+    "initCondition": "always()"
+  },
+  "deprecated": null
+}
+[2026-05-19 05:08:42Z INFO ActionManager] Action node.js file: dist/setup/index.js, no more preparation.
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:42Z INFO ActionManager] Load action that reference repository from 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions\actions\setup-node\v4'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:42Z INFO ActionManifestManager] Ignore action property author.
+[2026-05-19 05:08:42Z INFO ActionManifestManager] Loaded action.yml file: {
+  "name": "Setup Node.js environment",
+  "description": "Setup a Node.js environment by adding problem matchers and optionally downloading and adding it to the PATH.",
+  "inputs": {
+    "type": 2,
+    "map": [
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 5,
+          "col": 3,
+          "lit": "always-auth"
+        },
+        "value": {
+          "type": 0,
+          "file": 3,
+          "line": 7,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 8,
+          "col": 3,
+          "lit": "node-version"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 10,
+          "col": 3,
+          "lit": "node-version-file"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 12,
+          "col": 3,
+          "lit": "architecture"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 14,
+          "col": 3,
+          "lit": "check-latest"
+        },
+        "value": {
+          "type": 0,
+          "file": 3,
+          "line": 16,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 17,
+          "col": 3,
+          "lit": "registry-url"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 19,
+          "col": 3,
+          "lit": "scope"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 21,
+          "col": 3,
+          "lit": "token"
+        },
+        "value": {
+          "type": 3,
+          "file": 3,
+          "line": 23,
+          "col": 14,
+          "expr": "github.server_url == 'https://github.com' && github.token || ''"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 24,
+          "col": 3,
+          "lit": "cache"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 26,
+          "col": 3,
+          "lit": "cache-dependency-path"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 28,
+          "col": 3,
+          "lit": "mirror"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 3,
+          "line": 30,
+          "col": 3,
+          "lit": "mirror-token"
+        },
+        "value": ""
+      }
+    ]
+  },
+  "execution": {
+    "executionType": "nodeJS",
+    "hasPre": false,
+    "hasPost": true,
+    "script": "dist/setup/index.js",
+    "pre": null,
+    "post": "dist/cache-save/index.js",
+    "nodeVersion": "node20",
+    "cleanupCondition": "success()",
+    "initCondition": "always()"
+  },
+  "deprecated": null
+}
+[2026-05-19 05:08:42Z INFO ActionManager] Action pre node.js file: N/A.
+[2026-05-19 05:08:42Z INFO ActionManager] Action node.js file: dist/setup/index.js.
+[2026-05-19 05:08:42Z INFO ActionManager] Action post node.js file: dist/cache-save/index.js.
+[2026-05-19 05:08:42Z INFO JobExtension] Adding .
+[2026-05-19 05:08:42Z INFO JobExtension] Adding .
+[2026-05-19 05:08:42Z INFO JobExtension] Adding .
+[2026-05-19 05:08:42Z INFO JobExtension] Adding .
+[2026-05-19 05:08:42Z INFO JobExtension] Adding .
+[2026-05-19 05:08:42Z INFO JobExtension] Adding .
+[2026-05-19 05:08:42Z INFO JobExtension] Adding .
+[2026-05-19 05:08:42Z INFO JobExtension] Adding .
+[2026-05-19 05:08:42Z INFO JobExtension] Adding .
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:42Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:42Z INFO JobExtension] Total accessible running process: 402.
+[2026-05-19 05:08:42Z INFO JobServerQueue] Try to append 1 batches web console lines for record '1d489512-eb3a-4cf5-9182-8816f1fb4f05', success rate: 1/1.
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:43Z INFO JobExtension] Start checking server connectivity.
+[2026-05-19 05:08:43Z INFO JobExtension] Check server connectivity for https://broker.actions.githubusercontent.com/health.
+[2026-05-19 05:08:43Z INFO JobExtension] Check server connectivity for https://token.actions.githubusercontent.com/ready.
+[2026-05-19 05:08:43Z INFO JobExtension] Check server connectivity for https://run.actions.githubusercontent.com/health.
+[2026-05-19 05:08:43Z INFO JobExtension] Start checking service connectivity in background.
+[2026-05-19 05:08:43Z INFO ExecutionContext] Publish step telemetry for current step {
+  "action": "setup_job",
+  "type": "runner",
+  "stage": "Pre",
+  "stepId": "1d489512-eb3a-4cf5-9182-8816f1fb4f05",
+  "result": "succeeded",
+  "errorMessages": [],
+  "executionTimeInSeconds": 9,
+  "startTime": "2026-05-19T05:08:34.85732Z",
+  "finishTime": "2026-05-19T05:08:43.283283Z"
+}.
+[2026-05-19 05:08:43Z INFO JobRunner] Total job steps: 9.
+[2026-05-19 05:08:43Z INFO JobRunner] Run all job steps.
+[2026-05-19 05:08:43Z INFO StepsRunner] Processing step: DisplayName='Checkout code'
+[2026-05-19 05:08:43Z INFO StepsRunner] Evaluating: success()
+[2026-05-19 05:08:43Z INFO StepsRunner] Result: true
+[2026-05-19 05:08:43Z INFO StepsRunner] Starting the step.
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:43Z INFO StepsRunner] Which2: 'chcp'
+[2026-05-19 05:08:43Z INFO StepsRunner] Location: 'C:\WINDOWS\system32\chcp.COM'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper] Starting process:
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   File name: 'C:\WINDOWS\system32\chcp.COM'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Arguments: '65001'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Working directory: 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Require exit code zero: 'False'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Encoding web name:  ; code page: ''
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Force kill process on cancellation: 'False'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Redirected STDIN: 'False'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Persist current code page: 'True'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Keep redirected STDIN open: 'False'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   High priority process: 'False'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper] Process started with process id 13052, waiting for process exit.
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper] STDOUT/STDERR stream read finished.
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper] STDOUT/STDERR stream read finished.
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper] Finished process 13052 with exit code 0, and elapsed time 00:00:00.0736801.
+[2026-05-19 05:08:43Z INFO StepsRunner] Successfully returned to code page 65001 (UTF8)
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:43Z INFO ActionManager] Load action that reference repository from 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions\actions\checkout\v4'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Loaded action.yml file: {
+  "name": "Checkout",
+  "description": "Checkout a Git repository at a particular version",
+  "inputs": {
+    "type": 2,
+    "map": [
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 4,
+          "col": 3,
+          "lit": "repository"
+        },
+        "value": {
+          "type": 3,
+          "file": 2,
+          "line": 6,
+          "col": 14,
+          "expr": "github.repository"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 7,
+          "col": 3,
+          "lit": "ref"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 12,
+          "col": 3,
+          "lit": "token"
+        },
+        "value": {
+          "type": 3,
+          "file": 2,
+          "line": 24,
+          "col": 14,
+          "expr": "github.token"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 25,
+          "col": 3,
+          "lit": "ssh-key"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 37,
+          "col": 3,
+          "lit": "ssh-known-hosts"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 42,
+          "col": 3,
+          "lit": "ssh-strict"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 47,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 48,
+          "col": 3,
+          "lit": "ssh-user"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 51,
+          "col": 14,
+          "lit": "git"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 52,
+          "col": 3,
+          "lit": "persist-credentials"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 54,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 55,
+          "col": 3,
+          "lit": "path"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 57,
+          "col": 3,
+          "lit": "clean"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 59,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 60,
+          "col": 3,
+          "lit": "filter"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 64,
+          "col": 14,
+          "lit": ""
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 65,
+          "col": 3,
+          "lit": "sparse-checkout"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 69,
+          "col": 14,
+          "lit": ""
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 70,
+          "col": 3,
+          "lit": "sparse-checkout-cone-mode"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 73,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 74,
+          "col": 3,
+          "lit": "fetch-depth"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 76,
+          "col": 14,
+          "lit": "1"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 77,
+          "col": 3,
+          "lit": "fetch-tags"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 79,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 80,
+          "col": 3,
+          "lit": "show-progress"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 82,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 83,
+          "col": 3,
+          "lit": "lfs"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 85,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 86,
+          "col": 3,
+          "lit": "submodules"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 94,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 95,
+          "col": 3,
+          "lit": "set-safe-directory"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 97,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 98,
+          "col": 3,
+          "lit": "github-server-url"
+        },
+        "value": ""
+      }
+    ]
+  },
+  "execution": {
+    "executionType": "nodeJS",
+    "hasPre": false,
+    "hasPost": true,
+    "script": "dist/index.js",
+    "pre": null,
+    "post": "dist/index.js",
+    "nodeVersion": "node20",
+    "cleanupCondition": "always()",
+    "initCondition": "always()"
+  },
+  "deprecated": null
+}
+[2026-05-19 05:08:43Z INFO ActionManager] Action pre node.js file: N/A.
+[2026-05-19 05:08:43Z INFO ActionManager] Action node.js file: dist/index.js.
+[2026-05-19 05:08:43Z INFO ActionManager] Action post node.js file: dist/index.js.
+[2026-05-19 05:08:43Z INFO ExecutionContext] Reserve record order 11 to 20 for post job actions.
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Temp': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp'
+[2026-05-19 05:08:43Z INFO ExecutionContext] Write event payload to C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp\_github_workflow\event.json
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Temp': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp'
+[2026-05-19 05:08:43Z INFO ExtensionManager] Getting extensions for interface: 'GitHub.Runner.Worker.IFileCommandExtension'
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.AddPathFileCommand, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.SetEnvFileCommand, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.CreateStepSummaryCommand, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.SaveStateFileCommand, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.SetOutputFileCommand, Runner.Worker
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'repository': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 6,
+  "col": 14,
+  "lit": "divagarkarunanidhi/studio"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'ref': default value evaluate result: ""
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'token': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 24,
+  "col": 14,
+  "lit": "***"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'ssh-key': default value evaluate result: ""
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'ssh-known-hosts': default value evaluate result: ""
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'ssh-strict': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 47,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'ssh-user': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 51,
+  "col": 14,
+  "lit": "git"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'persist-credentials': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 54,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'path': default value evaluate result: ""
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'clean': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 59,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'filter': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 64,
+  "col": 14,
+  "lit": ""
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'sparse-checkout': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 69,
+  "col": 14,
+  "lit": ""
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'sparse-checkout-cone-mode': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 73,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'fetch-depth': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 76,
+  "col": 14,
+  "lit": "1"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'fetch-tags': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 79,
+  "col": 14,
+  "lit": "false"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'show-progress': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 82,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'lfs': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 85,
+  "col": 14,
+  "lit": "false"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'submodules': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 94,
+  "col": 14,
+  "lit": "false"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'set-safe-directory': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 97,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:08:43Z INFO ActionManifestManager] Input 'github-server-url': default value evaluate result: ""
+[2026-05-19 05:08:43Z INFO ExtensionManager] Getting extensions for interface: 'GitHub.Runner.Worker.IActionCommandExtension'
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.InternalPluginSetRepoPathCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.SetEnvCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.SetOutputCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.SaveStateCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.AddPathCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.AddMaskCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.AddMatcherCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.RemoveMatcherCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.WarningCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.ErrorCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.NoticeCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.DebugCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.GroupCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.EndGroupCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ExtensionManager] Creating instance: GitHub.Runner.Worker.EchoCommandExtension, Runner.Worker
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command internal-set-repo-path
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command set-env
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command set-output
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command save-state
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command add-path
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command add-mask
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command add-matcher
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command remove-matcher
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command warning
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command error
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command notice
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command debug
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command group
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command endgroup
+[2026-05-19 05:08:43Z INFO ActionCommandManager] Register action command extension for command echo
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:43Z INFO HostContext] Well known directory 'Externals': 'C:\Code base\bugsense apr 24\studio\actions-runner\externals'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper] Starting process:
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   File name: 'C:\Code base\bugsense apr 24\studio\actions-runner\externals\node20\bin\node.exe'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Arguments: '"C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions\actions\checkout\v4\dist/index.js"'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Working directory: 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\studio\studio'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Require exit code zero: 'False'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Encoding web name: utf-8 ; code page: '65001'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Force kill process on cancellation: 'False'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Redirected STDIN: 'False'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Persist current code page: 'True'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   Keep redirected STDIN open: 'False'
+[2026-05-19 05:08:43Z INFO ProcessInvokerWrapper]   High priority process: 'False'
+[2026-05-19 05:08:43Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:44Z INFO JobServerQueue] Got a step log file to send to results service.
+[2026-05-19 05:08:44Z INFO JobServerQueue] Starting upload of step log file to results service ResultsLog, C:\Code base\bugsense apr 24\studio\actions-runner\_diag\blocks\10b9ad14-9f26-4afd-a5b0-092a54758c3f_1d489512-eb3a-4cf5-9182-8816f1fb4f05.1
+[2026-05-19 05:08:44Z INFO JobServerQueue] Try to upload 1 log files or attachments, success rate: 1/1.
+[2026-05-19 05:08:49Z INFO JobServerQueue] Tried to upload 1 file(s) to results, success rate: 1/1.
+[2026-05-19 05:08:50Z INFO ProcessInvokerWrapper] Process started with process id 30028, waiting for process exit.
+[2026-05-19 05:08:50Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:50Z INFO AddMaskCommandExtension] Add new secret mask with length of 76
+[2026-05-19 05:08:50Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:51Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:51Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:51Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:51Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:53Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:08:53Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:08:53Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:08:55Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:55Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:59Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:08:59Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:09:03Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:03Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:03Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:03Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:09:04Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:09:05Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:09:13Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:13Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:13Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:22Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:09:22Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:09:23Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:23Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:23Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:33Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:33Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:33Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:33Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] STDOUT/STDERR stream read finished.
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] STDOUT/STDERR stream read finished.
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] Finished process 30028 with exit code 1, and elapsed time 00:00:51.1411903.
+[2026-05-19 05:09:34Z INFO CreateStepSummaryCommand] Step Summary file (C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp\_runner_file_commands\step_summary_c4dd76e8-d7b3-4c37-a1e3-3806f833a2d3) is empty; skipping attachment upload
+[2026-05-19 05:09:34Z INFO StepsRunner] Step result: Failed
+[2026-05-19 05:09:34Z INFO ExecutionContext] Publish step telemetry for current step {
+  "action": "actions/checkout",
+  "ref": "v4",
+  "type": "node20",
+  "stage": "Main",
+  "stepId": "d7d0baba-73bc-445e-a5a1-e8dca91fbbcd",
+  "stepContextName": "__actions_checkout",
+  "hasPreStep": false,
+  "hasPostStep": true,
+  "result": "failed",
+  "errorMessages": [
+    "unable to access 'https://github.com/divagarkarunanidhi/studio/': SSL certificate problem: unable to get local issuer certificate",
+    "unable to access 'https://github.com/divagarkarunanidhi/studio/': SSL certificate problem: unable to get local issuer certificate",
+    "unable to access 'https://github.com/divagarkarunanidhi/studio/': SSL certificate problem: unable to get local issuer certificate"
+  ],
+  "executionTimeInSeconds": 52,
+  "startTime": "2026-05-19T05:08:43.298196Z",
+  "finishTime": "2026-05-19T05:09:34.5978012Z"
+}.
+[2026-05-19 05:09:34Z INFO StepsRunner] Update job result with current step result 'Failed'.
+[2026-05-19 05:09:34Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:34Z INFO StepsRunner] Processing step: DisplayName='Setup Node.js'
+[2026-05-19 05:09:34Z INFO StepsRunner] Evaluating: success()
+[2026-05-19 05:09:34Z INFO StepsRunner] Result: false
+[2026-05-19 05:09:34Z INFO StepsRunner] Skipping step due to condition evaluation.
+[2026-05-19 05:09:34Z INFO StepsRunner] No need for updating job result with current step result 'Skipped'.
+[2026-05-19 05:09:34Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:34Z INFO StepsRunner] Processing step: DisplayName='Install dependencies'
+[2026-05-19 05:09:34Z INFO StepsRunner] Evaluating: success()
+[2026-05-19 05:09:34Z INFO StepsRunner] Result: false
+[2026-05-19 05:09:34Z INFO StepsRunner] Skipping step due to condition evaluation.
+[2026-05-19 05:09:34Z INFO StepsRunner] No need for updating job result with current step result 'Skipped'.
+[2026-05-19 05:09:34Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:34Z INFO StepsRunner] Processing step: DisplayName='Build application'
+[2026-05-19 05:09:34Z INFO StepsRunner] Evaluating: success()
+[2026-05-19 05:09:34Z INFO StepsRunner] Result: false
+[2026-05-19 05:09:34Z INFO StepsRunner] Skipping step due to condition evaluation.
+[2026-05-19 05:09:34Z INFO StepsRunner] No need for updating job result with current step result 'Skipped'.
+[2026-05-19 05:09:34Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:34Z INFO StepsRunner] Processing step: DisplayName='Install PM2 globally (if not present)'
+[2026-05-19 05:09:34Z INFO StepsRunner] Evaluating: success()
+[2026-05-19 05:09:34Z INFO StepsRunner] Result: false
+[2026-05-19 05:09:34Z INFO StepsRunner] Skipping step due to condition evaluation.
+[2026-05-19 05:09:34Z INFO StepsRunner] No need for updating job result with current step result 'Skipped'.
+[2026-05-19 05:09:34Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:34Z INFO StepsRunner] Processing step: DisplayName='Stop existing app (if running)'
+[2026-05-19 05:09:34Z INFO StepsRunner] Evaluating: success()
+[2026-05-19 05:09:34Z INFO StepsRunner] Result: false
+[2026-05-19 05:09:34Z INFO StepsRunner] Skipping step due to condition evaluation.
+[2026-05-19 05:09:34Z INFO StepsRunner] No need for updating job result with current step result 'Skipped'.
+[2026-05-19 05:09:34Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:34Z INFO StepsRunner] Processing step: DisplayName='Start application with PM2'
+[2026-05-19 05:09:34Z INFO StepsRunner] Evaluating: success()
+[2026-05-19 05:09:34Z INFO StepsRunner] Result: false
+[2026-05-19 05:09:34Z INFO StepsRunner] Skipping step due to condition evaluation.
+[2026-05-19 05:09:34Z INFO StepsRunner] No need for updating job result with current step result 'Skipped'.
+[2026-05-19 05:09:34Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:34Z INFO StepsRunner] Processing step: DisplayName='Save PM2 process list'
+[2026-05-19 05:09:34Z INFO StepsRunner] Evaluating: success()
+[2026-05-19 05:09:34Z INFO StepsRunner] Result: false
+[2026-05-19 05:09:34Z INFO StepsRunner] Skipping step due to condition evaluation.
+[2026-05-19 05:09:34Z INFO StepsRunner] No need for updating job result with current step result 'Skipped'.
+[2026-05-19 05:09:34Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:34Z INFO StepsRunner] Processing step: DisplayName='Show deployment status'
+[2026-05-19 05:09:34Z INFO StepsRunner] Evaluating: success()
+[2026-05-19 05:09:34Z INFO StepsRunner] Result: false
+[2026-05-19 05:09:34Z INFO StepsRunner] Skipping step due to condition evaluation.
+[2026-05-19 05:09:34Z INFO StepsRunner] No need for updating job result with current step result 'Skipped'.
+[2026-05-19 05:09:34Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:34Z INFO StepsRunner] Processing step: DisplayName='Post Checkout code'
+[2026-05-19 05:09:34Z INFO StepsRunner] Evaluating: always()
+[2026-05-19 05:09:34Z INFO StepsRunner] Result: true
+[2026-05-19 05:09:34Z INFO StepsRunner] Starting the step.
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:34Z INFO StepsRunner] Which2: 'chcp'
+[2026-05-19 05:09:34Z INFO StepsRunner] Location: 'C:\WINDOWS\system32\chcp.COM'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] Starting process:
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   File name: 'C:\WINDOWS\system32\chcp.COM'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Arguments: '65001'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Working directory: 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Require exit code zero: 'False'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Encoding web name:  ; code page: ''
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Force kill process on cancellation: 'False'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Redirected STDIN: 'False'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Persist current code page: 'True'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Keep redirected STDIN open: 'False'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   High priority process: 'False'
+[2026-05-19 05:09:34Z INFO JobServerQueue] Try to upload 1 log files or attachments, success rate: 1/1.
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] Process started with process id 35216, waiting for process exit.
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] STDOUT/STDERR stream read finished.
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] STDOUT/STDERR stream read finished.
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] Finished process 35216 with exit code 0, and elapsed time 00:00:00.0476744.
+[2026-05-19 05:09:34Z INFO StepsRunner] Successfully returned to code page 65001 (UTF8)
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:09:34Z INFO ActionManager] Load action that reference repository from 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions\actions\checkout\v4'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Actions': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions'
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Loaded action.yml file: {
+  "name": "Checkout",
+  "description": "Checkout a Git repository at a particular version",
+  "inputs": {
+    "type": 2,
+    "map": [
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 4,
+          "col": 3,
+          "lit": "repository"
+        },
+        "value": {
+          "type": 3,
+          "file": 2,
+          "line": 6,
+          "col": 14,
+          "expr": "github.repository"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 7,
+          "col": 3,
+          "lit": "ref"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 12,
+          "col": 3,
+          "lit": "token"
+        },
+        "value": {
+          "type": 3,
+          "file": 2,
+          "line": 24,
+          "col": 14,
+          "expr": "github.token"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 25,
+          "col": 3,
+          "lit": "ssh-key"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 37,
+          "col": 3,
+          "lit": "ssh-known-hosts"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 42,
+          "col": 3,
+          "lit": "ssh-strict"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 47,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 48,
+          "col": 3,
+          "lit": "ssh-user"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 51,
+          "col": 14,
+          "lit": "git"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 52,
+          "col": 3,
+          "lit": "persist-credentials"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 54,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 55,
+          "col": 3,
+          "lit": "path"
+        },
+        "value": ""
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 57,
+          "col": 3,
+          "lit": "clean"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 59,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 60,
+          "col": 3,
+          "lit": "filter"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 64,
+          "col": 14,
+          "lit": ""
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 65,
+          "col": 3,
+          "lit": "sparse-checkout"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 69,
+          "col": 14,
+          "lit": ""
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 70,
+          "col": 3,
+          "lit": "sparse-checkout-cone-mode"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 73,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 74,
+          "col": 3,
+          "lit": "fetch-depth"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 76,
+          "col": 14,
+          "lit": "1"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 77,
+          "col": 3,
+          "lit": "fetch-tags"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 79,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 80,
+          "col": 3,
+          "lit": "show-progress"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 82,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 83,
+          "col": 3,
+          "lit": "lfs"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 85,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 86,
+          "col": 3,
+          "lit": "submodules"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 94,
+          "col": 14,
+          "lit": "false"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 95,
+          "col": 3,
+          "lit": "set-safe-directory"
+        },
+        "value": {
+          "type": 0,
+          "file": 2,
+          "line": 97,
+          "col": 14,
+          "lit": "true"
+        }
+      },
+      {
+        "key": {
+          "type": 0,
+          "file": 2,
+          "line": 98,
+          "col": 3,
+          "lit": "github-server-url"
+        },
+        "value": ""
+      }
+    ]
+  },
+  "execution": {
+    "executionType": "nodeJS",
+    "hasPre": false,
+    "hasPost": true,
+    "script": "dist/index.js",
+    "pre": null,
+    "post": "dist/index.js",
+    "nodeVersion": "node20",
+    "cleanupCondition": "always()",
+    "initCondition": "always()"
+  },
+  "deprecated": null
+}
+[2026-05-19 05:09:34Z INFO ActionManager] Action pre node.js file: N/A.
+[2026-05-19 05:09:34Z INFO ActionManager] Action node.js file: dist/index.js.
+[2026-05-19 05:09:34Z INFO ActionManager] Action post node.js file: dist/index.js.
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Temp': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp'
+[2026-05-19 05:09:34Z INFO ExecutionContext] Write event payload to C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp\_github_workflow\event.json
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Temp': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp'
+[2026-05-19 05:09:34Z INFO ExtensionManager] Getting extensions for interface: 'GitHub.Runner.Worker.IFileCommandExtension'
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'repository': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 6,
+  "col": 14,
+  "lit": "divagarkarunanidhi/studio"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'ref': default value evaluate result: ""
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'token': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 24,
+  "col": 14,
+  "lit": "***"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'ssh-key': default value evaluate result: ""
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'ssh-known-hosts': default value evaluate result: ""
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'ssh-strict': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 47,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'ssh-user': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 51,
+  "col": 14,
+  "lit": "git"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'persist-credentials': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 54,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'path': default value evaluate result: ""
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'clean': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 59,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'filter': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 64,
+  "col": 14,
+  "lit": ""
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'sparse-checkout': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 69,
+  "col": 14,
+  "lit": ""
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'sparse-checkout-cone-mode': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 73,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'fetch-depth': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 76,
+  "col": 14,
+  "lit": "1"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'fetch-tags': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 79,
+  "col": 14,
+  "lit": "false"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'show-progress': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 82,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'lfs': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 85,
+  "col": 14,
+  "lit": "false"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'submodules': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 94,
+  "col": 14,
+  "lit": "false"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'set-safe-directory': default value evaluate result: {
+  "type": 0,
+  "file": 2,
+  "line": 97,
+  "col": 14,
+  "lit": "true"
+}
+[2026-05-19 05:09:34Z INFO ActionManifestManager] Input 'github-server-url': default value evaluate result: ""
+[2026-05-19 05:09:34Z INFO ExtensionManager] Getting extensions for interface: 'GitHub.Runner.Worker.IActionCommandExtension'
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command internal-set-repo-path
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command set-env
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command set-output
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command save-state
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command add-path
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command add-mask
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command add-matcher
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command remove-matcher
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command warning
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command error
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command notice
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command debug
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command group
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command endgroup
+[2026-05-19 05:09:34Z INFO ActionCommandManager] Register action command extension for command echo
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:34Z INFO HostContext] Well known directory 'Externals': 'C:\Code base\bugsense apr 24\studio\actions-runner\externals'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] Starting process:
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   File name: 'C:\Code base\bugsense apr 24\studio\actions-runner\externals\node20\bin\node.exe'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Arguments: '"C:\Code base\bugsense apr 24\studio\actions-runner\_work\_actions\actions\checkout\v4\dist/index.js"'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Working directory: 'C:\Code base\bugsense apr 24\studio\actions-runner\_work\studio\studio'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Require exit code zero: 'False'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Encoding web name: utf-8 ; code page: '65001'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Force kill process on cancellation: 'False'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Redirected STDIN: 'False'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Persist current code page: 'True'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   Keep redirected STDIN open: 'False'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper]   High priority process: 'False'
+[2026-05-19 05:09:34Z INFO ProcessInvokerWrapper] Process started with process id 36564, waiting for process exit.
+[2026-05-19 05:09:34Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd7d0baba-73bc-445e-a5a1-e8dca91fbbcd', success rate: 1/1.
+[2026-05-19 05:09:34Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd25f3a40-0c66-43e8-afbf-872a30678982', success rate: 1/1.
+[2026-05-19 05:09:34Z INFO AddMaskCommandExtension] Add new secret mask with length of 32
+[2026-05-19 05:09:35Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd25f3a40-0c66-43e8-afbf-872a30678982', success rate: 1/1.
+[2026-05-19 05:09:35Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd25f3a40-0c66-43e8-afbf-872a30678982', success rate: 1/1.
+[2026-05-19 05:09:35Z INFO JobServerQueue] Got a step log file to send to results service.
+[2026-05-19 05:09:35Z INFO JobServerQueue] Starting upload of step log file to results service ResultsLog, C:\Code base\bugsense apr 24\studio\actions-runner\_diag\blocks\10b9ad14-9f26-4afd-a5b0-092a54758c3f_d7d0baba-73bc-445e-a5a1-e8dca91fbbcd.1
+[2026-05-19 05:09:37Z INFO JobServerQueue] Tried to upload 1 file(s) to results, success rate: 1/1.
+[2026-05-19 05:09:37Z INFO JobServerQueue] Stop aggressive process web console line queue.
+[2026-05-19 05:09:38Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd25f3a40-0c66-43e8-afbf-872a30678982', success rate: 1/1.
+[2026-05-19 05:09:41Z INFO JobServerQueue] Try to append 1 batches web console lines for record 'd25f3a40-0c66-43e8-afbf-872a30678982', success rate: 1/1.
+[2026-05-19 05:09:43Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:43Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:43Z INFO HostContext] Well known directory 'Work': 'C:\Code base\bugsense apr 24\studio\actions-runner\_work'
+[2026-05-19 05:09:44Z INFO ProcessInvokerWrapper] STDOUT/STDERR stream read finished.
+[2026-05-19 05:09:44Z INFO ProcessInvokerWrapper] STDOUT/STDERR stream read finished.
+[2026-05-19 05:09:44Z INFO ProcessInvokerWrapper] Finished process 36564 with exit code 0, and elapsed time 00:00:10.2614293.
+[2026-05-19 05:09:44Z INFO CreateStepSummaryCommand] Step Summary file (C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp\_runner_file_commands\step_summary_ae016cfd-d894-42f4-a3ee-a1c78089b373) is empty; skipping attachment upload
+[2026-05-19 05:09:44Z INFO StepsRunner] Step result: 
+[2026-05-19 05:09:44Z INFO ExecutionContext] Publish step telemetry for current step {
+  "action": "actions/checkout",
+  "ref": "v4",
+  "type": "node20",
+  "stage": "Post",
+  "stepId": "d25f3a40-0c66-43e8-afbf-872a30678982",
+  "result": "succeeded",
+  "errorMessages": [],
+  "executionTimeInSeconds": 11,
+  "startTime": "2026-05-19T05:09:34.6057957Z",
+  "finishTime": "2026-05-19T05:09:44.9360879Z"
+}.
+[2026-05-19 05:09:44Z INFO StepsRunner] No need for updating job result with current step result 'Succeeded'.
+[2026-05-19 05:09:44Z INFO StepsRunner] Current state: job state = 'Failed'
+[2026-05-19 05:09:44Z INFO JobRunner] Finalize job.
+[2026-05-19 05:09:44Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:44Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:44Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:09:44Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:44Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:44Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:09:44Z INFO JobExtension] Initialize Env context
+[2026-05-19 05:09:44Z INFO JobExtension] Initialize steps context
+[2026-05-19 05:09:44Z INFO JobExtension] Total accessible running process: 399.
+[2026-05-19 05:09:44Z INFO JobExtension] Inspecting process environment variables. PID: 9852 (chrome)
+[2026-05-19 05:09:44Z INFO JobExtension] Wait for all connectivity checks to finish.
+[2026-05-19 05:09:44Z INFO JobExtension] Connectivity check result: GitHub.Runner.Worker.JobExtension+CheckResult
+[2026-05-19 05:09:44Z INFO JobExtension] Connectivity check result: GitHub.Runner.Worker.JobExtension+CheckResult
+[2026-05-19 05:09:44Z INFO JobExtension] Connectivity check result: GitHub.Runner.Worker.JobExtension+CheckResult
+[2026-05-19 05:09:44Z INFO ExecutionContext] Publish step telemetry for current step {
+  "action": "complete_job",
+  "type": "runner",
+  "stage": "Post",
+  "stepId": "75d3fcb1-acda-43bb-932e-e20f0d24a973",
+  "result": "succeeded",
+  "errorMessages": [],
+  "executionTimeInSeconds": 1,
+  "startTime": "2026-05-19T05:09:44.9412781Z",
+  "finishTime": "2026-05-19T05:09:44.9625661Z"
+}.
+[2026-05-19 05:09:44Z INFO JobRunner] Job result after all job steps finish: Failed
+[2026-05-19 05:09:44Z INFO JobRunner] Completing the job execution context.
+[2026-05-19 05:09:44Z INFO JobRunner] Shutting down the job server queue.
+[2026-05-19 05:09:44Z INFO JobServerQueue] Fire signal to shutdown all queues.
+[2026-05-19 05:09:45Z INFO JobServerQueue] All queue process task stopped.
+[2026-05-19 05:09:45Z INFO JobServerQueue] Try to append 1 batches web console lines for record '75d3fcb1-acda-43bb-932e-e20f0d24a973', success rate: 1/1.
+[2026-05-19 05:09:45Z INFO JobServerQueue] Web console line queue drained.
+[2026-05-19 05:09:45Z INFO JobServerQueue] Uploading 3 files in one shot.
+[2026-05-19 05:09:45Z INFO JobServerQueue] Try to upload 3 log files or attachments, success rate: 3/3.
+[2026-05-19 05:09:45Z INFO JobServerQueue] File upload queue drained.
+[2026-05-19 05:09:45Z INFO JobServerQueue] Starting results-based upload queue...
+[2026-05-19 05:09:45Z INFO JobServerQueue] Uploading 3 file(s) in one shot through results service.
+[2026-05-19 05:09:45Z INFO JobServerQueue] Got a step log file to send to results service.
+[2026-05-19 05:09:45Z INFO JobServerQueue] Starting upload of step log file to results service ResultsLog, C:\Code base\bugsense apr 24\studio\actions-runner\_diag\blocks\10b9ad14-9f26-4afd-a5b0-092a54758c3f_d25f3a40-0c66-43e8-afbf-872a30678982.1
+[2026-05-19 05:09:47Z INFO JobServerQueue] Got a step log file to send to results service.
+[2026-05-19 05:09:47Z INFO JobServerQueue] Starting upload of step log file to results service ResultsLog, C:\Code base\bugsense apr 24\studio\actions-runner\_diag\blocks\10b9ad14-9f26-4afd-a5b0-092a54758c3f_75d3fcb1-acda-43bb-932e-e20f0d24a973.1
+[2026-05-19 05:09:48Z INFO JobServerQueue] Got a job log file to send to results service.
+[2026-05-19 05:09:48Z INFO JobServerQueue] Starting upload of job log file to results service ResultsLog, C:\Code base\bugsense apr 24\studio\actions-runner\_diag\blocks\10b9ad14-9f26-4afd-a5b0-092a54758c3f_ba56f393-5731-59ef-ac98-bb6d6810089a.1
+[2026-05-19 05:09:50Z INFO JobServerQueue] Tried to upload 3 file(s) to results, success rate: 3/3.
+[2026-05-19 05:09:50Z INFO JobServerQueue] Results upload queue drained.
+[2026-05-19 05:09:50Z INFO JobServerQueue] Timeline update queue drained.
+[2026-05-19 05:09:50Z INFO JobServerQueue] Disposing job server ...
+[2026-05-19 05:09:50Z INFO JobServerQueue] Disposing results server ...
+[2026-05-19 05:09:50Z INFO JobServerQueue] All queue process tasks have been stopped, and all queues are drained.
+[2026-05-19 05:09:50Z INFO TempDirectoryManager] Cleaning runner temp folder: C:\Code base\bugsense apr 24\studio\actions-runner\_work\_temp
+[2026-05-19 05:09:50Z INFO HostContext] Well known directory 'Bin': 'C:\Code base\bugsense apr 24\studio\actions-runner\bin'
+[2026-05-19 05:09:50Z INFO HostContext] Well known directory 'Root': 'C:\Code base\bugsense apr 24\studio\actions-runner'
+[2026-05-19 05:09:50Z INFO HostContext] Well known directory 'Diag': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag'
+[2026-05-19 05:09:50Z INFO HostContext] Well known config file 'Telemetry': 'C:\Code base\bugsense apr 24\studio\actions-runner\_diag\.telemetry'
+[2026-05-19 05:09:50Z INFO JobRunner] Raising job completed against run service
+[2026-05-19 05:09:52Z INFO Worker] Job completed.

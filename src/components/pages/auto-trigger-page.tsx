@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy, limit, addDoc } from 'firebase/firestore';
+import { doc, collection, query, orderBy, limit, addDoc } from '@/firebase/firestore-shim';
 import type { AppConfiguration, AutoTriggerLog } from '@/lib/types';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { format, parseISO } from 'date-fns';

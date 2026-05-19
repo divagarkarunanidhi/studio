@@ -11,8 +11,7 @@ import { z } from 'zod';
 import { FailureClassificationOutputSchema } from '@/lib/types';
 import type { FailureClassificationOutput, AppConfiguration } from '@/lib/types';
 import { runPythonClassifier } from '@/lib/python-bridge';
-import { getFirestoreInstance } from '@/firebase/server-config';
-import { doc, getDoc } from 'firebase/firestore';
+import { getGlobalAppConfig } from '@/lib/app-config';
 
 /**
  * Uses Optimized Analytical Engines to classify failure logs.
@@ -27,11 +26,8 @@ export async function classifyFailures(failuresJson: string): Promise<FailureCla
     let enableTier3 = true;
 
     try {
-        const { firestore } = await getFirestoreInstance();
-        const configRef = doc(firestore, 'appConfiguration', 'global');
-        const configSnap = await getDoc(configRef);
-        if (configSnap.exists()) {
-            const config = configSnap.data() as AppConfiguration;
+        const config = (await getGlobalAppConfig()) as AppConfiguration | null;
+        if (config) {
             enableTier2 = config.enableTier2Python ?? true;
             enableTier3 = config.enableTier3Heuristics ?? true;
         }

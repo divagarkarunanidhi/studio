@@ -1,8 +1,7 @@
 
 'use client';
 
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Skeleton } from "../ui/skeleton";
@@ -16,9 +15,6 @@ import {
     SelectValue,
   } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
-import type { WithId } from "@/firebase/firestore/use-collection";
-import { Text } from "recharts";
-import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 interface UserProfile {
     id: string;
@@ -36,17 +32,32 @@ const ROLE_DESCRIPTIONS: Record<UserProfile['role'], string> = {
     newuser: 'Initial role. No access until changed by an admin.',
 };
 
-function RoleSelector({ user }: { user: WithId<UserProfile> }) {
-    const firestore = useFirestore();
+function RoleSelector({ user, onRoleChanged }: { user: UserProfile; onRoleChanged: (id: string, role: UserProfile['role']) => void }) {
     const { toast } = useToast();
 
     const handleRoleChange = async (newRole: UserProfile['role']) => {
-        const userRef = doc(firestore, 'users', user.id);
-        updateDocumentNonBlocking(userRef, { role: newRole });
-        toast({
-            title: 'Role Updated',
-            description: `${user.username}'s role has been changed to ${newRole}.`,
-        });
+        try {
+            const res = await fetch(`/api/users/${user.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: newRole }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data?.error || 'Failed to update role.');
+            }
+            onRoleChanged(user.id, newRole);
+            toast({
+                title: 'Role Updated',
+                description: `${user.username}'s role has been changed to ${newRole}.`,
+            });
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Update Failed',
+                description: error.message,
+            });
+        }
     };
 
     return (
@@ -69,9 +80,32 @@ function RoleSelector({ user }: { user: WithId<UserProfile> }) {
 }
 
 export function UserManagementPage() {
-    const firestore = useFirestore();
-    const usersColRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
-    const { data: users, isLoading, error } = useCollection<UserProfile>(usersColRef);
+    const [users, setUsers] = useState<UserProfile[] | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch('/api/users');
+                if (!res.ok) {
+                    throw new Error(`Request failed: ${res.status}`);
+                }
+                const data = await res.json();
+                if (!cancelled) setUsers(data.users ?? []);
+            } catch (e: any) {
+                if (!cancelled) setError(e.message);
+            } finally {
+                if (!cancelled) setIsLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    const handleRoleChanged = useCallback((id: string, role: UserProfile['role']) => {
+        setUsers(prev => prev ? prev.map(u => u.id === id ? { ...u, role } : u) : prev);
+    }, []);
 
     return (
         <Card>
@@ -113,7 +147,7 @@ export function UserManagementPage() {
                                         <TableCell className="font-medium">{user.username}</TableCell>
                                         <TableCell>{user.email}</TableCell>
                                         <TableCell>
-                                            <RoleSelector user={user} />
+                                            <RoleSelector user={user} onRoleChanged={handleRoleChanged} />
                                         </TableCell>
                                     </TableRow>
                                 ))

@@ -7,7 +7,7 @@
  * - DefectAnalysisOutput - The return type for the analyzeDefects function.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, getAiModelConfig } from '@/ai/genkit';
 import {
   DefectSchema,
   DefectAnalysisOutputSchema,
@@ -18,8 +18,7 @@ import {
   type SavedPrediction,
 } from '@/lib/types';
 import { z } from 'zod';
-import { doc, getDoc, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { getFirestoreInstance } from '@/firebase/server-config';
+import { getGlobalAppConfig, getSharedFeedbackExamples } from '@/lib/app-config';
 
 const DefectAnalysisInputSchema = z.object({
   defects: z.string(),
@@ -89,32 +88,19 @@ const defectAnalysisFlow = ai.defineFlow(
   },
   async ({ defects, userId }) => {
     const defectsString = JSON.stringify(defects, null, 2);
-    
-    // Use the server-side firestore instance for all Firestore operations in the flow.
-    const { firestore } = await getFirestoreInstance(); 
-    
-    const configRef = doc(firestore, 'appConfiguration', 'global');
-    const configSnap = await getDoc(configRef);
-    
-    if (!configSnap.exists()) {
+
+    // Read app config + recent shared feedback examples from MongoDB.
+    const config = (await getGlobalAppConfig()) as AppConfiguration | null;
+    if (!config) {
         throw new Error("App configuration not found.");
     }
-    const config = configSnap.data() as AppConfiguration;
-    const retryModel = config.geminiRetryModel;
-    
-    const examplesRef = collection(firestore, 'sharedFeedback');
-    // Fetch more examples to ensure relevance (using 15 for better trend matching)
-    const examplesQuery = query(examplesRef, orderBy('savedAt', 'desc'), limit(15));
+    const { retryModel } = await getAiModelConfig();
 
-    const examplesSnap = await getDocs(examplesQuery);
-    
-    const examples = examplesSnap.docs.map(doc => {
-        const data = doc.data() as SavedPrediction;
-        return {
-            input: data.defect,
-            output: data.prediction,
-        };
-    });
+    const examplesData = await getSharedFeedbackExamples(15);
+    const examples = examplesData.map((data: any) => ({
+        input: (data as SavedPrediction).defect,
+        output: (data as SavedPrediction).prediction,
+    }));
 
     try {
         const { output } = await analysisPrompt({ defects: defectsString, examples });
@@ -123,9 +109,9 @@ const defectAnalysisFlow = ai.defineFlow(
         }
         return output;
     } catch (e: any) {
-        if (e.message && (e.message.includes('429 Too Many Requests') || e.message.includes('503 Service Unavailable'))) {
+        if (e.message && retryModel && (e.message.includes('429 Too Many Requests') || e.message.includes('503 Service Unavailable'))) {
             console.warn(`Rate limit or availability error, retrying with ${retryModel}...`);
-            const { output } = await analysisPrompt({ defects: defectsString, examples }, { model: `googleai/${retryModel}` });
+            const { output } = await analysisPrompt({ defects: defectsString, examples }, { model: retryModel });
             if (!output) {
                 throw new Error('The fallback model also did not return a valid analysis.');
             }

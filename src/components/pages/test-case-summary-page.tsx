@@ -4,7 +4,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc } from '@/firebase/firestore-shim';
 import type { AppConfiguration, TestCaseAnalysisInput, TestCaseAnalysisOutput } from '@/lib/types';
 import { analyzeTestCases } from '@/ai/flows/test-case-analysis-flow';
 import * as XLSX from 'xlsx';

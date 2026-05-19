@@ -2,11 +2,11 @@
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useAuth, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, doc } from '@/firebase/firestore-shim';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import type { UsageEvent, AppConfiguration } from '@/lib/types';
-import { signOut } from 'firebase/auth';
+import { signOut as nextAuthSignOut } from 'next-auth/react';
 
 const IDLE_THRESHOLD = 2 * 60 * 1000; // 2 minutes for session pulses
 const PULSE_INTERVAL = 5 * 60 * 1000; // 5 minutes between pulses
@@ -20,7 +20,6 @@ const CHECK_INTERVAL = 10 * 1000; // Check idle state every 10 seconds
 export function useUsageTracking(username?: string) {
     const { user } = useUser();
     const firestore = useFirestore();
-    const auth = useAuth();
     const lastActivityRef = useRef<number>(Date.now());
     const hasLoggedLoginRef = useRef<boolean>(false);
 
@@ -91,18 +90,18 @@ export function useUsageTracking(username?: string) {
 
     // Auto-logout timer
     useEffect(() => {
-        if (!user || !auth || !autoLogoutEnabled) return;
+        if (!user || !autoLogoutEnabled) return;
 
         const logoutInterval = setInterval(() => {
             const now = Date.now();
             if (now - lastActivityRef.current >= autoLogoutThreshold) {
                 logEvent('logout');
-                signOut(auth).catch(err => console.error("Auto-logout error:", err));
+                nextAuthSignOut({ redirect: false }).catch(err => console.error("Auto-logout error:", err));
             }
         }, CHECK_INTERVAL);
 
         return () => clearInterval(logoutInterval);
-    }, [user, auth, logEvent, autoLogoutEnabled, autoLogoutThreshold]);
+    }, [user, logEvent, autoLogoutEnabled, autoLogoutThreshold]);
 
     return { logEvent };
 }

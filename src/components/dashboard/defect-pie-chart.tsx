@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Pie, PieChart, Cell, Tooltip } from "recharts";
-import { doc } from "firebase/firestore";
+import { doc } from "@/firebase/firestore-shim";
 import { useFirestore, useMemoFirebase, useDoc } from "@/firebase";
 import {
   Card,

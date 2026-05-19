@@ -19,7 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lightbulb, AlertTriangle, Wand2, Bookmark, BookmarkCheck, HelpCircle, Check, Loader2 } from 'lucide-react';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection } from '@/firebase/firestore-shim';
 import { useFirestore, useUser, errorEmitter, FirestorePermissionError, useDoc, useMemoFirebase } from '@/firebase';
 import {
     Select,

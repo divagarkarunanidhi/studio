@@ -38,8 +38,14 @@ yarn-error.log*
 next-env.d.ts
 
 .genkit/*
+
+# pm2 logs
+/logs
 .env*
 
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# runtime config (contains MongoDB connection string)
+/data/mongo-config.json

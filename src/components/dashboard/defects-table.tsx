@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Defect, AppConfiguration } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { differenceInDays, parseISO, format } from 'date-fns';
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc } from "@/firebase/firestore-shim";
 import { useFirestore } from "@/firebase";
 import {
   Tooltip,

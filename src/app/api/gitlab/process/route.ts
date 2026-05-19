@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { getGitlabDispatcher } from '@/lib/gitlab-fetch';
 
 /**
  * POST /api/gitlab/process
@@ -9,19 +10,24 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { token, projectId, branch, filePath, scenarioName } = body;
+        const { token, projectId, branch, filePath, scenarioName, baseUrl: rawBaseUrl, insecureTls } = body;
 
         if (!token || !projectId || !filePath || !scenarioName) {
             return NextResponse.json({ error: "Missing required GitLab configuration or file details." }, { status: 400 });
         }
 
         const encodedFilePath = encodeURIComponent(filePath);
-        const baseUrl = `https://gitlab.com/api/v4/projects/${encodeURIComponent(projectId)}`;
+        const host = (rawBaseUrl && typeof rawBaseUrl === 'string' && rawBaseUrl.trim())
+            ? rawBaseUrl.trim().replace(/\/+$/, '')
+            : 'https://gitlab.com';
+        const baseUrl = `${host}/api/v4/projects/${encodeURIComponent(projectId)}`;
         const fileUrl = `${baseUrl}/repository/files/${encodedFilePath}?ref=${branch || 'main'}`;
 
         // 1. Fetch the file content
         const fetchRes = await fetch(fileUrl, {
-            headers: { 'PRIVATE-TOKEN': token }
+            headers: { 'PRIVATE-TOKEN': token },
+            // @ts-expect-error - undici dispatcher is supported by Node fetch
+            dispatcher: getGitlabDispatcher({ insecureTls: !!insecureTls }),
         });
 
         if (!fetchRes.ok) {
@@ -98,7 +104,9 @@ export async function POST(request: Request) {
                 'PRIVATE-TOKEN': token,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(commitPayload)
+            body: JSON.stringify(commitPayload),
+            // @ts-expect-error - undici dispatcher is supported by Node fetch
+            dispatcher: getGitlabDispatcher({ insecureTls: !!insecureTls }),
         });
 
         if (!commitRes.ok) {
